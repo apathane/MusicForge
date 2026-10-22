@@ -134,7 +134,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit, onEqualizer: () -> Unit) {
     val context = LocalContext.current
     val vm = viewModel { SettingsViewModel(context.graph) }
     val restore by vm.restore.collectAsStateWithLifecycle()
@@ -209,15 +209,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow("Even out loudness", prefs?.get(Keys.AudioNormalization) ?: true) { vm.set(Keys.AudioNormalization, it) }
             ToggleRow("Skip silence", prefs?.get(Keys.SkipSilence) ?: false) { vm.set(Keys.SkipSilence, it) }
             val context = LocalContext.current
-            ActionRow("Equalizer", "Opens your phone's sound settings") {
-                val intent = android.content.Intent(android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-                    .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                    .putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
-                    .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, context.graph.audioSessionId)
-                runCatching { context.startActivity(intent) }.onFailure {
-                    android.widget.Toast.makeText(context, "No equalizer on this phone", android.widget.Toast.LENGTH_SHORT).show()
-                }
-            }
+            ActionRow("Equalizer", "Bands and presets, on any phone", onEqualizer)
         }
 
         SectionTitle("Scrobbling")

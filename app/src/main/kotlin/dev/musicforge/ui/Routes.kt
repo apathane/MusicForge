@@ -32,6 +32,7 @@ object Routes {
     const val LOGIN = "login"
     const val ABOUT = "about"
     const val STATS = "stats"
+    const val EQUALIZER = "equalizer"
 
     fun collection(kind: CollectionKind, id: String = "-") = "collection/${kind.name}/${Uri.encode(id)}"
     fun artist(id: String) = "artist/${Uri.encode(id)}"

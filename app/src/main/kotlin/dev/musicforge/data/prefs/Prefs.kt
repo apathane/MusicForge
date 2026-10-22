@@ -45,6 +45,9 @@ object Keys {
     val PureBlack = bool("pureBlack")
     val GlassTier = str("forge.glassTier") // SOLID / ARTWORK / LIVE
     val ExportToMusic = bool("forge.exportToMusic")
+    val EqEnabled = bool("forge.eqEnabled")
+    val EqLevels = str("forge.eqLevelsMb")
+    val EqPreset = str("forge.eqPreset")
     // Same names as the upstream app that has ListenBrainz, so a restore brings it along.
     val ListenBrainzToken = str("listenbrainz_token")
     val ListenBrainzEnabled = bool("listenbrainz_enabled")

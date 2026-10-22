@@ -43,6 +43,7 @@ class PlaybackService : MediaLibraryService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var player: ExoPlayer
+    private val equalizer = EqualizerProcessor()
     private lateinit var session: MediaLibrarySession
     private val tree by lazy { BrowseTree(graph.database.dao()) }
     private val recorder get() = graph.recorder
@@ -70,7 +71,19 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         val engine = graph.mediaEngine
-        player = ExoPlayer.Builder(this)
+        // The equaliser runs inside our audio pipeline, so it works on every phone.
+        val renderers = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: android.content.Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ): androidx.media3.exoplayer.audio.AudioSink =
+                androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setAudioProcessors(arrayOf(equalizer))
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .build()
+        }
+        player = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(engine.playbackSource()))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
@@ -107,6 +120,11 @@ class PlaybackService : MediaLibraryService() {
         scope.launch {
             graph.settings.data.map { it[Keys.AudioNormalization] ?: true }.distinctUntilChanged()
                 .collect { normalize = it; applyLoudness() }
+        }
+        scope.launch {
+            graph.settings.data.map { (it[Keys.EqEnabled] ?: false) to EqSettings.parse(it[Keys.EqLevels]) }
+                .distinctUntilChanged()
+                .collect { (on, levels) -> equalizer.set(on, levels.map { it / 100f }) }
         }
     }
 

@@ -113,8 +113,14 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                 composable(Tab.Search.route) { SearchScreen() }
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
                 composable(Tab.Downloads.route) { DownloadsScreen() }
-                composable(SETTINGS_ROUTE) { SettingsScreen(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate(Routes.LOGIN) }, onAbout = { nav.navigate(Routes.ABOUT) }) }
+                composable(SETTINGS_ROUTE) { SettingsScreen(
+                        onBack = { nav.popBackStack() },
+                        onSignIn = { nav.navigate(Routes.LOGIN) },
+                        onAbout = { nav.navigate(Routes.ABOUT) },
+                        onEqualizer = { nav.navigate(Routes.EQUALIZER) },
+                    ) }
                 composable(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
+                composable(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
                 composable(
@@ -133,7 +139,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
-            if (route != SETTINGS_ROUTE && route != Routes.LOGIN && route != Routes.ABOUT) {
+            if (route != SETTINGS_ROUTE && route != Routes.LOGIN && route != Routes.ABOUT && route != Routes.EQUALIZER) {
                 Column(
                     Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (covered) 0f else 1f }
                         .navigationBarsPadding().padding(bottom = 12.dp),
