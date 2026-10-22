@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import sh.calvin.reorderable.ReorderableItem
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -186,6 +187,32 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
     val vm = viewModel(key = "${kind.name}:$id") { CollectionViewModel(graph, kind, id) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val list = rememberLazyListState()
+    // Local playlists reorder by drag: a stable-keyed mirror, saved once when the drag ends.
+    val rows = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateListOf<Pair<Long, Track>>() }
+    var keySeq by androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    var dragFrom by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    var dragTo by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+    val reorder = sh.calvin.reorderable.rememberReorderableLazyListState(list) { from, to ->
+        val f = from.index - HEADER_ITEMS
+        val t = to.index - HEADER_ITEMS
+        if (f !in rows.indices || t !in rows.indices) return@rememberReorderableLazyListState
+        if (dragFrom < 0) dragFrom = f
+        dragTo = t
+        rows.add(t, rows.removeAt(f))
+    }
+    LaunchedEffect(reorder.isAnyItemDragging) {
+        if (!reorder.isAnyItemDragging && dragFrom >= 0) {
+            if (dragFrom != dragTo) graph.library.movePlaylistSong(id, dragFrom, dragTo)
+            dragFrom = -1
+            dragTo = -1
+        }
+    }
+    LaunchedEffect(ui.tracks) {
+        if (!reorder.isAnyItemDragging) {
+            rows.clear()
+            ui.tracks.forEach { rows.add(keySeq++ to it) }
+        }
+    }
     var editing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     if (editing) {
         PlaylistEditDialog(
@@ -218,6 +245,12 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
             }
             ui.error != null -> item { EmptyState("Couldn't load", ui.error!!) }
             ui.tracks.isEmpty() -> item { EmptyState("Nothing here yet", "Songs you add will show up here.") }
+        }
+        if (kind == CollectionKind.LOCAL_PLAYLIST && ui.tracks.isNotEmpty()) {
+            reorderableTracks(rows, reorder, onPlay = { i -> graph.player.play(rows.map { it.second.item }, i) }) { track ->
+                graph.library.removeFromPlaylist(id, track.item.mediaId)
+            }
+            return@LazyColumn
         }
         itemsIndexed(ui.tracks, key = { i, t -> "$i:${t.item.mediaId}" }) { index, track ->
             SongRow(
@@ -325,4 +358,32 @@ private fun PlaylistEditDialog(name: String, onRename: (String) -> Unit, onDelet
             }
         },
     )
+}
+
+/** Back row + header come before the tracks in the list. */
+private const val HEADER_ITEMS = 2
+
+private fun androidx.compose.foundation.lazy.LazyListScope.reorderableTracks(
+    rows: List<Pair<Long, Track>>,
+    reorder: sh.calvin.reorderable.ReorderableLazyListState,
+    onPlay: (Int) -> Unit,
+    onRemove: (Track) -> Unit,
+) {
+    itemsIndexed(rows, key = { _, r -> r.first }) { i, (key, track) ->
+        ReorderableItem(reorder, key = key) { dragging ->
+            Box(Modifier.background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent)) {
+                SongRow(
+                    track.item,
+                    track.subtitle,
+                    extraActions = listOf("Remove from this playlist" to { onRemove(track) }),
+                    dragHandle = {
+                        Box(Modifier.size(40.dp).draggableHandle(), contentAlignment = Alignment.Center) {
+                            Text("≡", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    onPlay = { onPlay(i) },
+                )
+            }
+        }
+    }
 }

@@ -90,7 +90,7 @@ interface MusicDao {
     @Query(
         """
         SELECT song.* FROM playlist_song_map JOIN song ON song.id = playlist_song_map.songId
-        WHERE playlistId = :playlistId ORDER BY position
+        WHERE playlistId = :playlistId ORDER BY position, playlist_song_map.id
         """,
     )
     fun playlistSongs(playlistId: String): Flow<List<Song>>
@@ -216,6 +216,12 @@ interface MusicDao {
         """,
     )
     suspend fun removeFromPlaylist(playlistId: String, songId: String)
+
+    @Query("SELECT id FROM playlist_song_map WHERE playlistId = :playlistId ORDER BY position, id")
+    suspend fun playlistMapIds(playlistId: String): List<Int>
+
+    @Query("UPDATE playlist_song_map SET position = :position WHERE id = :mapId")
+    suspend fun setMapPosition(mapId: Int, position: Int)
 
     @Query("UPDATE playlist SET name = :name, lastUpdateTime = :at WHERE id = :id")
     suspend fun renamePlaylist(id: String, name: String, at: Long)

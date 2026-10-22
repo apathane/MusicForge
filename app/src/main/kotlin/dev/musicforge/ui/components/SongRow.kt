@@ -14,6 +14,7 @@ fun SongRow(
     subtitle: String,
     number: Int? = null,
     extraActions: List<Pair<String, () -> Unit>> = emptyList(),
+    dragHandle: (@Composable () -> Unit)? = null,
     onPlay: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -28,6 +29,7 @@ fun SongRow(
         trailing = {
             DownloadBadge(item.mediaId)
             IconAction(ForgeIcons.More, "More options") { menu = true }
+            dragHandle?.invoke()
         },
     )
     if (menu) TrackActionsSheet(item, extraActions) { menu = false }

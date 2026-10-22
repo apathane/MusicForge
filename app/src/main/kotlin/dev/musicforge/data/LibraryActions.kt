@@ -40,6 +40,18 @@ class LibraryActions(
         db.dao().touchPlaylist(playlistId, System.currentTimeMillis())
     }
 
+    /** Moves one song within a playlist and renumbers positions 0..n-1 in one transaction. */
+    fun movePlaylistSong(playlistId: String, from: Int, to: Int) = scope.launch {
+        db.withTransaction {
+            val dao = db.dao()
+            val ids = dao.playlistMapIds(playlistId).toMutableList()
+            if (from !in ids.indices || to !in ids.indices) return@withTransaction
+            ids.add(to, ids.removeAt(from))
+            ids.forEachIndexed { i, mapId -> dao.setMapPosition(mapId, i) }
+            dao.touchPlaylist(playlistId, System.currentTimeMillis())
+        }
+    }
+
     fun renamePlaylist(id: String, name: String) = scope.launch {
         name.trim().takeIf { it.isNotEmpty() }?.let { db.dao().renamePlaylist(id, it, System.currentTimeMillis()) }
     }
