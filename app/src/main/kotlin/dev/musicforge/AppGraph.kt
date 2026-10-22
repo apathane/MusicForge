@@ -48,7 +48,14 @@ class AppGraph(val app: Application) {
     val youTubeSession by lazy { YouTubeSession(app, settings, scope) }
 
     val resolver by lazy {
-        StreamResolver(database.dao(), settings, app.getSystemService<ConnectivityManager>()!!, http)
+        StreamResolver(
+            database.dao(), settings, app.getSystemService<ConnectivityManager>()!!, http,
+            debugDump = if (BuildConfig.DEBUG) {
+                { s -> java.io.File(app.cacheDir, "last_stream.txt").writeText((listOf(s.url) + s.headers.map { "${it.key}: ${it.value}" }).joinToString("\n")) }
+            } else {
+                null
+            },
+        )
     }
 
     val mediaEngine by lazy {

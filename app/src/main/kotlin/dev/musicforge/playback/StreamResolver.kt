@@ -39,6 +39,8 @@ class StreamResolver(
     private val connectivity: ConnectivityManager,
     private val http: OkHttpClient,
     private val now: () -> Long = System::currentTimeMillis,
+    /** Debug builds only: lets transfer benchmarks replay the exact stream from a host. */
+    private val debugDump: ((ResolvedStream) -> Unit)? = null,
 ) {
     private class Entry(val stream: ResolvedStream, val expiresAt: Long)
 
@@ -118,6 +120,7 @@ class StreamResolver(
             if ((generations[videoId] ?: 0L) == generation) entries[videoId] = Entry(stream, now() + ttlMs)
         }
         Timber.d("resolved %s via %s: %s bytes, chunk %s", videoId, data.streamClient, length, chunk)
+        debugDump?.invoke(stream)
         return stream
     }
 
@@ -139,8 +142,13 @@ class StreamResolver(
     }
 
     companion object {
-        /** BitChord measured googlevideo serving 2 MiB ranges at line rate. */
-        const val DEFAULT_CHUNK = 2L * 1024 * 1024
+        /**
+         * Measured 2026-10-22 against googlevideo (docs/BENCHMARKS.md): any bounded range up to
+         * 8 MiB arrives at line rate (~6 MB/s), 12 MiB and above is throttled to ~30 kB/s, and so
+         * is a whole-file range on a long track. 4 MiB stays 2.5x under the cap and needs half
+         * the round trips of BitChord's 2 MiB.
+         */
+        const val DEFAULT_CHUNK = 4L * 1024 * 1024
 
         fun clen(url: String): Long? =
             Regex("[?&]clen=(\\d+)").find(url)?.groupValues?.get(1)?.toLongOrNull()?.takeIf { it > 0 }
