@@ -49,6 +49,9 @@ class PlaybackService : MediaSessionService() {
     private var checkpointedMs = 0L
     private var eventWritten = false
     private var checkpointJob: Job? = null
+    private var transitionAt = 0L
+
+    private val readAhead by lazy { ReadAhead(this, graph.mediaEngine, graph.downloads, scope) }
 
     private var radioJob: Job? = null
     private var radioContinuation: String? = null
@@ -114,6 +117,10 @@ class PlaybackService : MediaSessionService() {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
+                if (transitionAt > 0) {
+                    Timber.d("startup: %s audible %d ms after transition", currentItem?.mediaId, now - transitionAt)
+                    transitionAt = 0
+                }
                 playingSince = now
                 checkpointJob?.cancel()
                 checkpointJob = scope.launch {
@@ -134,18 +141,32 @@ class PlaybackService : MediaSessionService() {
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             flushPlay()
+            // Seamless auto-advance never stops playing; measure only user-driven starts.
+            transitionAt = if (player.isPlaying) 0 else android.os.SystemClock.elapsedRealtime()
             // The UI replaced the queue: radio should follow the new music, not the old seed.
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) resetRadio()
             currentItem = mediaItem
+            mediaItem?.let { readAhead.cancel(it.mediaId) }
+            updateReadAhead()
             if (mediaItem != null) {
                 scope.launch(Dispatchers.IO) { runCatching { recorder.ensureSong(mediaItem) } }
             }
             maybeExtendRadio()
         }
 
+        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) updateReadAhead()
+        }
+
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Timber.e(error, "playback error on %s", player.currentMediaItem?.mediaId)
         }
+    }
+
+    private fun updateReadAhead() {
+        val from = player.currentMediaItemIndex + 1
+        val upcoming = (from until minOf(player.mediaItemCount, from + 5)).map { player.getMediaItemAt(it).mediaId }
+        readAhead.update(upcoming)
     }
 
     private fun playedSoFar(): Long {
@@ -216,6 +237,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         checkpointJob?.cancel()
+        readAhead.release()
         flushPlay()
         session.release()
         player.release()
