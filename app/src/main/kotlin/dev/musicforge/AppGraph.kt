@@ -39,7 +39,7 @@ class AppGraph(val app: Application) {
     val settings get() = app.dataStore
     val backupImporter by lazy { BackupImporter(app, database, settings) }
     val backupExporter by lazy { BackupExporter(app, database) }
-    val autoBackup by lazy { dev.musicforge.data.backup.AutoBackup(app, backupExporter) }
+    val autoBackup by lazy { dev.musicforge.data.backup.AutoBackup(app, backupExporter) { database.dao().librarySize() } }
 
     /** One HTTP client for streams and probes; YouTube API calls use the innertube module's. */
     val http: OkHttpClient by lazy {

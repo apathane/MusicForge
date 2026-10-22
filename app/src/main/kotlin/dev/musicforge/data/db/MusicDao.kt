@@ -123,6 +123,17 @@ interface MusicDao {
     )
     fun counts(): Flow<LibraryCounts>
 
+    /** Everything a user would be upset to lose, as one number. */
+    @Query(
+        """
+        SELECT (SELECT COUNT(*) FROM song WHERE inLibrary IS NOT NULL OR liked OR isDownloaded)
+             + (SELECT COUNT(*) FROM playlist) + (SELECT COUNT(*) FROM event)
+             + (SELECT COUNT(*) FROM album WHERE bookmarkedAt IS NOT NULL)
+             + (SELECT COUNT(*) FROM artist WHERE bookmarkedAt IS NOT NULL)
+        """,
+    )
+    suspend fun librarySize(): Int
+
     @Query("SELECT query FROM search_history ORDER BY id DESC LIMIT :limit")
     fun searchHistory(limit: Int = 20): Flow<List<String>>
 

@@ -77,7 +77,10 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun confirm(uri: Uri, includeAccount: Boolean) = viewModelScope.launch {
         _restore.value = RestoreState.Working
-        _restore.value = runCatching { RestoreState.Done(graph.backupImporter.import(uri, includeAccount, graph.downloads.completedIds())) }
+        _restore.value = runCatching {
+            graph.autoBackup.snapshotBeforeRestore()
+            RestoreState.Done(graph.backupImporter.import(uri, includeAccount, graph.downloads.completedIds()))
+        }
             .getOrElse { RestoreState.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
@@ -140,7 +143,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
                 onClick = { openBackup.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             )
             var autoList by androidx.compose.runtime.remember { mutableStateOf<List<java.io.File>?>(null) }
-            ActionRow("Restore an automatic backup", "Made daily on this phone; the last 7 are kept") {
+            ActionRow("Restore an automatic backup", "Daily copies, plus a snapshot taken before every restore") {
                 autoList = context.graph.autoBackup.list()
             }
             autoList?.let { files ->
@@ -164,7 +167,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
             }
             ActionRow(
                 title = "Create backup",
-                subtitle = "Same format as Metrolist and ConvX",
+                subtitle = "Your whole library and settings in one file",
                 onClick = {
                     val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
                     createBackup.launch("${BuildConfig.CODENAME}-$stamp.backup")
