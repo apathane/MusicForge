@@ -240,6 +240,24 @@ class BackupImporterTest {
         assertThat(db.dao().song("kOn-HdEg6AQ").first()!!.artists.single().name).isEqualTo("Michael Jackson")
     }
 
+    /**
+     * Data from the real ConvX 2.0.4 release on the emulator. The DB and settings files were
+     * taken from the app's private storage and zipped the way ConvX's own backup() does
+     * (checkpoint, then settings + song.db): its player crashed the emulator's GPU renderer.
+     */
+    @Test fun genuineConvxData() = runBlocking {
+        val dir = tmp.newFolder()
+        javaClass.getResourceAsStream("/fixtures/convx-real-v40.backup")!!.use { BackupImporter.unzip(it, dir) }
+        val staged = BackupImporter.Staged(dir)
+        val preview = importer.preview(staged)
+        assertThat(preview.origin).isEqualTo(BackupImporter.Origin.CONVX)
+        assertThat(preview.dbVersion).isEqualTo(40)
+        val result = importer.import(staged, includeAccount = true, downloadedIds = emptySet())
+        assertThat(result.copied["song"]).isEqualTo(17)
+        assertThat(result.warnings).isEmpty()
+        assertThat(db.dao().songEntity("vd6wF6FPYLU")!!.title).isEqualTo("iTekisi")
+    }
+
     @Test fun downloadedSongsSurviveRestoreOfOlderBackup() = runBlocking {
         val dao = db.dao()
         dao.upsert(dev.musicforge.data.db.SongEntity(id = "dl1", title = "Downloaded here", isDownloaded = true, dateDownload = 5L))
