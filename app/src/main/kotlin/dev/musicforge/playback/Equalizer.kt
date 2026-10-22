@@ -27,9 +27,9 @@ enum class EqPreset(val label: String, val curveDb: List<Float>) {
 }
 
 /** Band levels persist as a comma-separated list of millibels. */
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object EqSettings {
     /** The in-app equaliser's bands (see [EqualizerProcessor]). */
-    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     val bands: List<EqBand> = EqualizerProcessor.BANDS.map {
         EqBand(it.hz.toInt(), (-EqualizerProcessor.MAX_DB * 100).toInt(), (EqualizerProcessor.MAX_DB * 100).toInt())
     }

@@ -15,6 +15,7 @@ private const val EXTRA_DURATION = "forge.durationSec"
 /** Artist credits carried with a queue item so history can be written without a lookup. */
 data class Credit(val id: String?, val name: String)
 
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 fun forgeMediaItem(
     videoId: String,
     title: String,

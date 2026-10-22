@@ -244,6 +244,13 @@ class PlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> = future {
+            // Voice search from a car ("play Portishead"): resolve the query into songs.
+            mediaItems.singleOrNull()?.requestMetadata?.searchQuery?.let { q ->
+                val found = SearchPlay.resolve(graph, q)
+                if (found.isNotEmpty()) return@future found.map {
+                    it.buildUpon().setUri("https://music.youtube.com/watch?v=${it.mediaId}").setCustomCacheKey(it.mediaId).build()
+                }.toMutableList()
+            }
             mediaItems.map { item ->
                 // Cars and watches send back only the id: restore title, artists and artwork.
                 val full = if (item.mediaMetadata.title == null) withContext(Dispatchers.IO) { tree.song(item.mediaId) } ?: item else item

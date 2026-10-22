@@ -15,6 +15,7 @@ import dev.musicforge.ui.components.GlassTier
 import dev.musicforge.ui.theme.DarkMode
 import dev.musicforge.ui.theme.ForgeTheme
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
             )
         }
         graph.player.connect()
+        handlePlayFromSearch(intent)
         // The media notification needs this on Android 13+ (the X7b runs 13).
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -52,6 +54,21 @@ class MainActivity : ComponentActivity() {
             ForgeTheme(darkMode = current.darkMode, pureBlack = current.pureBlack, artwork = ambience.colors) {
                 ForgeRoot(glassTier = current.glass, ambience = ambience)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handlePlayFromSearch(intent)
+    }
+
+    /** Voice: "play X on MusicForge". Your own songs first, then YouTube Music. */
+    private fun handlePlayFromSearch(intent: android.content.Intent?) {
+        if (intent?.action != android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) return
+        val query = intent.getStringExtra(android.app.SearchManager.QUERY).orEmpty()
+        graph.scope.launch {
+            val items = dev.musicforge.playback.SearchPlay.resolve(graph, query)
+            if (items.isNotEmpty()) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { graph.player.play(items) }
         }
     }
 

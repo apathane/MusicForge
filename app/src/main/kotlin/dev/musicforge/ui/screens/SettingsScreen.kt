@@ -182,7 +182,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                             if (files.isEmpty()) Text("None yet. The first one is made a little after the app starts.")
                             files.forEach { f ->
                                 Text(
-                                    SimpleDateFormat("EEE d MMM, HH:mm", Locale.getDefault()).format(Date(f.lastModified())) + "  ·  ${f.length() / 1024} KB",
+                                    SimpleDateFormat("EEE d MMM, HH:mm", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
+                                        .format(Date(f.lastModified())) + "  ·  ${f.length() / 1024} KB",
                                     style = MaterialTheme.typography.bodyLarge,
                                     modifier = Modifier.fillMaxWidth().clickable { autoList = null; vm.inspect(android.net.Uri.fromFile(f)) }.padding(vertical = 10.dp),
                                 )

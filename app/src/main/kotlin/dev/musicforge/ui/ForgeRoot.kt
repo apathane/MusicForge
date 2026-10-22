@@ -139,6 +139,9 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
+            // On a page below a tab (album, artist...), keep that tab lit.
+            var lastTab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(Tab.Home) }
+            androidx.compose.runtime.LaunchedEffect(route) { Tab.entries.firstOrNull { it.route == route }?.let { lastTab = it } }
             if (route != SETTINGS_ROUTE && route != Routes.LOGIN && route != Routes.ABOUT && route != Routes.EQUALIZER) {
                 Column(
                     Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (covered) 0f else 1f }
@@ -148,7 +151,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                 ) {
                     now?.let { MiniPlayer(it, connection, onOpen = { playerOpen = true }) }
                     NavPill(
-                        current = Tab.entries.firstOrNull { it.route == route } ?: lastTab(nav),
+                        current = Tab.entries.firstOrNull { it.route == route } ?: lastTab,
                         onSelect = { tab ->
                             nav.navigate(tab.route) {
                                 popUpTo(nav.graph.findStartDestination().id) { saveState = true }
@@ -169,12 +172,6 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
     }
-}
-
-/** On a page below a tab (album, artist...), keep that tab lit. */
-private fun lastTab(nav: NavHostController): Tab {
-    val routes = nav.currentBackStack.value.mapNotNull { it.destination.route }
-    return routes.lastOrNull { r -> Tab.entries.any { it.route == r } }?.let { r -> Tab.entries.first { it.route == r } } ?: Tab.Home
 }
 
 @Composable
