@@ -45,6 +45,10 @@ object Keys {
     val PureBlack = bool("pureBlack")
     val GlassTier = str("forge.glassTier") // SOLID / ARTWORK / LIVE
     val ExportToMusic = bool("forge.exportToMusic")
+    // Same names as the upstream app that has ListenBrainz, so a restore brings it along.
+    val ListenBrainzToken = str("listenbrainz_token")
+    val ListenBrainzEnabled = bool("listenbrainz_enabled")
+    val ListenBrainzUser = str("forge.listenBrainzUser")
 
     // Playback
     val AudioQuality = str("audioQuality") // AUTO / HIGH / LOW / ...
@@ -70,7 +74,7 @@ object Keys {
         AccountChannelHandle, ContentLanguage, ContentCountry, DarkMode, PureBlack, AudioQuality,
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
-        ProxyUsername, ProxyPassword,
+        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,

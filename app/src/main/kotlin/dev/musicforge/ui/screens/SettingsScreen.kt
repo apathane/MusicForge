@@ -98,6 +98,24 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.webkit.CookieManager.getInstance().removeAllCookies(null)
     }
 
+    fun connectListenBrainz(token: String) = viewModelScope.launch {
+        val user = graph.listenBrainz.validate(token)
+        if (user == null) {
+            android.widget.Toast.makeText(graph.app, "That token didn't work. Check it and try again.", android.widget.Toast.LENGTH_LONG).show()
+            return@launch
+        }
+        graph.settings.edit {
+            it[Keys.ListenBrainzToken] = token.trim()
+            it[Keys.ListenBrainzUser] = user
+            it[Keys.ListenBrainzEnabled] = true
+        }
+        android.widget.Toast.makeText(graph.app, "Scrobbling as $user", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun disconnectListenBrainz() = viewModelScope.launch {
+        graph.settings.edit { it.remove(Keys.ListenBrainzToken); it.remove(Keys.ListenBrainzUser) }
+    }
+
     fun exportAll() = viewModelScope.launch {
         val ids = graph.database.dao().downloadedIds()
         var ok = 0
@@ -197,6 +215,32 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 runCatching { context.startActivity(intent) }.onFailure {
                     android.widget.Toast.makeText(context, "No equalizer on this phone", android.widget.Toast.LENGTH_SHORT).show()
                 }
+            }
+        }
+
+        SectionTitle("Scrobbling")
+        Group {
+            val user = prefs?.get(Keys.ListenBrainzUser)
+            var asking by androidx.compose.runtime.remember { mutableStateOf(false) }
+            if (prefs?.get(Keys.ListenBrainzToken).isNullOrBlank()) {
+                ActionRow("Connect ListenBrainz", "Keep a record of everything you listen to (paste your token)") { asking = true }
+            } else {
+                ActionRow(if (user != null) "Scrobbling as $user" else "Scrobbling to ListenBrainz", "Tap to disconnect") { vm.disconnectListenBrainz() }
+            }
+            if (asking) {
+                var token by androidx.compose.runtime.remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { asking = false },
+                    title = { Text("ListenBrainz") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Paste the user token from listenbrainz.org/settings.", style = MaterialTheme.typography.bodyMedium)
+                            androidx.compose.material3.OutlinedTextField(token, { token = it }, singleLine = true, label = { Text("Token") })
+                        }
+                    },
+                    confirmButton = { TextButton({ vm.connectListenBrainz(token); asking = false }) { Text("Connect") } },
+                    dismissButton = { TextButton({ asking = false }) { Text("Cancel") } },
+                )
             }
         }
 

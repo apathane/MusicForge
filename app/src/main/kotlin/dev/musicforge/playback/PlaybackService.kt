@@ -54,6 +54,8 @@ class PlaybackService : MediaLibraryService() {
     private var playingSince = -1L
     private var checkpointedMs = 0L
     private var eventWritten = false
+    private var scrobbled = false
+    private var startedAtSec = 0L
     private var checkpointJob: Job? = null
     private var transitionAt = 0L
     private var consecutiveErrors = 0
@@ -276,6 +278,7 @@ class PlaybackService : MediaLibraryService() {
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) resetRadio()
             currentItem = mediaItem
             watchLiked(mediaItem?.mediaId)
+            mediaItem?.let { graph.scope.launch { runCatching { graph.listenBrainz.playingNow(it) } } }
             mediaItem?.let { readAhead.cancel(it.mediaId) }
             updateReadAhead()
             if (mediaItem != null) {
@@ -344,6 +347,13 @@ class PlaybackService : MediaLibraryService() {
         checkpointedMs = played
         val countNow = !eventWritten && PlayRecorder.counts(played, currentDurationMs)
         if (countNow) eventWritten = true
+        // ListenBrainz's own rule: half the song or 4 minutes, whichever comes first.
+        val scrobbleNow = !scrobbled && currentDurationMs > 30_000 && played >= minOf(240_000L, currentDurationMs / 2)
+        if (scrobbleNow) {
+            scrobbled = true
+            val started = startedAtSec
+            graph.scope.launch { runCatching { graph.listenBrainz.scrobble(item, started) } }
+        }
         if (delta <= 0 && !countNow) return
         graph.scope.launch {
             runCatching {
@@ -360,6 +370,8 @@ class PlaybackService : MediaLibraryService() {
         playingSince = if (player.isPlaying) android.os.SystemClock.elapsedRealtime() else -1
         checkpointedMs = 0
         eventWritten = false
+        scrobbled = false
+        startedAtSec = System.currentTimeMillis() / 1000
         currentDurationMs = -1
     }
 

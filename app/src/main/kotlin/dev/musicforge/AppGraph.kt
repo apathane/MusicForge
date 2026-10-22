@@ -83,6 +83,8 @@ class AppGraph(val app: Application) {
 
     val player by lazy { PlayerConnection(app) }
 
+    val listenBrainz by lazy { dev.musicforge.data.ListenBrainz(app, settings, http) }
+
     val lyrics by lazy { dev.musicforge.data.lyrics.LyricsRepository(database.dao(), http) }
 
     /** Colours and blurred backdrop of what's playing; recomputed once per track. */
