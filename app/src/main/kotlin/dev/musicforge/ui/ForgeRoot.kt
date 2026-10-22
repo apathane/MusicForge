@@ -109,8 +109,9 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                 composable(Tab.Search.route) { SearchScreen() }
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
                 composable(Tab.Downloads.route) { DownloadsScreen() }
-                composable(SETTINGS_ROUTE) { SettingsScreen(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate(Routes.LOGIN) }) }
+                composable(SETTINGS_ROUTE) { SettingsScreen(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate(Routes.LOGIN) }, onAbout = { nav.navigate(Routes.ABOUT) }) }
                 composable(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
+                composable(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
                 composable(
                     Routes.COLLECTION,
                     arguments = listOf(navArgument("kind") { type = NavType.StringType }, navArgument("id") { type = NavType.StringType }),
@@ -127,7 +128,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
-            if (route != SETTINGS_ROUTE && route != Routes.LOGIN) {
+            if (route != SETTINGS_ROUTE && route != Routes.LOGIN && route != Routes.ABOUT) {
                 Column(
                     Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (covered) 0f else 1f }
                         .navigationBarsPadding().padding(bottom = 12.dp),

@@ -108,7 +108,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit) {
     val context = LocalContext.current
     val vm = viewModel { SettingsViewModel(context.graph) }
     val restore by vm.restore.collectAsStateWithLifecycle()
@@ -205,6 +205,9 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
                 glass,
             ) { vm.set(Keys.GlassTier, it) }
         }
+
+        SectionTitle("About")
+        Group { ActionRow("About ${BuildConfig.CODENAME}", "Credits, licenses and version", onAbout) }
 
         Spacer(Modifier.height(24.dp))
         Text(
