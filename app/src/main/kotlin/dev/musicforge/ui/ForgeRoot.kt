@@ -29,7 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.musicforge.graph
+import dev.musicforge.ui.player.MiniPlayer
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -63,7 +67,10 @@ val LocalNavController = staticCompositionLocalOf<NavHostController> { error("no
 @Composable
 fun ForgeRoot(glass: GlassStyle) {
     val nav = rememberNavController()
-    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav) {
+    val connection = LocalContext.current.graph.player
+    val now by connection.nowPlaying.collectAsStateWithLifecycle()
+    val inset = PaddingValues(bottom = if (now != null) 172.dp else 96.dp)
+    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             NavHost(nav, startDestination = Tab.Home.route) {
                 composable(Tab.Home.route) { HomeScreen() }
@@ -75,17 +82,23 @@ fun ForgeRoot(glass: GlassStyle) {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
             if (route != SETTINGS_ROUTE) {
-                NavPill(
-                    current = Tab.entries.firstOrNull { it.route == route } ?: Tab.Home,
-                    onSelect = { tab ->
-                        nav.navigate(tab.route) {
-                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
+                Column(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    now?.let { MiniPlayer(it, connection, onOpen = {}) }
+                    NavPill(
+                        current = Tab.entries.firstOrNull { it.route == route } ?: Tab.Home,
+                        onSelect = { tab ->
+                            nav.navigate(tab.route) {
+                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -95,8 +108,6 @@ fun ForgeRoot(glass: GlassStyle) {
 private fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(bottom = 12.dp)
             .glass(RoundedCornerShape(percent = 50))
             .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),

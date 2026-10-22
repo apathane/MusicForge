@@ -1,0 +1,92 @@
+package dev.musicforge.playback
+
+import android.os.Bundle
+import androidx.core.net.toUri
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import com.metrolist.innertube.models.SongItem
+import dev.musicforge.data.db.Song
+
+private const val EXTRA_ARTIST_IDS = "forge.artistIds"
+private const val EXTRA_ARTIST_NAMES = "forge.artistNames"
+private const val EXTRA_ALBUM_ID = "forge.albumId"
+private const val EXTRA_DURATION = "forge.durationSec"
+
+/** Artist credits carried with a queue item so history can be written without a lookup. */
+data class Credit(val id: String?, val name: String)
+
+fun forgeMediaItem(
+    videoId: String,
+    title: String,
+    credits: List<Credit>,
+    artworkUrl: String?,
+    albumId: String? = null,
+    albumTitle: String? = null,
+    durationSec: Int? = null,
+): MediaItem {
+    val extras = Bundle().apply {
+        putStringArray(EXTRA_ARTIST_IDS, credits.map { it.id.orEmpty() }.toTypedArray())
+        putStringArray(EXTRA_ARTIST_NAMES, credits.map { it.name }.toTypedArray())
+        albumId?.let { putString(EXTRA_ALBUM_ID, it) }
+        durationSec?.let { putInt(EXTRA_DURATION, it) }
+    }
+    return MediaItem.Builder()
+        .setMediaId(videoId)
+        // Placeholder; the resolving data source swaps in the real stream URL.
+        .setUri("https://music.youtube.com/watch?v=$videoId")
+        .setCustomCacheKey(videoId)
+        .setMediaMetadata(
+            MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(credits.joinToString { it.name })
+                .setAlbumTitle(albumTitle)
+                .setArtworkUri(artworkUrl?.let(::hiResArtwork)?.toUri())
+                .setExtras(extras)
+                .setIsPlayable(true)
+                .setIsBrowsable(false)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                .build(),
+        )
+        .build()
+}
+
+fun SongItem.toMediaItem() = forgeMediaItem(
+    videoId = id,
+    title = title,
+    credits = artists.map { Credit(it.id, it.name) },
+    artworkUrl = thumbnail,
+    albumId = album?.id,
+    albumTitle = album?.name,
+    durationSec = duration,
+)
+
+fun Song.toMediaItem() = forgeMediaItem(
+    videoId = song.id,
+    title = song.title,
+    credits = artists.map { Credit(it.id, it.name) },
+    artworkUrl = song.thumbnailUrl,
+    albumId = song.albumId,
+    albumTitle = song.albumName,
+    durationSec = song.duration.takeIf { it > 0 },
+)
+
+val MediaMetadata.credits: List<Credit>
+    get() {
+        val ids = extras?.getStringArray(EXTRA_ARTIST_IDS) ?: return emptyList()
+        val names = extras?.getStringArray(EXTRA_ARTIST_NAMES) ?: return emptyList()
+        return ids.zip(names).map { (id, name) -> Credit(id.ifEmpty { null }, name) }
+    }
+
+val MediaMetadata.albumId: String? get() = extras?.getString(EXTRA_ALBUM_ID)
+val MediaMetadata.durationSec: Int? get() = extras?.getInt(EXTRA_DURATION, -1)?.takeIf { it > 0 }
+
+/**
+ * YouTube Music thumbnails come sized in the URL (`=w120-h120`). Ask for 544 px:
+ * enough for the full-screen player at 1080p, and Coil downsamples for small slots.
+ */
+fun hiResArtwork(url: String): String =
+    when {
+        Regex("=w\\d+-h\\d+").containsMatchIn(url) -> url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w544-h544-l90-rj")
+        "i.ytimg.com" in url -> url.replace(Regex("/(default|mqdefault|hqdefault|sddefault)\\.jpg"), "/hqdefault.jpg")
+        else -> url
+    }

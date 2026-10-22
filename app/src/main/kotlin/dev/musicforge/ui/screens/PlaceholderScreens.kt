@@ -16,22 +16,6 @@ import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.TrackRow
 
 @Composable
-fun HomeScreen() {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
-        item { ScreenHeader("Listen Now") }
-        item { EmptyState("Coming in Prelude", "The home feed arrives with the playback phase.") }
-    }
-}
-
-@Composable
-fun SearchScreen() {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
-        item { ScreenHeader("Search") }
-        item { EmptyState("Coming in Prelude", "Search arrives with the playback phase.") }
-    }
-}
-
-@Composable
 fun DownloadsScreen() {
     val dao = LocalContext.current.graph.database.dao()
     val songs by remember { dao.downloadedSongs() }.collectAsStateWithLifecycle(emptyList())

@@ -113,6 +113,9 @@ interface MusicDao {
 
     @Insert suspend fun insert(event: Event)
 
+    @Query("SELECT * FROM artist WHERE id = :id")
+    suspend fun artist(id: String): ArtistEntity?
+
     @Query("SELECT * FROM format WHERE id = :id")
     suspend fun format(id: String): FormatEntity?
 

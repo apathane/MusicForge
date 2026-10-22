@@ -1,5 +1,8 @@
 package dev.musicforge
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +27,13 @@ class MainActivity : ComponentActivity() {
                 pureBlack = prefs[Keys.PureBlack] ?: false,
                 glass = prefs[Keys.GlassTier]?.let { runCatching { GlassTier.valueOf(it) }.getOrNull() } ?: GlassTier.ARTWORK,
             )
+        }
+        graph.player.connect()
+        // The media notification needs this on Android 13+ (the X7b runs 13).
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         setContent {
             val current by look.collectAsStateWithLifecycle(initialValue = Look())
