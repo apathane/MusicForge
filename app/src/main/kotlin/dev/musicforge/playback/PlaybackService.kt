@@ -286,12 +286,15 @@ class PlaybackService : MediaLibraryService() {
             if (playWhenReady) {
                 updateReadAhead()
                 maybeExtendRadio()
+                applyLoudness() // also undoes anything a sleep fade left behind
             }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
+                // listened_at is when the song actually started playing, not when it was queued.
+                if (startedAtSec == 0L) startedAtSec = System.currentTimeMillis() / 1000
                 if (transitionAt > 0) {
                     Timber.d("startup: %s audible %d ms after transition", currentItem?.mediaId, now - transitionAt)
                     transitionAt = 0
@@ -425,7 +428,7 @@ class PlaybackService : MediaLibraryService() {
         checkpointedMs = 0
         eventWritten = false
         scrobbled = false
-        startedAtSec = System.currentTimeMillis() / 1000
+        startedAtSec = if (player.isPlaying) System.currentTimeMillis() / 1000 else 0L
         currentDurationMs = -1
     }
 
@@ -472,6 +475,7 @@ class PlaybackService : MediaLibraryService() {
         )
         checkpointJob?.cancel()
         readAhead.release()
+        player.removeListener(listener)
         flushPlay()
         session.release()
         player.release()

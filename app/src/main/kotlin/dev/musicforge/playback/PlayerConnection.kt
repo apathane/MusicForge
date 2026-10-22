@@ -201,6 +201,7 @@ class PlayerConnection(private val context: Context) {
     fun seekTo(ms: Long) = controller?.seekTo(ms)
 
     fun release() {
+        handler.removeCallbacks(sleepRunnable)
         controller?.release()
         controller = null
     }
