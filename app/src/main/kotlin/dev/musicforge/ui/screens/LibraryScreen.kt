@@ -1,0 +1,120 @@
+package dev.musicforge.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.musicforge.AppGraph
+import dev.musicforge.data.db.LibraryCounts
+import dev.musicforge.data.db.PlaylistSummary
+import dev.musicforge.graph
+import dev.musicforge.ui.LocalBottomInset
+import dev.musicforge.ui.components.Artwork
+import dev.musicforge.ui.components.EmptyState
+import dev.musicforge.ui.components.ForgeIcons
+import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.PillButton
+import dev.musicforge.ui.components.ScreenHeader
+import dev.musicforge.ui.components.SectionTitle
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+
+class LibraryViewModel(graph: AppGraph) : ViewModel() {
+    private val dao = graph.database.dao()
+    val counts: StateFlow<LibraryCounts?> =
+        dao.counts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val playlists: StateFlow<List<PlaylistSummary>> =
+        dao.playlists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+}
+
+@Composable
+fun LibraryScreen(onOpenSettings: () -> Unit) {
+    val context = LocalContext.current
+    val vm = viewModel { LibraryViewModel(context.graph) }
+    val counts by vm.counts.collectAsStateWithLifecycle()
+    val playlists by vm.playlists.collectAsStateWithLifecycle()
+    val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists == 0 } ?: false
+
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
+        item {
+            ScreenHeader("Library") { IconAction(ForgeIcons.Settings, "Settings", onOpenSettings) }
+        }
+        if (empty) {
+            item {
+                EmptyState(
+                    title = "Your library is empty",
+                    body = "Bring everything over from Metrolist or ConvX: songs, likes, playlists, history and your login.",
+                ) { PillButton("Restore a backup", onOpenSettings) }
+            }
+            return@LazyColumn
+        }
+        counts?.let { c ->
+            item { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) }
+            item { ShelfRow(ForgeIcons.Library, "Songs", c.songs) }
+            item { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) }
+            item { ShelfRow(ForgeIcons.Library, "Albums", c.albums) }
+            item { ShelfRow(ForgeIcons.Library, "Artists", c.artists) }
+        }
+        if (playlists.isNotEmpty()) {
+            item { SectionTitle("Playlists") }
+            items(playlists, key = { it.playlist.id }) { p ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { }.padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Artwork(p.playlist.thumbnailUrl, 56.dp, corner = 8.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text(
+                            "${p.songCount} songs",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShelfRow(icon: ImageVector, title: String, count: Int) {
+    Column {
+        Row(
+            Modifier.fillMaxWidth().clickable { }.padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text("$count", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(ForgeIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
+        HorizontalDivider(Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline)
+    }
+}

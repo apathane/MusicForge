@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- five bars: an equaliser that is also a chord -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M37,48h5a2,2 0 0 1 2,2v8a2,2 0 0 1 -2,2h-5a2,2 0 0 1 -2,-2v-8a2,2 0 0 1 2,-2z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M46.5,40h5a2,2 0 0 1 2,2v24a2,2 0 0 1 -2,2h-5a2,2 0 0 1 -2,-2v-24a2,2 0 0 1 2,-2z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M56,34h5a2,2 0 0 1 2,2v36a2,2 0 0 1 -2,2h-5a2,2 0 0 1 -2,-2v-36a2,2 0 0 1 2,-2z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M65.5,43h5a2,2 0 0 1 2,2v18a2,2 0 0 1 -2,2h-5a2,2 0 0 1 -2,-2v-18a2,2 0 0 1 2,-2z"/>
+</vector>
