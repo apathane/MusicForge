@@ -35,6 +35,7 @@ class PlaybackService : MediaSessionService() {
     private companion object {
         const val CHECKPOINT_MS = 30_000L
         const val TARGET_LUFS = -14.0
+        const val ACTION_LIKE = "dev.musicforge.LIKE"
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -91,6 +92,7 @@ class PlaybackService : MediaSessionService() {
                 ),
             )
             .setCallback(callback)
+            .setMediaButtonPreferences(listOf(likeButton(false)))
             .build()
 
         scope.launch {
@@ -105,8 +107,56 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
 
+    private val likeCommand = androidx.media3.session.SessionCommand(ACTION_LIKE, android.os.Bundle.EMPTY)
+
+    private fun likeButton(liked: Boolean) =
+        androidx.media3.session.CommandButton.Builder(
+            if (liked) androidx.media3.session.CommandButton.ICON_HEART_FILLED else androidx.media3.session.CommandButton.ICON_HEART_UNFILLED,
+        )
+            .setDisplayName(if (liked) "Unlike" else "Like")
+            .setSessionCommand(likeCommand)
+            .build()
+
+    private var likeJob: Job? = null
+
+    /** Keep the notification's heart in step with the library, whoever changes it. */
+    private fun watchLiked(id: String?) {
+        likeJob?.cancel()
+        if (id == null) return
+        likeJob = scope.launch {
+            graph.database.dao().isLiked(id).distinctUntilChanged().collect { liked ->
+                session.setMediaButtonPreferences(listOf(likeButton(liked == true)))
+            }
+        }
+    }
+
     /** Items from controllers carry metadata but no playable URI; give them ours. */
     private val callback = object : MediaSession.Callback {
+        override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
+            MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(likeCommand).build(),
+                )
+                .build()
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: androidx.media3.session.SessionCommand,
+            args: android.os.Bundle,
+        ): ListenableFuture<androidx.media3.session.SessionResult> {
+            if (customCommand.customAction == ACTION_LIKE) {
+                val item = player.currentMediaItem
+                if (item != null) {
+                    scope.launch {
+                        val liked = withContext(Dispatchers.IO) { graph.database.dao().songEntity(item.mediaId)?.liked == true }
+                        graph.library.setLiked(item, !liked)
+                    }
+                }
+            }
+            return Futures.immediateFuture(androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS))
+        }
+
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -162,6 +212,7 @@ class PlaybackService : MediaSessionService() {
             // The UI replaced the queue: radio should follow the new music, not the old seed.
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) resetRadio()
             currentItem = mediaItem
+            watchLiked(mediaItem?.mediaId)
             mediaItem?.let { readAhead.cancel(it.mediaId) }
             updateReadAhead()
             if (mediaItem != null) {
