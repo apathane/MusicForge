@@ -68,5 +68,7 @@ class AppGraph(val app: Application) {
 
     val downloads by lazy { Downloads(app, mediaEngine, database.dao(), recorder, scope) }
 
+    val library by lazy { dev.musicforge.data.LibraryActions(database, recorder, scope) }
+
     val player by lazy { PlayerConnection(app) }
 }

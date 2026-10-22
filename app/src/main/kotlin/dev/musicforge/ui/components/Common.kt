@@ -102,6 +102,8 @@ fun TrackRow(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    /** Album track lists show the track number instead of repeating the same cover. */
+    number: Int? = null,
 ) {
     Row(
         Modifier
@@ -110,8 +112,15 @@ fun TrackRow(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Artwork(artworkUrl, 48.dp, corner = 6.dp)
-        Spacer(Modifier.width(14.dp))
+        if (number != null) {
+            Box(Modifier.size(width = 32.dp, height = 48.dp), contentAlignment = Alignment.Center) {
+                Text("$number", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.width(8.dp))
+        } else {
+            Artwork(artworkUrl, 48.dp, corner = 6.dp)
+            Spacer(Modifier.width(14.dp))
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle.isNotEmpty()) {

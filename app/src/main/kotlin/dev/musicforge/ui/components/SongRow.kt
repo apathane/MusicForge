@@ -9,7 +9,7 @@ import androidx.media3.common.MediaItem
 
 /** A playable song: tap plays, long-press or ⋮ opens actions, the badge shows download state. */
 @Composable
-fun SongRow(item: MediaItem, subtitle: String, onPlay: () -> Unit) {
+fun SongRow(item: MediaItem, subtitle: String, number: Int? = null, onPlay: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val meta = item.mediaMetadata
     TrackRow(
@@ -18,6 +18,7 @@ fun SongRow(item: MediaItem, subtitle: String, onPlay: () -> Unit) {
         artworkUrl = meta.artworkUri?.toString(),
         onClick = onPlay,
         onLongClick = { menu = true },
+        number = number,
         trailing = {
             DownloadBadge(item.mediaId)
             IconAction(ForgeIcons.More, "More options") { menu = true }

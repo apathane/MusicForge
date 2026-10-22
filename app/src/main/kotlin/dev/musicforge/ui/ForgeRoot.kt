@@ -44,7 +44,13 @@ import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.GlassStyle
 import dev.musicforge.ui.components.LocalGlassStyle
 import dev.musicforge.ui.components.glass
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import dev.musicforge.ui.screens.ArtistScreen
+import dev.musicforge.ui.screens.CollectionScreen
 import dev.musicforge.ui.screens.DownloadsScreen
+import dev.musicforge.ui.screens.LibraryAlbumsScreen
+import dev.musicforge.ui.screens.LibraryArtistsScreen
 import dev.musicforge.ui.screens.HomeScreen
 import dev.musicforge.ui.screens.LibraryScreen
 import dev.musicforge.ui.screens.SearchScreen
@@ -78,6 +84,19 @@ fun ForgeRoot(glass: GlassStyle) {
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
                 composable(Tab.Downloads.route) { DownloadsScreen() }
                 composable(SETTINGS_ROUTE) { SettingsScreen(onBack = { nav.popBackStack() }) }
+                composable(
+                    Routes.COLLECTION,
+                    arguments = listOf(navArgument("kind") { type = NavType.StringType }, navArgument("id") { type = NavType.StringType }),
+                ) { entry ->
+                    val kind = CollectionKind.valueOf(entry.arguments!!.getString("kind")!!)
+                    val id = android.net.Uri.decode(entry.arguments!!.getString("id")!!)
+                    CollectionScreen(kind, id, onBack = { nav.popBackStack() })
+                }
+                composable(Routes.ARTIST, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                    ArtistScreen(android.net.Uri.decode(entry.arguments!!.getString("id")!!), onBack = { nav.popBackStack() })
+                }
+                composable(Routes.ALBUMS) { LibraryAlbumsScreen(onBack = { nav.popBackStack() }) }
+                composable(Routes.ARTISTS) { LibraryArtistsScreen(onBack = { nav.popBackStack() }) }
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
@@ -89,7 +108,7 @@ fun ForgeRoot(glass: GlassStyle) {
                 ) {
                     now?.let { MiniPlayer(it, connection, onOpen = {}) }
                     NavPill(
-                        current = Tab.entries.firstOrNull { it.route == route } ?: Tab.Home,
+                        current = Tab.entries.firstOrNull { it.route == route } ?: lastTab(nav),
                         onSelect = { tab ->
                             nav.navigate(tab.route) {
                                 popUpTo(nav.graph.findStartDestination().id) { saveState = true }
@@ -102,6 +121,12 @@ fun ForgeRoot(glass: GlassStyle) {
             }
         }
     }
+}
+
+/** On a page below a tab (album, artist...), keep that tab lit. */
+private fun lastTab(nav: NavHostController): Tab {
+    val routes = nav.currentBackStack.value.mapNotNull { it.destination.route }
+    return routes.lastOrNull { r -> Tab.entries.any { it.route == r } }?.let { r -> Tab.entries.first { it.route == r } } ?: Tab.Home
 }
 
 @Composable

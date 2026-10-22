@@ -40,6 +40,9 @@ import com.metrolist.innertube.pages.HomePage
 import dev.musicforge.graph
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.LocalBottomInset
+import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.components.Shelf
+import dev.musicforge.ui.openItem
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.PillButton
@@ -84,6 +87,7 @@ fun HomeScreen() {
     val vm = viewModel { HomeViewModel() }
     val state by vm.state.collectAsStateWithLifecycle()
     val player = LocalContext.current.graph.player
+    val nav = LocalNavController.current
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { ScreenHeader(greeting()) }
@@ -97,59 +101,9 @@ fun HomeScreen() {
                 EmptyState("Can't reach YouTube Music", s.message) { PillButton("Try again", { vm.load() }) }
             }
             is HomeViewModel.State.Ready -> itemsIndexed(s.sections, key = { i, sec -> "$i:${sec.title}" }) { _, section ->
-                Shelf(section) { item ->
-                    when (item) {
-                        is SongItem -> {
-                            val songs = section.items.filterIsInstance<SongItem>()
-                            player.play(songs.map { it.toMediaItem() }, songs.indexOf(item).coerceAtLeast(0))
-                        }
-                        else -> Unit // albums, playlists and artists open in Interlude
-                    }
-                }
+                Shelf(section.title, section.items) { item -> openItem(item, section.items, nav, player) }
             }
         }
     }
 }
 
-@Composable
-private fun Shelf(section: HomePage.Section, onClick: (YTItem) -> Unit) {
-    Column(Modifier.padding(top = 18.dp)) {
-        Text(
-            section.title,
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 20.dp),
-        )
-        Spacer(Modifier.height(10.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            itemsIndexed(section.items, key = { i, it -> "$i:${it.id}" }) { _, item -> Card(item, onClick) }
-        }
-    }
-}
-
-@Composable
-private fun Card(item: YTItem, onClick: (YTItem) -> Unit) {
-    val size: Dp = 148.dp
-    val subtitle = when (item) {
-        is SongItem -> item.artists.joinToString { it.name }
-        is AlbumItem -> listOfNotNull(item.artists?.joinToString { it.name }, item.year?.toString()).joinToString(" · ")
-        is PlaylistItem -> item.author?.name.orEmpty()
-        is ArtistItem -> "Artist"
-        else -> ""
-    }
-    Column(Modifier.width(size).clickable { onClick(item) }) {
-        Artwork(item.thumbnail, size, corner = if (item is ArtistItem) size / 2 else 10.dp)
-        Spacer(Modifier.height(8.dp))
-        Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (subtitle.isNotEmpty()) {
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}

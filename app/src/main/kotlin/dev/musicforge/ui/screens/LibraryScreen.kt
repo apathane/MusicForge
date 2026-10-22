@@ -31,7 +31,10 @@ import dev.musicforge.AppGraph
 import dev.musicforge.data.db.LibraryCounts
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.graph
+import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.LocalBottomInset
+import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.Routes
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
@@ -57,6 +60,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
     val vm = viewModel { LibraryViewModel(context.graph) }
     val counts by vm.counts.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
+    val nav = LocalNavController.current
     val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists == 0 } ?: false
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
@@ -73,17 +77,20 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             return@LazyColumn
         }
         counts?.let { c ->
-            item { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) }
-            item { ShelfRow(ForgeIcons.Library, "Songs", c.songs) }
-            item { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) }
-            item { ShelfRow(ForgeIcons.Library, "Albums", c.albums) }
-            item { ShelfRow(ForgeIcons.Library, "Artists", c.artists) }
+            item { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) { nav.navigate(Routes.collection(CollectionKind.LIKED)) } }
+            item { ShelfRow(ForgeIcons.Library, "Songs", c.songs) { nav.navigate(Routes.collection(CollectionKind.SONGS)) } }
+            item { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) { nav.navigate(Routes.collection(CollectionKind.DOWNLOADED)) } }
+            item { ShelfRow(ForgeIcons.Library, "Albums", c.albums) { nav.navigate(Routes.ALBUMS) } }
+            item { ShelfRow(ForgeIcons.Library, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
+            item { ShelfRow(ForgeIcons.Previous, "Recently played", c.events) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
         }
         if (playlists.isNotEmpty()) {
             item { SectionTitle("Playlists") }
             items(playlists, key = { it.playlist.id }) { p ->
                 Row(
-                    Modifier.fillMaxWidth().clickable { }.padding(horizontal = 20.dp, vertical = 8.dp),
+                    Modifier.fillMaxWidth()
+                        .clickable { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Artwork(p.playlist.thumbnailUrl, 56.dp, corner = 8.dp)
@@ -103,10 +110,10 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
 }
 
 @Composable
-private fun ShelfRow(icon: ImageVector, title: String, count: Int) {
+private fun ShelfRow(icon: ImageVector, title: String, count: Int, onClick: () -> Unit) {
     Column {
         Row(
-            Modifier.fillMaxWidth().clickable { }.padding(horizontal = 20.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {

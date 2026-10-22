@@ -24,7 +24,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +74,8 @@ fun TrackActionsSheet(item: MediaItem, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
     val download by remember(item.mediaId) { graph.downloads.state(item.mediaId) }.collectAsStateWithLifecycle(null)
+    val liked by remember(item.mediaId) { graph.database.dao().isLiked(item.mediaId) }.collectAsStateWithLifecycle(null)
+    var picking by remember { mutableStateOf(false) }
     val meta = item.mediaMetadata
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
@@ -83,7 +88,17 @@ fun TrackActionsSheet(item: MediaItem, onDismiss: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(8.dp))
+            if (picking) {
+                PlaylistPicker(item, onDone = onDismiss)
+                return@Column
+            }
             Action(ForgeIcons.Next, "Play next") { graph.player.playNext(item); onDismiss() }
+            if (liked == true) {
+                Action(ForgeIcons.Heart, "Unlike") { graph.library.setLiked(item, false); onDismiss() }
+            } else {
+                Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
+            }
+            Action(ForgeIcons.PlaylistAdd, "Add to playlist") { picking = true }
             when (download?.state) {
                 Download.STATE_COMPLETED -> Action(ForgeIcons.Download, "Remove download") {
                     graph.downloads.remove(item.mediaId); onDismiss()
@@ -94,6 +109,45 @@ fun TrackActionsSheet(item: MediaItem, onDismiss: () -> Unit) {
                 else -> Action(ForgeIcons.Download, "Download") {
                     askToRunInBackground(context)
                     graph.downloads.download(listOf(item)); onDismiss()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
+    val graph = LocalContext.current.graph
+    val playlists by remember { graph.database.dao().playlists() }.collectAsStateWithLifecycle(emptyList())
+    var naming by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    if (naming) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                placeholder = { Text("Playlist name") },
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(10.dp))
+            PillButton("Create", onClick = { graph.library.createPlaylist(name, item); onDone() })
+        }
+        return
+    }
+    Action(ForgeIcons.PlaylistAdd, "New playlist") { naming = true }
+    androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
+        items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
+            Row(
+                Modifier.fillMaxWidth().clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
+                    .padding(horizontal = 24.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Artwork(p.playlist.thumbnailUrl, 40.dp, corner = 6.dp)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${p.songCount} songs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

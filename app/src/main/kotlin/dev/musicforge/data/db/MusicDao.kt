@@ -82,6 +82,27 @@ interface MusicDao {
     )
     fun playlistSongs(playlistId: String): Flow<List<Song>>
 
+    @Query("SELECT * FROM playlist WHERE id = :id")
+    fun playlist(id: String): Flow<PlaylistEntity?>
+
+    /** Most recently played first, one row per song. */
+    @Transaction
+    @Query(
+        """
+        SELECT song.* FROM song JOIN (SELECT songId, MAX(timestamp) AS lastPlayed FROM event GROUP BY songId) e
+        ON e.songId = song.id ORDER BY e.lastPlayed DESC LIMIT :limit
+        """,
+    )
+    fun historySongs(limit: Int = 300): Flow<List<Song>>
+
+    /** Songs we know belong to an album, for offline album pages. */
+    @Transaction
+    @Query("SELECT * FROM song WHERE albumId = :albumId ORDER BY title")
+    fun albumSongsLocal(albumId: String): Flow<List<Song>>
+
+    @Query("SELECT * FROM album WHERE id = :id")
+    suspend fun albumEntity(id: String): AlbumEntity?
+
     @Query("SELECT * FROM album WHERE bookmarkedAt IS NOT NULL OR inLibrary IS NOT NULL ORDER BY COALESCE(pinnedAt, 0) DESC, COALESCE(bookmarkedAt, inLibrary) DESC")
     fun libraryAlbums(): Flow<List<AlbumEntity>>
 
@@ -122,6 +143,19 @@ interface MusicDao {
 
     @Query("SELECT * FROM format WHERE id = :id")
     suspend fun format(id: String): FormatEntity?
+
+    @Query("SELECT liked FROM song WHERE id = :id")
+    fun isLiked(id: String): Flow<Boolean?>
+
+    @Query("SELECT COALESCE(MAX(position), -1) FROM playlist_song_map WHERE playlistId = :playlistId")
+    suspend fun lastPosition(playlistId: String): Int
+
+    @Insert suspend fun insert(map: PlaylistSongMap)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT) suspend fun insert(playlist: PlaylistEntity)
+
+    @Query("UPDATE playlist SET lastUpdateTime = :at WHERE id = :id")
+    suspend fun touchPlaylist(id: String, at: Long)
 
     @Query("UPDATE song SET liked = :liked, likedDate = :at WHERE id = :id")
     suspend fun setLiked(id: String, liked: Boolean, at: Long?)

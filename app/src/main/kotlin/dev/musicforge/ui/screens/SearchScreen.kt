@@ -2,6 +2,7 @@ package dev.musicforge.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -36,7 +37,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.AlbumItem
+import com.metrolist.innertube.models.ArtistItem
+import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.innertube.models.YTItem
+import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.components.TrackRow
+import dev.musicforge.ui.openItem
 import dev.musicforge.AppGraph
 import dev.musicforge.data.db.SearchHistory
 import dev.musicforge.graph
@@ -58,6 +66,9 @@ import kotlinx.coroutines.launch
 
 enum class SearchKind(val label: String, val filter: YouTube.SearchFilter) {
     Songs("Songs", YouTube.SearchFilter.FILTER_SONG),
+    Albums("Albums", YouTube.SearchFilter.FILTER_ALBUM),
+    Artists("Artists", YouTube.SearchFilter.FILTER_ARTIST),
+    Playlists("Playlists", YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST),
     Videos("Videos", YouTube.SearchFilter.FILTER_VIDEO),
 }
 
@@ -66,7 +77,7 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
     sealed interface Results {
         data object Idle : Results
         data object Loading : Results
-        data class Songs(val items: List<SongItem>) : Results
+        data class Items(val items: List<YTItem>) : Results
         data class Failed(val message: String) : Results
     }
 
@@ -97,7 +108,7 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
             _results.value = Results.Loading
             graph.database.dao().insertSearch(SearchHistory(query = q))
             _results.value = YouTube.search(q, kind.value.filter).fold(
-                onSuccess = { r -> Results.Songs(r.items.filterIsInstance<SongItem>()) },
+                onSuccess = { r -> Results.Items(r.items) },
                 onFailure = { Results.Failed(it.message ?: "Search failed") },
             )
         }
@@ -120,6 +131,7 @@ fun SearchScreen() {
     val history by vm.history.collectAsStateWithLifecycle()
     val focus = LocalFocusManager.current
     val player = context.graph.player
+    val nav = LocalNavController.current
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { ScreenHeader("Search") }
@@ -131,7 +143,10 @@ fun SearchScreen() {
             )
         }
         item {
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 SearchKind.entries.forEach { k -> Chip(k.label, k == kind) { vm.select(k) } }
             }
         }
@@ -155,15 +170,31 @@ fun SearchScreen() {
                 }
             }
             is SearchViewModel.Results.Failed -> item { EmptyState("Couldn't search", r.message) }
-            is SearchViewModel.Results.Songs -> {
+            is SearchViewModel.Results.Items -> {
                 if (r.items.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
-                items(r.items, key = { it.id }) { song ->
-                    val item = androidx.compose.runtime.remember(song.id) { song.toMediaItem() }
-                    SongRow(
-                        item = item,
-                        subtitle = listOfNotNull(song.artists.joinToString { it.name }, song.album?.name).joinToString(" · "),
-                        onPlay = { player.play(listOf(item)) },
-                    )
+                items(r.items, key = { it.id }) { result ->
+                    when (result) {
+                        is SongItem -> {
+                            val item = androidx.compose.runtime.remember(result.id) { result.toMediaItem() }
+                            SongRow(
+                                item = item,
+                                subtitle = listOfNotNull(result.artists.joinToString { it.name }, result.album?.name).joinToString(" · "),
+                                // One tap, one song; radio carries on from it.
+                                onPlay = { player.play(listOf(item)) },
+                            )
+                        }
+                        else -> TrackRow(
+                            title = result.title,
+                            subtitle = when (result) {
+                                is AlbumItem -> listOfNotNull("Album", result.artists?.joinToString { it.name }, result.year?.toString()).joinToString(" · ")
+                                is ArtistItem -> "Artist"
+                                is PlaylistItem -> listOfNotNull("Playlist", result.author?.name, result.songCountText).joinToString(" · ")
+                                else -> ""
+                            },
+                            artworkUrl = result.thumbnail,
+                            onClick = { openItem(result, r.items, nav, player) },
+                        )
+                    }
                 }
             }
         }
