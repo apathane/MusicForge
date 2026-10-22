@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -147,7 +148,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
-        ScreenHeader("Settings") { IconAction(ForgeIcons.ChevronRight, "Close", onBack) }
+        Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) }
+        ScreenHeader("Settings", belowBackRow = true)
 
         SectionTitle("Account")
         Group {
@@ -264,7 +266,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             val glass = prefs?.get(Keys.GlassTier) ?: GlassTier.ARTWORK.name
             ChoiceRow(
                 "Glass",
-                listOf(GlassTier.SOLID.name to "Solid", GlassTier.ARTWORK.name to "Artwork", GlassTier.LIVE.name to "Live"),
+                // LIVE (RenderEffect backdrop) isn't built yet; no dead options in settings.
+                listOf(GlassTier.SOLID.name to "Solid", GlassTier.ARTWORK.name to "Artwork"),
                 glass,
             ) { vm.set(Keys.GlassTier, it) }
         }

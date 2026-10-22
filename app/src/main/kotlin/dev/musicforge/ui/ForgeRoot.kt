@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -149,6 +153,13 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                     )
                 }
             }
+            // Content scrolls under a transparent status bar; a scrim keeps the clock readable.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
+            )
             now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
     }
