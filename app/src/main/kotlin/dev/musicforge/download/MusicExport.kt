@@ -15,6 +15,7 @@ import dev.musicforge.data.db.MusicDao
 import dev.musicforge.playback.MediaEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -34,9 +35,44 @@ class MusicExport(
 ) {
     val supported get() = Build.VERSION.SDK_INT >= 29
 
+    /** A finished download and "save all" can overlap; one export at a time avoids duplicates. */
+    private val lock = kotlinx.coroutines.sync.Mutex()
+    private var cleaned = false
+
     suspend fun export(id: String): Boolean = withContext(Dispatchers.IO) {
         if (!supported) return@withContext false
-        runCatching { exportQ(id) }.onFailure { Timber.w(it, "export of %s failed", id) }.getOrDefault(false)
+        lock.withLock {
+            if (!cleaned) {
+                cleaned = true
+                runCatching { removeStalePending() }
+            }
+            runCatching { exportQ(id) }.onFailure { Timber.w(it, "export of %s failed", id) }.getOrDefault(false)
+        }
+    }
+
+    /**
+     * A process killed mid-export leaves a hidden IS_PENDING row (MediaStore only expires those
+     * after a week). Remove ours once per run, before writing new files.
+     */
+    @RequiresApi(29)
+    private fun removeStalePending() {
+        val resolver = context.contentResolver
+        val base = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.IS_PENDING}=1"
+        val n = if (Build.VERSION.SDK_INT >= 30) {
+            resolver.delete(
+                base,
+                android.os.Bundle().apply {
+                    putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                    putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf(folder))
+                    putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+                },
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            resolver.delete(MediaStore.setIncludePending(base), selection, arrayOf(folder))
+        }
+        if (n > 0) Timber.i("removed %d unfinished exports", n)
     }
 
     @RequiresApi(29)
