@@ -36,7 +36,7 @@ private val credits = listOf(
 fun AboutScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
         Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) }
-        ScreenHeader(BuildConfig.CODENAME)
+        ScreenHeader(BuildConfig.CODENAME, belowBackRow = true)
         Text(
             "Version ${BuildConfig.VERSION_NAME}. A YouTube Music player built from Metrolist's durable downloads, ConvX's interface and features, " +
                 "and BitChord's speed and calm. Made for people who love music.",

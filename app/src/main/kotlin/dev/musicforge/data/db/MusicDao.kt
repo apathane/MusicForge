@@ -30,6 +30,19 @@ data class PlaylistSummary(
     val songCount: Int,
 )
 
+/** A song with how often and how long it was played in a period. */
+data class SongStat(
+    @Embedded val song: SongEntity,
+    val plays: Int,
+    val timeMs: Long,
+)
+
+data class ArtistStat(
+    @Embedded val artist: ArtistEntity,
+    val plays: Int,
+    val timeMs: Long,
+)
+
 data class LibraryCounts(
     val songs: Int,
     val liked: Int,
@@ -133,6 +146,33 @@ interface MusicDao {
         """,
     )
     suspend fun librarySize(): Int
+
+    @Query(
+        """
+        SELECT song.*, COUNT(event.id) AS plays, SUM(event.playTime) AS timeMs
+        FROM event JOIN song ON song.id = event.songId
+        WHERE event.timestamp >= :since
+        GROUP BY event.songId ORDER BY plays DESC, timeMs DESC LIMIT :limit
+        """,
+    )
+    fun topSongs(since: Long, limit: Int = 25): Flow<List<SongStat>>
+
+    @Query(
+        """
+        SELECT artist.*, COUNT(event.id) AS plays, SUM(event.playTime) AS timeMs
+        FROM event JOIN song_artist_map m ON m.songId = event.songId AND m.position = 0
+        JOIN artist ON artist.id = m.artistId
+        WHERE event.timestamp >= :since
+        GROUP BY artist.id ORDER BY timeMs DESC LIMIT :limit
+        """,
+    )
+    fun topArtists(since: Long, limit: Int = 12): Flow<List<ArtistStat>>
+
+    @Query("SELECT COALESCE(SUM(playTime), 0) FROM event WHERE timestamp >= :since")
+    fun listenedMs(since: Long): Flow<Long>
+
+    @Query("SELECT COUNT(DISTINCT songId) FROM event WHERE timestamp >= :since")
+    fun distinctSongs(since: Long): Flow<Int>
 
     @Query("SELECT query FROM search_history ORDER BY id DESC LIMIT :limit")
     fun searchHistory(limit: Int = 20): Flow<List<String>>

@@ -39,7 +39,7 @@ fun LibraryAlbumsScreen(onBack: () -> Unit) {
     val nav = LocalNavController.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
-        item { ScreenHeader("Albums") }
+        item { ScreenHeader("Albums", belowBackRow = true) }
         if (albums.isEmpty()) item { EmptyState("No saved albums", "Albums you save, or restore from a backup, appear here.") }
         items(albums, key = { it.id }) { a ->
             ListRow(a.thumbnailUrl, a.title, a.year?.toString().orEmpty(), round = false) {
@@ -56,7 +56,7 @@ fun LibraryArtistsScreen(onBack: () -> Unit) {
     val nav = LocalNavController.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
-        item { ScreenHeader("Artists") }
+        item { ScreenHeader("Artists", belowBackRow = true) }
         if (artists.isEmpty()) item { EmptyState("No followed artists", "Artists you follow, or restore from a backup, appear here.") }
         items(artists, key = { it.id }) { a ->
             // Artists we only know by name (from local files) have no page to open.
@@ -72,7 +72,7 @@ private fun ListRow(art: String?, title: String, subtitle: String, round: Boolea
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Artwork(art, 56.dp, corner = if (round) 28.dp else 8.dp)
+        Artwork(art, 56.dp, corner = if (round) 28.dp else 8.dp, fallbackLetter = title)
         Spacer(Modifier.width(14.dp))
         androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

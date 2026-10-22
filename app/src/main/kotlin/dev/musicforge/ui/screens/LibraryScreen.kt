@@ -83,6 +83,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             item { ShelfRow(ForgeIcons.Library, "Albums", c.albums) { nav.navigate(Routes.ALBUMS) } }
             item { ShelfRow(ForgeIcons.Library, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
             item { ShelfRow(ForgeIcons.Previous, "Recently played", c.events) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
+            item { ShelfRow(ForgeIcons.Heart, "Your listening", c.events) { nav.navigate(Routes.STATS) } }
         }
         if (playlists.isNotEmpty()) {
             item { SectionTitle("Playlists") }

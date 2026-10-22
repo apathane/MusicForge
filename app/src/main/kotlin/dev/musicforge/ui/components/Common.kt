@@ -35,12 +35,13 @@ import coil3.request.crossfade
 
 /** Big, heavy page title in the BitChord style, with an optional trailing action. */
 @Composable
-fun ScreenHeader(title: String, action: (@Composable () -> Unit)? = null) {
+fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composable () -> Unit)? = null) {
     Row(
         Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 8.dp),
+            // Under a back-button row the status bar is already accounted for.
+            .then(if (belowBackRow) Modifier else Modifier.statusBarsPadding())
+            .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow) 0.dp else 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
@@ -75,7 +76,7 @@ fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
  * decoding the 544 px source would waste memory and GPU upload bandwidth.
  */
 @Composable
-fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier) {
+fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier, fallbackLetter: String? = null) {
     val px = with(LocalDensity.current) { size.roundToPx() }
     Box(
         modifier
@@ -83,6 +84,14 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
             .clip(RoundedCornerShape(corner))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
+        if (url == null && fallbackLetter != null) {
+            Text(
+                fallbackLetter.take(1).uppercase(),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
         if (url != null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current).data(url).size(px).crossfade(true).build(),
