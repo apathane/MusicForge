@@ -49,6 +49,8 @@ class Downloads(
     private val dao: MusicDao,
     private val recorder: PlayRecorder,
     private val scope: CoroutineScope,
+    /** Called for every finished download; decides itself whether to export. */
+    private val onCompleted: suspend (String) -> Unit = {},
 ) {
     private val _states = MutableStateFlow<Map<String, Download>>(emptyMap())
     val states: StateFlow<Map<String, Download>> = _states.asStateFlow()
@@ -74,6 +76,7 @@ class Downloads(
                             dao.setDownloaded(id, true, System.currentTimeMillis())
                             // The bytes live in the download cache now; don't keep a second copy.
                             runCatching { engine.playerCache.removeResource(id) }
+                            onCompleted(id)
                         }
                         Download.STATE_FAILED -> {
                             Timber.w(finalException, "download %s failed", id)

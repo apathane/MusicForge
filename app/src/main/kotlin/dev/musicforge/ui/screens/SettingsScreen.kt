@@ -98,6 +98,13 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.webkit.CookieManager.getInstance().removeAllCookies(null)
     }
 
+    fun exportAll() = viewModelScope.launch {
+        val ids = graph.database.dao().downloadedIds()
+        var ok = 0
+        ids.forEach { if (graph.musicExport.export(it)) ok++ }
+        android.widget.Toast.makeText(graph.app, "Saved $ok of ${ids.size} to Music/MusicForge", android.widget.Toast.LENGTH_LONG).show()
+    }
+
     fun dismiss() {
         _restore.value = RestoreState.Idle
     }
@@ -189,6 +196,18 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                     .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, context.graph.audioSessionId)
                 runCatching { context.startActivity(intent) }.onFailure {
                     android.widget.Toast.makeText(context, "No equalizer on this phone", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        SectionTitle("Downloads")
+        Group {
+            val context = LocalContext.current
+            val exporter = context.graph.musicExport
+            if (exporter.supported) {
+                ToggleRow("Also save to Music folder", prefs?.get(Keys.ExportToMusic) ?: false) { vm.set(Keys.ExportToMusic, it) }
+                ActionRow("Save all downloads to Music now", "Music/MusicForge · other players and your PC can use them") {
+                    vm.exportAll()
                 }
             }
         }

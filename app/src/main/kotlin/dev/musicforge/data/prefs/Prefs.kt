@@ -44,6 +44,7 @@ object Keys {
     val DarkMode = str("darkMode") // ON / OFF / AUTO / TIME
     val PureBlack = bool("pureBlack")
     val GlassTier = str("forge.glassTier") // SOLID / ARTWORK / LIVE
+    val ExportToMusic = bool("forge.exportToMusic")
 
     // Playback
     val AudioQuality = str("audioQuality") // AUTO / HIGH / LOW / ...

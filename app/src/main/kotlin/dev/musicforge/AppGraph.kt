@@ -71,7 +71,13 @@ class AppGraph(val app: Application) {
 
     val recorder by lazy { PlayRecorder(database) }
 
-    val downloads by lazy { Downloads(app, mediaEngine, database.dao(), recorder, scope) }
+    val musicExport by lazy { dev.musicforge.download.MusicExport(app, mediaEngine, database.dao(), "MusicForge") }
+
+    val downloads by lazy {
+        Downloads(app, mediaEngine, database.dao(), recorder, scope) { id ->
+            if (settings.data.first()[Keys.ExportToMusic] == true) musicExport.export(id)
+        }
+    }
 
     val library by lazy { dev.musicforge.data.LibraryActions(database, recorder, scope) }
 
