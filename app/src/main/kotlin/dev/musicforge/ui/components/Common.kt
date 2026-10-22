@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -93,11 +94,16 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
             )
         }
         if (url != null) {
+            // YouTube video thumbnails are 4:3 with the 16:9 picture letterboxed inside; zoom past
+            // the baked-in black bars (360/270) so they read as square covers like album art.
+            val letterboxed = "i.ytimg.com" in url
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current).data(url).size(px).crossfade(true).build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(size),
+                modifier = Modifier.size(size).then(
+                    if (letterboxed) Modifier.graphicsLayer { scaleX = 4f / 3f; scaleY = 4f / 3f } else Modifier,
+                ),
             )
         }
     }

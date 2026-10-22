@@ -143,6 +143,7 @@ fun HomeScreen() {
     val counts by androidx.compose.runtime.remember { context.graph.database.dao().counts() }.collectAsStateWithLifecycle(null)
     val once = androidx.compose.runtime.remember { context.getSharedPreferences("forge.once", android.content.Context.MODE_PRIVATE) }
     var welcomeDismissed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(once.getBoolean("welcomeDismissed", false)) }
+    val recent by androidx.compose.runtime.remember { context.graph.database.dao().historySongs(16) }.collectAsStateWithLifecycle(emptyList())
     val libraryEmpty = counts?.let { it.songs + it.liked + it.playlists + it.events + it.downloaded == 0 } == true
 
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
@@ -154,6 +155,9 @@ fun HomeScreen() {
                     onDismiss = { welcomeDismissed = true; once.edit().putBoolean("welcomeDismissed", true).apply() },
                 )
             }
+        }
+        if (recent.isNotEmpty()) {
+            item(key = "recent") { RecentShelf(recent) { i -> player.play(recent.map { it.toMediaItem() }, i) } }
         }
         (state as? HomeViewModel.State.Ready)?.takeIf { it.chips.isNotEmpty() }?.let { ready ->
             item(key = "chips") {
@@ -222,6 +226,25 @@ private fun WelcomeCard(onRestore: () -> Unit, onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50)).clickable(onClick = onDismiss).padding(horizontal = 14.dp, vertical = 10.dp),
             )
+        }
+    }
+}
+
+/** Your own recent plays, first: instant, offline, and yours rather than the algorithm's. */
+@Composable
+private fun RecentShelf(songs: List<dev.musicforge.data.db.Song>, onPlay: (Int) -> Unit) {
+    Column(Modifier.padding(top = 8.dp, bottom = 6.dp)) {
+        Text("Jump back in", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(10.dp))
+        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            itemsIndexed(songs, key = { _, s -> "r:" + s.id }) { i, s ->
+                Column(Modifier.width(112.dp).clickable { onPlay(i) }) {
+                    Artwork(s.song.thumbnailUrl, 112.dp, corner = 10.dp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(s.song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(s.artistLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
     }
 }

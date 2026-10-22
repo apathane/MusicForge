@@ -289,6 +289,8 @@ private val artShape = RoundedCornerShape(14.dp)
 @Composable
 private fun BigArtwork(now: NowPlaying) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
+    // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
+    val zoom = if ("i.ytimg.com" in now.metadata.artworkUri?.toString().orEmpty()) 4f / 3f else 1f
     AsyncImage(
         model = now.metadata.artworkUri,
         contentDescription = null,
@@ -304,7 +306,8 @@ private fun BigArtwork(now: NowPlaying) {
                 shape = artShape
                 clip = true
             }
-            .background(Color.White.copy(alpha = 0.08f)),
+            .background(Color.White.copy(alpha = 0.08f))
+            .graphicsLayer { scaleX = zoom; scaleY = zoom },
     )
 }
 
