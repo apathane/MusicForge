@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -138,8 +139,22 @@ fun HomeScreen() {
     }
     androidx.compose.runtime.LaunchedEffect(nearEnd, state) { if (nearEnd) vm.loadMore() }
 
+    val context = LocalContext.current
+    val counts by androidx.compose.runtime.remember { context.graph.database.dao().counts() }.collectAsStateWithLifecycle(null)
+    val once = androidx.compose.runtime.remember { context.getSharedPreferences("forge.once", android.content.Context.MODE_PRIVATE) }
+    var welcomeDismissed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(once.getBoolean("welcomeDismissed", false)) }
+    val libraryEmpty = counts?.let { it.songs + it.liked + it.playlists + it.events + it.downloaded == 0 } == true
+
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item { ScreenHeader(greeting()) }
+        if (libraryEmpty && !welcomeDismissed) {
+            item(key = "welcome") {
+                WelcomeCard(
+                    onRestore = { nav.navigate(dev.musicforge.ui.SETTINGS_ROUTE) },
+                    onDismiss = { welcomeDismissed = true; once.edit().putBoolean("welcomeDismissed", true).apply() },
+                )
+            }
+        }
         (state as? HomeViewModel.State.Ready)?.takeIf { it.chips.isNotEmpty() }?.let { ready ->
             item(key = "chips") {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -180,3 +195,33 @@ fun HomeScreen() {
     }
 }
 
+
+@Composable
+private fun WelcomeCard(onRestore: () -> Unit, onDismiss: () -> Unit) {
+    Column(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(20.dp),
+    ) {
+        Text("Coming from Metrolist or ConvX?", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Bring your library over: likes, playlists, albums, artists, play history, lyrics and your sign-in. It takes a few seconds.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(16.dp))
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            PillButton("Restore my library", onRestore)
+            Text(
+                "Not now",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50)).clickable(onClick = onDismiss).padding(horizontal = 14.dp, vertical = 10.dp),
+            )
+        }
+    }
+}

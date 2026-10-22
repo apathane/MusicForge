@@ -73,15 +73,18 @@ fun MiniPlayer(
             }
             ControlButton(ForgeIcons.Next, "Next", enabled = now.hasNext) { connection.next() }
         }
-        // Progress hairline. Position is read only while drawing, so it never recomposes.
+        // Progress hairline, inset from the rounded corners. Position is read only while
+        // drawing, so it never recomposes.
         Spacer(
             Modifier
                 .fillMaxWidth()
+                .padding(start = 14.dp, end = 14.dp, bottom = 5.dp)
                 .height(2.dp)
                 .drawBehind {
                     val fraction = if (now.durationMs > 0) (position.value.toFloat() / now.durationMs).coerceIn(0f, 1f) else 0f
-                    drawRect(track.copy(alpha = 0.12f))
-                    drawRect(track, topLeft = Offset.Zero, size = Size(size.width * fraction, size.height))
+                    val r = androidx.compose.ui.geometry.CornerRadius(size.height / 2)
+                    drawRoundRect(track.copy(alpha = 0.14f), cornerRadius = r)
+                    drawRoundRect(track, topLeft = Offset.Zero, size = Size(size.width * fraction, size.height), cornerRadius = r)
                 },
         )
     }
