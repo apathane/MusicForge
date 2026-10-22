@@ -218,6 +218,14 @@ class BackupImporterTest {
         assertThat(result.warnings.single()).contains("playlist_song_map: 1 of 3 rows skipped")
     }
 
+    @Test fun emptyBackupIsRefusedAndLibraryKept() = runBlocking {
+        db.dao().upsert(dev.musicforge.data.db.SongEntity(id = "keep", title = "Mine", inLibrary = 1L))
+        val staged = stage { dir -> upstreamDb("metrolist-38", dir).close() }
+        val thrown = runCatching { importer.import(staged, includeAccount = true, downloadedIds = emptySet()) }.exceptionOrNull()
+        assertThat(thrown).isInstanceOf(BackupImporter.InvalidBackupException::class.java)
+        assertThat(db.dao().songEntity("keep")).isNotNull()
+    }
+
     @Test fun replacesExistingLibrary() = runBlocking {
         db.dao().upsert(dev.musicforge.data.db.SongEntity(id = "local", title = "Before restore"))
         val staged = stage { dir -> upstreamDb("metrolist-38", dir).use { library(it) } }
@@ -273,7 +281,7 @@ class BackupImporterTest {
 
     @Test fun settingsAreImportedAndCoerced() = runBlocking {
         val staged = stage { dir ->
-            upstreamDb("metrolist-38", dir).close()
+            upstreamDb("metrolist-38", dir).use { it.row("song", "id" to "s0", "title" to "x", "duration" to 1, "liked" to 0) }
             File(dir, BackupImporter.SETTINGS_FILE).writeBytes(
                 PreferencesProto.write(
                     mapOf(
@@ -299,7 +307,7 @@ class BackupImporterTest {
 
     @Test fun settingsWithoutAccount() = runBlocking {
         val staged = stage { dir ->
-            upstreamDb("convx-40", dir).close()
+            upstreamDb("convx-40", dir).use { it.row("song", "id" to "s0", "title" to "x", "duration" to 1, "liked" to 0) }
             File(dir, BackupImporter.SETTINGS_FILE).writeBytes(
                 PreferencesProto.write(mapOf("innerTubeCookie" to PreferencesProto.Value.Str("x"), "darkMode" to PreferencesProto.Value.Str("ON"))),
             )

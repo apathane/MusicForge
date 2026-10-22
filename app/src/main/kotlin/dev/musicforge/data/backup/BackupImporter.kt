@@ -76,6 +76,9 @@ class BackupImporter(
     internal suspend fun import(staged: Staged, includeAccount: Boolean, downloadedIds: Set<String>): Result =
         withContext(Dispatchers.IO) {
             val info = inspect(staged.db)
+            // Restore replaces the library; an empty backup would only erase it.
+            val worth = listOf("song", "playlist", "event").sumOf { info.rowCounts[it] ?: 0 }
+            if (worth == 0) throw InvalidBackupException("This backup is empty: no songs, playlists or history to restore")
             val warnings = mutableListOf<String>()
             val copied = copyTables(staged.db, info, downloadedIds, warnings)
             val imported = staged.settings?.let { importSettings(it, includeAccount, warnings) } ?: 0
@@ -170,6 +173,8 @@ class BackupImporter(
                 buildList { while (c.moveToNext()) add(c.getString(0)) }
             }
             if ("song" !in tables) throw InvalidBackupException("song.db has no song table")
+            val check = it.rawQuery("PRAGMA quick_check", null).use { c -> if (c.moveToFirst()) c.getString(0) else "?" }
+            if (check != "ok") throw InvalidBackupException("song.db is damaged ($check)")
             val columns = tables.filter { t -> t in TABLE_ORDER }.associateWith { t -> columnsOf(it, t) }
             val counts = columns.keys.associateWith { t ->
                 it.rawQuery("SELECT COUNT(*) FROM ${q(t)}", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }

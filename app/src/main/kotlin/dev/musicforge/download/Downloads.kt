@@ -121,7 +121,16 @@ class Downloads(
             }
         }
         val doneIds = done.mapTo(HashSet()) { it.request.id }
-        dao.downloadedIds().filter { it !in doneIds }.forEach { dao.setDownloaded(it, false, null); repaired++ }
+        // Flagged but not in the index: clear only if the bytes really aren't there. The
+        // cache keeps its own index, so a lost download index alone mustn't hide playable songs.
+        dao.downloadedIds().filter { it !in doneIds }.forEach { id ->
+            val length = dao.format(id)?.contentLength?.takeIf { it > 0 }
+            val stillCached = length != null && engine.downloadCache.isCached(id, 0, length)
+            if (!stillCached) {
+                dao.setDownloaded(id, false, null)
+                repaired++
+            }
+        }
         if (repaired > 0) Timber.i("download reconcile: repaired %d rows", repaired)
     }
 
