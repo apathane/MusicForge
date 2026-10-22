@@ -58,6 +58,10 @@ interface MusicDao {
     @Query("SELECT * FROM song WHERE id = :id")
     fun song(id: String): Flow<Song?>
 
+    @Transaction
+    @Query("SELECT * FROM song WHERE id IN (:ids)")
+    fun songs(ids: List<String>): Flow<List<Song>>
+
     @Query("SELECT * FROM song WHERE id = :id")
     suspend fun songEntity(id: String): SongEntity?
 

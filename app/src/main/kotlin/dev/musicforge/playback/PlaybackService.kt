@@ -32,16 +32,23 @@ import timber.log.Timber
 
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
+    private companion object {
+        const val CHECKPOINT_MS = 30_000L
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var player: ExoPlayer
     private lateinit var session: MediaSession
-    private val recorder by lazy { PlayRecorder(graph.database) }
+    private val recorder get() = graph.recorder
 
     // Play-time accounting for the current item.
     private var currentItem: MediaItem? = null
     private var currentDurationMs = -1L
     private var playedMs = 0L
     private var playingSince = -1L
+    private var checkpointedMs = 0L
+    private var eventWritten = false
+    private var checkpointJob: Job? = null
 
     private var radioJob: Job? = null
     private var radioContinuation: String? = null
@@ -108,9 +115,20 @@ class PlaybackService : MediaSessionService() {
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
                 playingSince = now
-            } else if (playingSince >= 0) {
-                playedMs += now - playingSince
-                playingSince = -1
+                checkpointJob?.cancel()
+                checkpointJob = scope.launch {
+                    while (true) {
+                        kotlinx.coroutines.delay(CHECKPOINT_MS)
+                        checkpoint()
+                    }
+                }
+            } else {
+                if (playingSince >= 0) {
+                    playedMs += now - playingSince
+                    playingSince = -1
+                }
+                checkpointJob?.cancel()
+                checkpoint()
             }
         }
 
@@ -130,20 +148,36 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /** Commit the time spent on the item we're leaving. */
-    private fun flushPlay() {
+    private fun playedSoFar(): Long {
+        val running = if (playingSince >= 0) android.os.SystemClock.elapsedRealtime() - playingSince else 0L
+        return playedMs + running
+    }
+
+    /** Persist uncounted play time, and the play event once it counts. App scope: survives us. */
+    private fun checkpoint() {
         val item = currentItem ?: return
-        if (playingSince >= 0) {
-            val now = android.os.SystemClock.elapsedRealtime()
-            playedMs += now - playingSince
-            playingSince = now
+        val played = playedSoFar()
+        val delta = played - checkpointedMs
+        checkpointedMs = played
+        val countNow = !eventWritten && PlayRecorder.counts(played, currentDurationMs)
+        if (countNow) eventWritten = true
+        if (delta <= 0 && !countNow) return
+        graph.scope.launch {
+            runCatching {
+                recorder.addPlayTime(item, delta)
+                if (countNow) recorder.recordPlayEvent(item, played)
+            }
         }
-        val played = playedMs
-        val duration = currentDurationMs
+    }
+
+    /** Close the books on the item we're leaving. */
+    private fun flushPlay() {
+        checkpoint()
         playedMs = 0
+        playingSince = if (player.isPlaying) android.os.SystemClock.elapsedRealtime() else -1
+        checkpointedMs = 0
+        eventWritten = false
         currentDurationMs = -1
-        // App scope, not ours: this also runs from onDestroy, right before our scope is cancelled.
-        graph.scope.launch { runCatching { recorder.recordPlay(item, played, duration) } }
     }
 
     /**
@@ -181,6 +215,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        checkpointJob?.cancel()
         flushPlay()
         session.release()
         player.release()

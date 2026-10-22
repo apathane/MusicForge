@@ -9,9 +9,9 @@ import dev.musicforge.data.db.SongEntity
 import androidx.room.withTransaction
 
 /**
- * Writes what was actually listened to: the song (if new), its artists, a play event, and
- * accumulated play time. A play counts after 30 s or half the track, whichever is first,
- * the same threshold the upstream apps use for their stats.
+ * Writes what was actually listened to: the song (if new), its artists, play events and
+ * accumulated play time. Writes happen incrementally, so a process killed mid-song (MagicOS)
+ * loses at most one checkpoint of time and never the play itself.
  */
 class PlayRecorder(private val db: MusicDatabase) {
     suspend fun ensureSong(item: MediaItem) = db.withTransaction {
@@ -37,14 +37,22 @@ class PlayRecorder(private val db: MusicDatabase) {
         }
     }
 
-    suspend fun recordPlay(item: MediaItem, playedMs: Long, durationMs: Long) = db.withTransaction {
-        if (playedMs <= 0) return@withTransaction
+    /** Adds listening time that hasn't been counted yet (called every checkpoint). */
+    suspend fun addPlayTime(item: MediaItem, deltaMs: Long) {
+        if (deltaMs <= 0) return
         ensureSong(item)
-        val dao = db.dao()
-        dao.addPlayTime(item.mediaId, playedMs)
-        val threshold = if (durationMs > 0) minOf(30_000L, durationMs / 2) else 30_000L
-        if (playedMs >= threshold) {
-            dao.insert(Event(songId = item.mediaId, timestamp = System.currentTimeMillis(), playTime = playedMs))
-        }
+        db.dao().addPlayTime(item.mediaId, deltaMs)
+    }
+
+    /** One play event, written as soon as a listen counts. */
+    suspend fun recordPlayEvent(item: MediaItem, playedMs: Long) {
+        ensureSong(item)
+        db.dao().insert(Event(songId = item.mediaId, timestamp = System.currentTimeMillis(), playTime = playedMs))
+    }
+
+    companion object {
+        /** A play counts after 30 s or half the track, whichever is first (same as upstream stats). */
+        fun counts(playedMs: Long, durationMs: Long): Boolean =
+            playedMs >= if (durationMs > 0) minOf(30_000L, durationMs / 2) else 30_000L
     }
 }

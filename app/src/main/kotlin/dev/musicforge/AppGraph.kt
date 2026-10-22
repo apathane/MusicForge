@@ -10,7 +10,9 @@ import dev.musicforge.data.backup.BackupImporter
 import dev.musicforge.data.db.MusicDatabase
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.data.prefs.dataStore
+import dev.musicforge.download.Downloads
 import dev.musicforge.playback.MediaEngine
+import dev.musicforge.playback.PlayRecorder
 import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.playback.StreamResolver
 import dev.musicforge.playback.YouTubeSession
@@ -54,6 +56,10 @@ class AppGraph(val app: Application) {
         val mb = runBlocking { settings.data.first()[Keys.MaxSongCacheSizeMb] }?.takeIf { it > 0 } ?: 1024
         MediaEngine(app, database.dao(), resolver, http, mb * 1024L * 1024L)
     }
+
+    val recorder by lazy { PlayRecorder(database) }
+
+    val downloads by lazy { Downloads(app, mediaEngine, database.dao(), recorder, scope) }
 
     val player by lazy { PlayerConnection(app) }
 }

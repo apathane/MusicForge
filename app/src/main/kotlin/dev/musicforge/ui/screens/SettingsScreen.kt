@@ -77,7 +77,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun confirm(uri: Uri, includeAccount: Boolean) = viewModelScope.launch {
         _restore.value = RestoreState.Working
-        _restore.value = runCatching { RestoreState.Done(graph.backupImporter.import(uri, includeAccount)) }
+        _restore.value = runCatching { RestoreState.Done(graph.backupImporter.import(uri, includeAccount, graph.downloads.completedIds())) }
             .getOrElse { RestoreState.Failed(it.message ?: it.javaClass.simpleName) }
     }
 

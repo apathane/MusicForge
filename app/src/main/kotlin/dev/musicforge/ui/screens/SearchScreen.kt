@@ -45,7 +45,7 @@ import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.ScreenHeader
-import dev.musicforge.ui.components.TrackRow
+import dev.musicforge.ui.components.SongRow
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -158,11 +158,11 @@ fun SearchScreen() {
             is SearchViewModel.Results.Songs -> {
                 if (r.items.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
                 items(r.items, key = { it.id }) { song ->
-                    TrackRow(
-                        title = song.title,
+                    val item = androidx.compose.runtime.remember(song.id) { song.toMediaItem() }
+                    SongRow(
+                        item = item,
                         subtitle = listOfNotNull(song.artists.joinToString { it.name }, song.album?.name).joinToString(" · "),
-                        artworkUrl = song.thumbnail,
-                        onClick = { player.play(listOf(song.toMediaItem())) },
+                        onPlay = { player.play(listOf(item)) },
                     )
                 }
             }
