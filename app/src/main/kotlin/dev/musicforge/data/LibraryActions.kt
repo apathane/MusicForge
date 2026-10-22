@@ -16,8 +16,12 @@ import java.util.UUID
 class LibraryActions(
     private val db: MusicDatabase,
     private val recorder: PlayRecorder,
-    private val scope: CoroutineScope,
+    private val appScope: CoroutineScope,
 ) {
+    /** One writer at a time, in the order edits were made: two quick drags can't land swapped. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val scope = CoroutineScope(appScope.coroutineContext + kotlinx.coroutines.Dispatchers.IO.limitedParallelism(1))
+
     fun setLiked(item: MediaItem, liked: Boolean) = scope.launch {
         recorder.ensureSong(item)
         db.dao().setLiked(item.mediaId, liked, if (liked) System.currentTimeMillis() else null)

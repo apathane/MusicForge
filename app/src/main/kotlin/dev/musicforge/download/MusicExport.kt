@@ -44,13 +44,20 @@ class MusicExport(
         val song = dao.song(id).firstOrNull() ?: return false
         val format = dao.format(id) ?: return false
         val artist = song.artistLine.ifBlank { "Unknown artist" }
+        val ext = when {
+            "webm" in format.mimeType -> "ogg"
+            "mp4" in format.mimeType || "m4a" in format.mimeType -> "m4a"
+            else -> return false
+        }
+        val name = fileName("$artist - ${song.song.title}") + ".$ext"
+        if (alreadyExported(name)) return true
         val raw = java.io.File(context.cacheDir, "export-$id.raw")
         val remuxed = java.io.File(context.cacheDir, "export-$id.ogg")
         try {
             copyFromCache(id, format.contentLength, raw)
             // MediaStore won't take audio/webm in Music/ (".webm" is treated as video), so WebM/Opus
             // is remuxed into Ogg/Opus: same audio packets, no re-encode, playable everywhere.
-            val (file, mime, ext) = when {
+            val (file, mime, _) = when {
                 "webm" in format.mimeType -> {
                     remuxToOgg(raw, remuxed)
                     // Tags inside the file: the media scanner (and any other player) reads these.
@@ -68,7 +75,7 @@ class MusicExport(
                 "mp4" in format.mimeType || "m4a" in format.mimeType -> Triple(raw, "audio/mp4", "m4a")
                 else -> return false
             }
-            return publish(file, mime, fileName("$artist - ${song.song.title}") + ".$ext", song.song.title, artist, song.song.albumName)
+            return publish(file, mime, name, song.song.title, artist, song.song.albumName)
         } finally {
             raw.delete()
             remuxed.delete()
@@ -122,19 +129,22 @@ class MusicExport(
         return output
     }
 
+    private val folder get() = "${android.os.Environment.DIRECTORY_MUSIC}/$folderName/"
+
     @RequiresApi(29)
-    private fun publish(file: java.io.File, mime: String, name: String, title: String, artist: String, album: String?): Boolean {
-        val folder = "${android.os.Environment.DIRECTORY_MUSIC}/$folderName/"
-        val resolver = context.contentResolver
-        val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        // Already exported (same name in our folder): nothing to do.
-        resolver.query(
-            collection,
+    private fun alreadyExported(name: String): Boolean =
+        context.contentResolver.query(
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
             arrayOf(MediaStore.MediaColumns._ID),
             "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
             arrayOf(folder, name),
             null,
-        )?.use { if (it.moveToFirst()) return true }
+        )?.use { it.moveToFirst() } ?: false
+
+    @RequiresApi(29)
+    private fun publish(file: java.io.File, mime: String, name: String, title: String, artist: String, album: String?): Boolean {
+        val resolver = context.contentResolver
+        val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, mime)
