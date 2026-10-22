@@ -195,6 +195,7 @@ class PlaybackService : MediaSessionService() {
             val measuredLufs = format?.perceptualLoudnessDb ?: format?.loudnessDb?.let { it + TARGET_LUFS }
             val gainDb = measuredLufs?.let { (TARGET_LUFS - it).coerceIn(-15.0, 0.0) } ?: 0.0
             player.volume = Math.pow(10.0, gainDb / 20.0).toFloat()
+            Timber.d("loudness %s: measured %.1f LUFS -> gain %.1f dB (volume %.2f)", id, measuredLufs ?: Double.NaN, gainDb, player.volume)
         }
     }
 
