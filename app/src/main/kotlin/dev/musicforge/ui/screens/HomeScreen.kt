@@ -1,6 +1,8 @@
 package dev.musicforge.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,23 +57,56 @@ import java.util.Calendar
 class HomeViewModel : ViewModel() {
     sealed interface State {
         data object Loading : State
-        data class Ready(val sections: List<HomePage.Section>) : State
+        data class Ready(
+            val chips: List<HomePage.Chip>,
+            val selected: String?,
+            val sections: List<HomePage.Section>,
+            val hasMore: Boolean,
+        ) : State
         data class Failed(val message: String) : State
     }
 
     private val _state = MutableStateFlow<State>(State.Loading)
     val state = _state.asStateFlow()
+    private var continuation: String? = null
+    private var chips: List<HomePage.Chip> = emptyList()
+    private var paging = false
 
     init {
         load()
     }
 
-    fun load() = viewModelScope.launch {
+    /** [chip] null = the unfiltered feed. Chips from the first load are kept while filtering. */
+    fun load(chip: HomePage.Chip? = null) = viewModelScope.launch {
         _state.value = State.Loading
-        _state.value = YouTube.home().fold(
-            onSuccess = { page -> State.Ready(page.sections.filter { it.items.isNotEmpty() }) },
+        val params = chip?.endpoint?.params
+        _state.value = YouTube.home(params = params).fold(
+            onSuccess = { page ->
+                continuation = page.continuation
+                if (chip == null || chips.isEmpty()) chips = page.chips.orEmpty()
+                State.Ready(chips, chip?.title, page.sections.filter { it.items.isNotEmpty() }, continuation != null)
+            },
             onFailure = { State.Failed(it.message ?: "No connection") },
         )
+    }
+
+    /** The feed goes on as you scroll, like the official app's. */
+    fun loadMore() {
+        val token = continuation ?: return
+        val ready = _state.value as? State.Ready ?: return
+        if (paging) return
+        paging = true
+        viewModelScope.launch {
+            YouTube.home(continuation = token).onSuccess { page ->
+                continuation = page.continuation
+                val known = ready.sections.mapTo(HashSet()) { it.title }
+                _state.value = ready.copy(
+                    sections = ready.sections + page.sections.filter { it.items.isNotEmpty() && it.title !in known },
+                    hasMore = continuation != null,
+                )
+            }.onFailure { continuation = null; _state.value = ready.copy(hasMore = false) }
+            paging = false
+        }
     }
 }
 
@@ -89,8 +124,35 @@ fun HomeScreen() {
     val player = LocalContext.current.graph.player
     val nav = LocalNavController.current
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    val nearEnd by androidx.compose.runtime.remember {
+        androidx.compose.runtime.derivedStateOf {
+            (list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= list.layoutInfo.totalItemsCount - 3
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(nearEnd, state) { if (nearEnd) vm.loadMore() }
+
+    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item { ScreenHeader(greeting()) }
+        (state as? HomeViewModel.State.Ready)?.takeIf { it.chips.isNotEmpty() }?.let { ready ->
+            item(key = "chips") {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(ready.chips, key = { it.title }) { chip ->
+                        val on = chip.title == ready.selected
+                        Text(
+                            chip.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
+                                .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .clickable { vm.load(if (on) null else chip) }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
         when (val s = state) {
             HomeViewModel.State.Loading -> item {
                 Box(Modifier.fillMaxWidth().padding(64.dp), contentAlignment = Alignment.Center) {
