@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(libs.coroutines.android)
     implementation(libs.palette)
+    implementation(libs.reorderable)
     implementation(libs.timber)
     coreLibraryDesugaring(libs.desugaring)
 

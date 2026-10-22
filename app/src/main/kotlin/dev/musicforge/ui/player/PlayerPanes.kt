@@ -34,6 +34,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -138,24 +141,45 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
     }
 }
 
-/** The queue, current song highlighted; tap to jump, ✕ to remove. */
+/** The queue: tap to jump, drag the handle to reorder, ✕ to remove. */
 @Composable
 fun QueuePane() {
     val connection = LocalContext.current.graph.player
     val queue by connection.queue.collectAsStateWithLifecycle()
     val current by connection.currentIndex.collectAsStateWithLifecycle()
     val list = rememberLazyListState(initialFirstVisibleItemIndex = current.coerceAtLeast(0))
+    // A local mirror with stable keys, so a drag isn't disturbed by the player republishing.
+    val rows = remember { androidx.compose.runtime.mutableStateListOf<Pair<Long, androidx.media3.common.MediaItem>>() }
+    var nextKey by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val reorder = rememberReorderableLazyListState(list) { from, to ->
+        rows.add(to.index - 1, rows.removeAt(from.index - 1)) // index 0 is the title row
+        connection.move(from.index - 1, to.index - 1)
+    }
+    LaunchedEffect(queue) {
+        if (!reorder.isAnyItemDragging) {
+            rows.clear()
+            queue.forEach { rows.add(nextKey++ to it) }
+        }
+    }
     val white = Color.White
-    Column(Modifier.fillMaxSize()) {
-        Text("Up next", style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.padding(vertical = 8.dp))
-        LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(queue, key = { i, item -> "$i:${item.mediaId}" }) { i, item ->
+    LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+        item(key = "title") {
+            Text("Up next", style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.padding(vertical = 8.dp))
+        }
+        itemsIndexed(rows, key = { _, row -> row.first }) { i, (key, item) ->
+            ReorderableItem(reorder, key = key) { dragging ->
                 val playing = i == current
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (playing) white.copy(alpha = 0.12f) else Color.Transparent)
+                        .background(
+                            when {
+                                dragging -> white.copy(alpha = 0.20f)
+                                playing -> white.copy(alpha = 0.12f)
+                                else -> Color.Transparent
+                            },
+                        )
                         .clickable { connection.skipTo(i) }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -170,6 +194,9 @@ fun QueuePane() {
                         Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable { connection.removeAt(i) }, contentAlignment = Alignment.Center) {
                             Text("✕", color = white.copy(alpha = 0.5f))
                         }
+                    }
+                    Box(Modifier.size(36.dp).draggableHandle(), contentAlignment = Alignment.Center) {
+                        Text("≡", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleLarge)
                     }
                 }
             }
