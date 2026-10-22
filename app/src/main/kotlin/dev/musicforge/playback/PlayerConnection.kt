@@ -48,7 +48,29 @@ class PlayerConnection(private val context: Context) {
     val sleepAt: StateFlow<Long?> = _sleepAt.asStateFlow()
     private var sleepAtEnd = false
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val sleepRunnable = Runnable { controller?.pause(); _sleepAt.value = null }
+    private val sleepRunnable = Runnable { fadeOutAndPause() }
+
+    /** Sleep shouldn't be a cut: ease the volume down over ~10 s, pause, then restore it. */
+    private fun fadeOutAndPause(steps: Int = 40, stepMs: Long = 250) {
+        val c = controller ?: return
+        val start = c.volume
+        var i = 0
+        val tick = object : Runnable {
+            override fun run() {
+                i++
+                if (i >= steps || !c.isPlaying) {
+                    c.pause()
+                    c.volume = start
+                    _sleepAt.value = null
+                    return
+                }
+                val t = i.toFloat() / steps
+                c.volume = start * (1f - t) * (1f - t) // ease-out: most of the drop happens early
+                handler.postDelayed(this, stepMs)
+            }
+        }
+        handler.post(tick)
+    }
 
     private var connecting = false
 
@@ -75,9 +97,11 @@ class PlayerConnection(private val context: Context) {
                 override fun onEvents(player: Player, events: Player.Events) {
                     if (events.contains(Player.EVENT_TIMELINE_CHANGED)) publishQueue(player)
                     if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) && sleepAtEnd) {
+                        // "End of this song": stop at the boundary, before the next one is heard.
                         sleepAtEnd = false
                         _sleepAt.value = null
                         player.pause()
+                        player.seekTo(0)
                     }
                     _index.value = player.currentMediaItemIndex
                     publish(player)
