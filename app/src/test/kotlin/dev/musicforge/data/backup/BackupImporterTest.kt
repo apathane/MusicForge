@@ -225,6 +225,34 @@ class BackupImporterTest {
         assertThat(db.dao().songEntity("local")).isNull()
     }
 
+    /** A backup made by the real Metrolist 13.7.0 app on the emulator (data still in the WAL). */
+    @Test fun genuineMetrolistBackup() = runBlocking {
+        val dir = tmp.newFolder()
+        javaClass.getResourceAsStream("/fixtures/metrolist-real-v38.backup")!!.use { BackupImporter.unzip(it, dir) }
+        val staged = BackupImporter.Staged(dir)
+        val preview = importer.preview(staged)
+        assertThat(preview.origin).isEqualTo(BackupImporter.Origin.METROLIST)
+        assertThat(preview.dbVersion).isEqualTo(38)
+        val result = importer.import(staged, includeAccount = true, downloadedIds = emptySet())
+        assertThat(result.copied["song"]).isEqualTo(2)
+        assertThat(result.copied["format"]).isEqualTo(2)
+        assertThat(result.warnings).isEmpty()
+        assertThat(db.dao().song("kOn-HdEg6AQ").first()!!.artists.single().name).isEqualTo("Michael Jackson")
+    }
+
+    @Test fun downloadedSongsSurviveRestoreOfOlderBackup() = runBlocking {
+        val dao = db.dao()
+        dao.upsert(dev.musicforge.data.db.SongEntity(id = "dl1", title = "Downloaded here", isDownloaded = true, dateDownload = 5L))
+        dao.upsert(dev.musicforge.data.db.ArtistEntity(id = "ar1", name = "Someone"))
+        dao.upsert(dev.musicforge.data.db.SongArtistMap("dl1", "ar1", 0))
+        val staged = stage { dir -> upstreamDb("metrolist-38", dir).use { library(it) } }
+        importer.import(staged, includeAccount = true, downloadedIds = setOf("dl1"))
+        val kept = dao.song("dl1").first()!!
+        assertThat(kept.song.isDownloaded).isTrue()
+        assertThat(kept.artists.map { it.name }).containsExactly("Someone")
+        assertThat(dao.songEntity("s1")).isNotNull() // the backup still restored
+    }
+
     @Test fun settingsAreImportedAndCoerced() = runBlocking {
         val staged = stage { dir ->
             upstreamDb("metrolist-38", dir).close()

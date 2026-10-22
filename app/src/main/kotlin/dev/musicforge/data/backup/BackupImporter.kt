@@ -236,6 +236,7 @@ class BackupImporter(
         val copied = LinkedHashMap<String, Int>()
         backup.use {
             database.runInTransaction {
+                stashDownloaded(db, downloadedIds)
                 for (table in TABLE_ORDER.asReversed()) db.execSQL("DELETE FROM main.${q(table)}")
                 for (table in TABLE_ORDER) {
                     val backupCols = info.columns[table] ?: continue
@@ -276,6 +277,7 @@ class BackupImporter(
                     copied[table] = n
                     if (n < seen) warnings += "$table: ${seen - n} of $seen rows skipped (orphaned or duplicate)"
                 }
+                restoreStash(db)
                 syncEpisodeFlags(db)
                 resetDownloads(db, downloadedIds)
             }
@@ -306,6 +308,28 @@ class BackupImporter(
             "X''" -> stmt.bindBlob(arg, ByteArray(0))
             else -> stmt.bindString(arg, "")
         }
+
+    /**
+     * Songs we hold the bytes for must survive a restore even when the backup doesn't know
+     * them, or they'd become invisible files in the download cache. Their rows (and artist
+     * credits) are parked in temp tables while the library is replaced.
+     */
+    private fun stashDownloaded(db: SupportSQLiteDatabase, ids: Set<String>) {
+        listOf("keep_ids", "keep_song", "keep_map", "keep_artist").forEach { db.execSQL("DROP TABLE IF EXISTS temp.$it") }
+        db.execSQL("CREATE TEMP TABLE keep_ids (id TEXT PRIMARY KEY)")
+        ids.forEach { db.execSQL("INSERT OR IGNORE INTO temp.keep_ids VALUES (?)", arrayOf(it)) }
+        db.execSQL("CREATE TEMP TABLE keep_song AS SELECT * FROM main.song WHERE id IN (SELECT id FROM temp.keep_ids)")
+        db.execSQL("CREATE TEMP TABLE keep_map AS SELECT * FROM main.song_artist_map WHERE songId IN (SELECT id FROM temp.keep_ids)")
+        db.execSQL("CREATE TEMP TABLE keep_artist AS SELECT * FROM main.artist WHERE id IN (SELECT artistId FROM temp.keep_map)")
+    }
+
+    private fun restoreStash(db: SupportSQLiteDatabase) {
+        // CREATE TABLE AS SELECT * keeps the column order, so SELECT * lines up again.
+        db.execSQL("INSERT OR IGNORE INTO main.song SELECT * FROM temp.keep_song")
+        db.execSQL("INSERT OR IGNORE INTO main.artist SELECT * FROM temp.keep_artist")
+        db.execSQL("INSERT OR IGNORE INTO main.song_artist_map SELECT * FROM temp.keep_map")
+        listOf("keep_ids", "keep_song", "keep_map", "keep_artist").forEach { db.execSQL("DROP TABLE IF EXISTS temp.$it") }
+    }
 
     /** Metrolist calls it `isEpisode`, ConvX `isPodcastEpisode`; keep both truthful. */
     private fun syncEpisodeFlags(db: SupportSQLiteDatabase) {
