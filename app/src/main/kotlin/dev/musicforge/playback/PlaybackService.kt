@@ -11,7 +11,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.SettableFuture
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.metrolist.innertube.YouTube
@@ -31,7 +34,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @OptIn(UnstableApi::class)
-class PlaybackService : MediaSessionService() {
+class PlaybackService : MediaLibraryService() {
     private companion object {
         const val CHECKPOINT_MS = 30_000L
         const val TARGET_LUFS = -14.0
@@ -40,7 +43,8 @@ class PlaybackService : MediaSessionService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var player: ExoPlayer
-    private lateinit var session: MediaSession
+    private lateinit var session: MediaLibrarySession
+    private val tree by lazy { BrowseTree(graph.database.dao()) }
     private val recorder get() = graph.recorder
 
     // Play-time accounting for the current item.
@@ -83,7 +87,7 @@ class PlaybackService : MediaSessionService() {
                 .putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC),
         )
 
-        session = MediaSession.Builder(this, player)
+        session = MediaLibrarySession.Builder(this, player, callback)
             .setSessionActivity(
                 PendingIntent.getActivity(
                     this, 0,
@@ -91,7 +95,6 @@ class PlaybackService : MediaSessionService() {
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 ),
             )
-            .setCallback(callback)
             .setMediaButtonPreferences(listOf(likeButton(false)))
             .build()
 
@@ -105,7 +108,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session
 
     private val likeCommand = androidx.media3.session.SessionCommand(ACTION_LIKE, android.os.Bundle.EMPTY)
 
@@ -131,7 +134,66 @@ class PlaybackService : MediaSessionService() {
     }
 
     /** Items from controllers carry metadata but no playable URI; give them ours. */
-    private val callback = object : MediaSession.Callback {
+    /** Runs [block] on our scope and hands the result to Media3 as a future. */
+    private fun <T> future(block: suspend () -> T): ListenableFuture<T> {
+        val f = SettableFuture.create<T>()
+        scope.launch {
+            runCatching { block() }.onSuccess { f.set(it) }.onFailure { f.setException(it) }
+        }
+        return f
+    }
+
+    private val callback = object : MediaLibrarySession.Callback {
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
+            val all = withContext(Dispatchers.IO) { tree.children(parentId) }
+            val from = (page * pageSize).coerceAtMost(all.size)
+            LibraryResult.ofItemList(all.subList(from, (from + pageSize).coerceAtMost(all.size)), params)
+        }
+
+        override fun onGetItem(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            mediaId: String,
+        ): ListenableFuture<LibraryResult<MediaItem>> = future {
+            withContext(Dispatchers.IO) { tree.song(mediaId) }?.let { LibraryResult.ofItem(it, null) }
+                ?: LibraryResult.ofError(androidx.media3.session.SessionError.ERROR_BAD_VALUE)
+        }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<Void>> = future {
+            val count = withContext(Dispatchers.IO) { tree.search(query).size }
+            session.notifySearchResultChanged(browser, query, count, params)
+            LibraryResult.ofVoid()
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = future {
+            LibraryResult.ofItemList(withContext(Dispatchers.IO) { tree.search(query) }, params)
+        }
+
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
             MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(
@@ -161,15 +223,16 @@ class PlaybackService : MediaSessionService() {
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
-        ): ListenableFuture<MutableList<MediaItem>> =
-            Futures.immediateFuture(
-                mediaItems.map { item ->
-                    item.buildUpon()
-                        .setUri("https://music.youtube.com/watch?v=${item.mediaId}")
-                        .setCustomCacheKey(item.mediaId)
-                        .build()
-                }.toMutableList(),
-            )
+        ): ListenableFuture<MutableList<MediaItem>> = future {
+            mediaItems.map { item ->
+                // Cars and watches send back only the id: restore title, artists and artwork.
+                val full = if (item.mediaMetadata.title == null) withContext(Dispatchers.IO) { tree.song(item.mediaId) } ?: item else item
+                full.buildUpon()
+                    .setUri("https://music.youtube.com/watch?v=${item.mediaId}")
+                    .setCustomCacheKey(item.mediaId)
+                    .build()
+            }.toMutableList()
+        }
     }
 
     private val listener = object : Player.Listener {
