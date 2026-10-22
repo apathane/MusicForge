@@ -37,8 +37,8 @@ class PlayRecorder(private val db: MusicDatabase) {
         }
     }
 
-    suspend fun recordPlay(item: MediaItem, playedMs: Long, durationMs: Long) {
-        if (playedMs <= 0) return
+    suspend fun recordPlay(item: MediaItem, playedMs: Long, durationMs: Long) = db.withTransaction {
+        if (playedMs <= 0) return@withTransaction
         ensureSong(item)
         val dao = db.dao()
         dao.addPlayTime(item.mediaId, playedMs)

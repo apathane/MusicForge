@@ -39,6 +39,7 @@ class PlaybackService : MediaSessionService() {
 
     // Play-time accounting for the current item.
     private var currentItem: MediaItem? = null
+    private var currentDurationMs = -1L
     private var playedMs = 0L
     private var playingSince = -1L
 
@@ -97,6 +98,12 @@ class PlaybackService : MediaSessionService() {
     }
 
     private val listener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            // Duration is only known once the item is prepared; remember it for flushPlay,
+            // which runs after the player has already moved on to the next item.
+            if (state == Player.STATE_READY && player.duration != C.TIME_UNSET) currentDurationMs = player.duration
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
@@ -132,9 +139,11 @@ class PlaybackService : MediaSessionService() {
             playingSince = now
         }
         val played = playedMs
-        val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: -1L
+        val duration = currentDurationMs
         playedMs = 0
-        scope.launch(Dispatchers.IO) { runCatching { recorder.recordPlay(item, played, duration) } }
+        currentDurationMs = -1
+        // App scope, not ours: this also runs from onDestroy, right before our scope is cancelled.
+        graph.scope.launch { runCatching { recorder.recordPlay(item, played, duration) } }
     }
 
     /**

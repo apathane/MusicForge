@@ -33,17 +33,33 @@ class PlayerConnection(private val context: Context) {
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
 
+    private var connecting = false
+
+    /** A tap that lands before the controller connects runs once it does. */
+    private var pending: ((MediaController) -> Unit)? = null
+
+    private fun withController(action: (MediaController) -> Unit) {
+        controller?.let(action) ?: run {
+            pending = action
+            connect()
+        }
+    }
+
     fun connect() {
-        if (controller != null) return
+        if (controller != null || connecting) return
+        connecting = true
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, token).buildAsync()
         future.addListener({
+            connecting = false
             val c = runCatching { future.get() }.getOrNull() ?: return@addListener
             controller = c
             c.addListener(object : Player.Listener {
                 override fun onEvents(player: Player, events: Player.Events) = publish(player)
             })
             publish(c)
+            pending?.invoke(c)
+            pending = null
         }, ContextCompat.getMainExecutor(context))
     }
 
@@ -71,15 +87,13 @@ class PlayerConnection(private val context: Context) {
         }
     }
 
-    fun play(items: List<MediaItem>, startIndex: Int = 0) {
-        val c = controller ?: return
+    fun play(items: List<MediaItem>, startIndex: Int = 0) = withController { c ->
         c.setMediaItems(items, startIndex, 0L)
         c.prepare()
         c.play()
     }
 
-    fun playNext(item: MediaItem) {
-        val c = controller ?: return
+    fun playNext(item: MediaItem) = withController { c ->
         c.addMediaItem((c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount), item)
     }
 

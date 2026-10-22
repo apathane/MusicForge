@@ -129,10 +129,11 @@ class StreamResolver(
                 when (r.code) {
                     206 -> r.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
                     200 -> r.header("Content-Length")?.toLongOrNull()
-                    else -> null
+                    else -> null.also { Timber.w("length probe got HTTP %d; transfer will pass through unchunked", r.code) }
                 }?.takeIf { it > 0 }
             }
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            Timber.w(e, "length probe failed; transfer will pass through unchunked")
             null
         }
     }
