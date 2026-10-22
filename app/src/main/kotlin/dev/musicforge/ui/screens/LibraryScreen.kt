@@ -45,6 +45,10 @@ import dev.musicforge.ui.components.SectionTitle
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import com.metrolist.innertube.utils.completed
+import androidx.compose.foundation.lazy.items
 
 class LibraryViewModel(graph: AppGraph) : ViewModel() {
     private val dao = graph.database.dao()
@@ -52,6 +56,23 @@ class LibraryViewModel(graph: AppGraph) : ViewModel() {
         dao.counts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val playlists: StateFlow<List<PlaylistSummary>> =
         dao.playlists().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Account playlists from YouTube Music; empty when signed out or offline. */
+    val accountPlaylists = kotlinx.coroutines.flow.MutableStateFlow<List<com.metrolist.innertube.models.PlaylistItem>>(emptyList())
+    val signedIn = graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.InnerTubeCookie] != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    init {
+        viewModelScope.launch {
+            signedIn.collect { yes ->
+                accountPlaylists.value = if (!yes) emptyList() else
+                    com.metrolist.innertube.YouTube.library("FEmusic_liked_playlists").completed().getOrNull()?.items
+                        ?.filterIsInstance<com.metrolist.innertube.models.PlaylistItem>()
+                        ?.filterNot { it.id == "LM" || it.id == "SE" }
+                        .orEmpty()
+            }
+        }
+    }
 }
 
 @Composable
@@ -60,6 +81,8 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
     val vm = viewModel { LibraryViewModel(context.graph) }
     val counts by vm.counts.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
+    val signedIn by vm.signedIn.collectAsStateWithLifecycle()
+    val account by vm.accountPlaylists.collectAsStateWithLifecycle()
     val nav = LocalNavController.current
     val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists + it.downloaded + it.events == 0 } ?: false
 
@@ -84,6 +107,25 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             item { ShelfRow(ForgeIcons.Library, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
             item { ShelfRow(ForgeIcons.Previous, "Recently played", c.events) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
             item { ShelfRow(ForgeIcons.Heart, "Your listening", c.events) { nav.navigate(Routes.STATS) } }
+        }
+        if (signedIn) {
+            item { SectionTitle("From YouTube Music") }
+            item { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
+            items(account, key = { "yt:" + it.id }) { p ->
+                Row(
+                    Modifier.fillMaxWidth()
+                        .clickable { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Artwork(p.thumbnail, 56.dp, corner = 8.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        p.songCountText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                }
+            }
         }
         if (playlists.isNotEmpty()) {
             item { SectionTitle("Playlists") }
@@ -120,7 +162,7 @@ private fun ShelfRow(icon: ImageVector, title: String, count: Int, onClick: () -
         ) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Text("$count", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (count >= 0) Text("$count", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Icon(ForgeIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
         HorizontalDivider(Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline)
