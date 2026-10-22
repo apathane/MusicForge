@@ -34,6 +34,7 @@ import timber.log.Timber
 class PlaybackService : MediaSessionService() {
     private companion object {
         const val CHECKPOINT_MS = 30_000L
+        const val TARGET_LUFS = -14.0
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -70,6 +71,14 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
         player.addListener(listener)
+        // Let system and third-party equalisers attach to our audio.
+        graph.audioSessionId = player.audioSessionId
+        sendBroadcast(
+            android.content.Intent(android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
+                .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
+                .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+                .putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC),
+        )
 
         session = MediaSession.Builder(this, player)
             .setSessionActivity(
@@ -85,6 +94,10 @@ class PlaybackService : MediaSessionService() {
         scope.launch {
             graph.settings.data.map { it[Keys.SkipSilence] ?: false }.distinctUntilChanged()
                 .collect { player.skipSilenceEnabled = it }
+        }
+        scope.launch {
+            graph.settings.data.map { it[Keys.AudioNormalization] ?: true }.distinctUntilChanged()
+                .collect { normalize = it; applyLoudness() }
         }
     }
 
@@ -112,6 +125,7 @@ class PlaybackService : MediaSessionService() {
             // Duration is only known once the item is prepared; remember it for flushPlay,
             // which runs after the player has already moved on to the next item.
             if (state == Player.STATE_READY && player.duration != C.TIME_UNSET) currentDurationMs = player.duration
+            if (state == Player.STATE_READY) applyLoudness()
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -160,6 +174,27 @@ class PlaybackService : MediaSessionService() {
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Timber.e(error, "playback error on %s", player.currentMediaItem?.mediaId)
+        }
+    }
+
+    private var normalize = true
+
+    /**
+     * Brings loud masters down to YouTube's -14 LUFS reference using the loudness YouTube
+     * reports for each track. Attenuation only, so nothing can clip and no extra DSP runs.
+     */
+    private fun applyLoudness() {
+        val id = player.currentMediaItem?.mediaId ?: return
+        if (!normalize) {
+            player.volume = 1f
+            return
+        }
+        scope.launch {
+            val format = withContext(Dispatchers.IO) { graph.database.dao().format(id) }
+            if (player.currentMediaItem?.mediaId != id) return@launch
+            val measuredLufs = format?.perceptualLoudnessDb ?: format?.loudnessDb?.let { it + TARGET_LUFS }
+            val gainDb = measuredLufs?.let { (TARGET_LUFS - it).coerceIn(-15.0, 0.0) } ?: 0.0
+            player.volume = Math.pow(10.0, gainDb / 20.0).toFloat()
         }
     }
 
@@ -236,6 +271,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        sendBroadcast(
+            android.content.Intent(android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION)
+                .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
+                .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName),
+        )
         checkpointJob?.cancel()
         readAhead.release()
         flushPlay()

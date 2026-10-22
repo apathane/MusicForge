@@ -86,9 +86,11 @@ enum class PlayerPane { ARTWORK, LYRICS, QUEUE }
  * colours), the way a record sleeve sits on a dark table.
  */
 @Composable
-fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () -> Unit) {
+fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () -> Unit, onCovering: (Boolean) -> Unit = {}) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
+        // A flick that should dismiss, in px/s: physical speed, not pixel speed.
+        val flingPx = with(LocalDensity.current) { 700.dp.toPx() }
         val offset = remember { Animatable(heightPx) }
         val scope = rememberCoroutineScope()
 
@@ -97,34 +99,43 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
             offset.animateTo(if (open) 0f else heightPx, spring(dampingRatio = 0.86f, stiffness = 420f))
         }
         BackHandler(enabled = open) { onClose() }
+        // Tell the host when the sheet fully covers the screen, so it can stop drawing what's behind.
+        val covering by remember { androidx.compose.runtime.derivedStateOf { offset.value < 0.5f } }
+        androidx.compose.runtime.LaunchedEffect(covering) { onCovering(covering) }
         if (!open && offset.value >= heightPx - 1f) return@BoxWithConstraints
 
+        val dismissDrag = Modifier.pointerInput(Unit) {
+            val tracker = VelocityTracker()
+            detectVerticalDragGestures(
+                onVerticalDrag = { change, dy ->
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    scope.launch { offset.snapTo((offset.value + dy).coerceAtLeast(0f)) }
+                },
+                onDragEnd = {
+                    val v = tracker.calculateVelocity().y
+                    tracker.resetTracking()
+                    if (offset.value > heightPx * 0.22f || v > flingPx) {
+                        onClose()
+                    } else {
+                        scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium)) }
+                    }
+                },
+            )
+        }
+        // Moving and clipping happen on one layer: the sheet's content is recorded once and
+        // the slide is pure compositing, and the rounded clip is a hardware outline clip.
+        val sheetShape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
         Box(
             Modifier
                 .fillMaxSize()
-                .offset { IntOffset(0, offset.value.roundToInt()) }
-                .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                .playerBackground(ambience)
-                .pointerInput(Unit) {
-                    val tracker = VelocityTracker()
-                    detectVerticalDragGestures(
-                        onVerticalDrag = { change, dy ->
-                            tracker.addPosition(change.uptimeMillis, change.position)
-                            scope.launch { offset.snapTo((offset.value + dy).coerceAtLeast(0f)) }
-                        },
-                        onDragEnd = {
-                            val v = tracker.calculateVelocity().y
-                            tracker.resetTracking()
-                            if (offset.value > heightPx * 0.22f || v > 1800f) {
-                                onClose()
-                            } else {
-                                scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium)) }
-                            }
-                        },
-                    )
-                },
+                .graphicsLayer {
+                    translationY = offset.value
+                    shape = sheetShape
+                    clip = true
+                }
+                .playerBackground(ambience),
         ) {
-            PlayerContent(now, onClose)
+            PlayerContent(now, onClose, dismissDrag)
         }
     }
 }
@@ -146,11 +157,11 @@ private fun Modifier.playerBackground(ambience: Ambience): Modifier = drawBehind
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerContent(now: NowPlaying, onClose: () -> Unit) {
+private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier) {
     val context = LocalContext.current
     val graph = context.graph
     val connection = graph.player
-    val position: State<Long> = remember(connection) { connection.position(200) }.collectAsState(0L)
+    val position: State<Long> = remember(connection) { connection.position(200) }.collectAsStateWithLifecycle(0L)
     var pane by rememberSaveable { mutableStateOf(PlayerPane.ARTWORK) }
     var menu by remember { mutableStateOf(false) }
     var sleepMenu by remember { mutableStateOf(false) }
@@ -160,12 +171,15 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit) {
     val accent = LocalArtworkColors.current.accent.takeIf { it != Color.Unspecified } ?: Color.White
     val white = Color.White
 
+    // On the artwork the whole sheet drags down, like Apple Music; over lyrics or the queue
+    // only the grabber does, so scrolling a list never pulls the player away.
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp),
+        Modifier.fillMaxSize().then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier)
+            .statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Grabber + collapse
-        Box(Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().height(44.dp).then(if (pane != PlayerPane.ARTWORK) dismissDrag else Modifier), contentAlignment = Alignment.Center) {
             Box(Modifier.size(width = 38.dp, height = 5.dp).clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.35f)))
             Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(ForgeIcons.Collapse, "Close player", white, 30.dp, onClose) }
         }
@@ -270,6 +284,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit) {
 }
 
 /** Big cover that eases back when paused: the record is resting. */
+private val artShape = RoundedCornerShape(14.dp)
+
 @Composable
 private fun BigArtwork(now: NowPlaying) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
@@ -280,9 +296,14 @@ private fun BigArtwork(now: NowPlaying) {
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .shadow(28.dp, RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp))
+            // Scale, shadow and rounded clip in a single layer instead of three.
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                shadowElevation = 20.dp.toPx()
+                shape = artShape
+                clip = true
+            }
             .background(Color.White.copy(alpha = 0.08f)),
     )
 }

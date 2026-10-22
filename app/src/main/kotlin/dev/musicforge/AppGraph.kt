@@ -32,10 +32,14 @@ import java.util.concurrent.TimeUnit
 @OptIn(UnstableApi::class)
 class AppGraph(val app: Application) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Set by PlaybackService; the equaliser panel attaches to it. */
+    @Volatile var audioSessionId: Int = 0
     val database by lazy { MusicDatabase.open(app) }
     val settings get() = app.dataStore
     val backupImporter by lazy { BackupImporter(app, database, settings) }
     val backupExporter by lazy { BackupExporter(app, database) }
+    val autoBackup by lazy { dev.musicforge.data.backup.AutoBackup(app, backupExporter) }
 
     /** One HTTP client for streams and probes; YouTube API calls use the innertube module's. */
     val http: OkHttpClient by lazy {

@@ -68,8 +68,9 @@ fun Scrubber(
             drawRoundRect(color.copy(alpha = 0.22f), Offset(0f, top), Size(size.width, h), radius)
             drawRoundRect(color, Offset(0f, top), Size(size.width * fraction, h), radius)
         }
-        // Times: the only part that recomposes with playback, a few times a second.
-        val shown = drag?.let { (it * durationMs).toLong() } ?: position.value
+        // Times: recompose once per displayed second, not on every position tick.
+        val playedSec by remember { androidx.compose.runtime.derivedStateOf { position.value / 1000 } }
+        val shown = drag?.let { (it * durationMs).toLong() } ?: (playedSec * 1000)
         Row(Modifier.fillMaxWidth()) {
             Text(clock(shown), style = MaterialTheme.typography.labelMedium, color = color.copy(alpha = 0.6f))
             Spacer(Modifier.weight(1f))

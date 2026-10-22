@@ -17,7 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +41,7 @@ fun MiniPlayer(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val position: State<Long> = remember(connection) { connection.position() }.collectAsState(0L)
+    val position: State<Long> = remember(connection) { connection.position() }.collectAsStateWithLifecycle(0L)
     val track = MaterialTheme.colorScheme.onBackground
     val shape = RoundedCornerShape(16.dp)
     Column(

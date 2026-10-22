@@ -114,11 +114,12 @@ class PlayerConnection(private val context: Context) {
         _index.value = p.currentMediaItemIndex
     }
 
-    /** Polls position while collected; stops when the UI stops looking. */
+    /** Polls position while collected; slows to 1 Hz when paused (seeks still show promptly). */
     fun position(periodMs: Long = 250): Flow<Long> = flow {
         while (true) {
-            emit(controller?.currentPosition ?: 0L)
-            delay(periodMs)
+            val c = controller
+            emit(c?.currentPosition ?: 0L)
+            delay(if (c?.isPlaying == true) periodMs else 1_000L)
         }
     }
 

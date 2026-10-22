@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,6 +90,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
     val now by connection.nowPlaying.collectAsStateWithLifecycle()
     val inset = PaddingValues(bottom = if (now != null) 172.dp else 96.dp)
     var playerOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var covered by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     // enableEdgeToEdge picks icon colours from the *system* theme; follow what we paint instead.
     val lightContent = MaterialTheme.colorScheme.background.luminance() > 0.5f && !playerOpen
     val view = androidx.compose.ui.platform.LocalView.current
@@ -101,7 +103,8 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
     }
     CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            NavHost(nav, startDestination = Tab.Home.route) {
+            // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
+            NavHost(nav, startDestination = Tab.Home.route, modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }) {
                 composable(Tab.Home.route) { HomeScreen() }
                 composable(Tab.Search.route) { SearchScreen() }
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
@@ -126,7 +129,8 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             val route = entry?.destination?.route
             if (route != SETTINGS_ROUTE && route != Routes.LOGIN) {
                 Column(
-                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
+                    Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (covered) 0f else 1f }
+                        .navigationBarsPadding().padding(bottom = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -143,7 +147,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                     )
                 }
             }
-            now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }) }
+            now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
     }
 }

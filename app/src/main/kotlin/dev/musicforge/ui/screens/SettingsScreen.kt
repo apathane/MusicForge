@@ -139,6 +139,29 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
                 subtitle = "Songs, likes, playlists, albums, artists, history, lyrics and settings",
                 onClick = { openBackup.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             )
+            var autoList by androidx.compose.runtime.remember { mutableStateOf<List<java.io.File>?>(null) }
+            ActionRow("Restore an automatic backup", "Made daily on this phone; the last 7 are kept") {
+                autoList = context.graph.autoBackup.list()
+            }
+            autoList?.let { files ->
+                AlertDialog(
+                    onDismissRequest = { autoList = null },
+                    title = { Text("Automatic backups") },
+                    text = {
+                        Column {
+                            if (files.isEmpty()) Text("None yet. The first one is made a little after the app starts.")
+                            files.forEach { f ->
+                                Text(
+                                    SimpleDateFormat("EEE d MMM, HH:mm", Locale.getDefault()).format(Date(f.lastModified())) + "  ·  ${f.length() / 1024} KB",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.fillMaxWidth().clickable { autoList = null; vm.inspect(android.net.Uri.fromFile(f)) }.padding(vertical = 10.dp),
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = { TextButton({ autoList = null }) { Text("Close") } },
+                )
+            }
             ActionRow(
                 title = "Create backup",
                 subtitle = "Same format as Metrolist and ConvX",
@@ -147,6 +170,24 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
                     createBackup.launch("${BuildConfig.CODENAME}-$stamp.backup")
                 },
             )
+        }
+
+        SectionTitle("Playback")
+        Group {
+            val quality = prefs?.get(Keys.AudioQuality) ?: "AUTO"
+            ChoiceRow("Audio quality", listOf("AUTO" to "Auto", "HIGH" to "High", "LOW" to "Data saver"), quality) { vm.set(Keys.AudioQuality, it) }
+            ToggleRow("Even out loudness", prefs?.get(Keys.AudioNormalization) ?: true) { vm.set(Keys.AudioNormalization, it) }
+            ToggleRow("Skip silence", prefs?.get(Keys.SkipSilence) ?: false) { vm.set(Keys.SkipSilence, it) }
+            val context = LocalContext.current
+            ActionRow("Equalizer", "Opens your phone's sound settings") {
+                val intent = android.content.Intent(android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
+                    .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                    .putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
+                    .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, context.graph.audioSessionId)
+                runCatching { context.startActivity(intent) }.onFailure {
+                    android.widget.Toast.makeText(context, "No equalizer on this phone", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         SectionTitle("Appearance")

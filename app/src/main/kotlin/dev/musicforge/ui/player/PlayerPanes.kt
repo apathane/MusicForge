@@ -103,7 +103,7 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
     val touchedAt = remember { mutableLongStateOf(0L) }
     LaunchedEffect(current) {
         // Don't yank the list away while someone is reading ahead.
-        if (current >= 0 && System.currentTimeMillis() - touchedAt.longValue > 3_000) {
+        if (current >= 0 && android.os.SystemClock.uptimeMillis() - touchedAt.longValue > 3_000) {
             list.animateScrollToItem(current, scrollOffset = -list.layoutInfo.viewportSize.height / 3)
         }
     }
@@ -113,7 +113,7 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
         modifier = Modifier.fillMaxSize().pointerInput(Unit) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)
-                touchedAt.longValue = System.currentTimeMillis()
+                touchedAt.longValue = android.os.SystemClock.uptimeMillis()
             }
         },
     ) {
