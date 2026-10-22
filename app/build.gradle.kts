@@ -105,3 +105,14 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.room.testing)
 }
+
+// Robolectric's native SQLite needs these on JDK 17+.
+tasks.withType<Test>().configureEach {
+    jvmArgs(
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+    )
+    maxHeapSize = "2g"
+}

@@ -179,7 +179,7 @@ private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsVi
                 title = { Text("Restore from $from?") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${p.rowCounts["song"] ?: 0} songs · ${p.rowCounts["playlist"] ?: 0} playlists · ${p.rowCounts["event"] ?: 0} plays")
+                        Text("${plural(p.rowCounts["song"] ?: 0, "song")} · ${plural(p.rowCounts["playlist"] ?: 0, "playlist")} · ${plural(p.rowCounts["event"] ?: 0, "play")}")
                         Text("This replaces your current library. Downloads aren't part of backups; re-download them afterwards.")
                         if (p.accountName != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -200,7 +200,7 @@ private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsVi
                 title = { Text("Restored") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("${r.copied["song"] ?: 0} songs, ${r.copied["playlist"] ?: 0} playlists, ${r.copied["event"] ?: 0} plays, ${r.settingsImported} settings.")
+                        Text("${plural(r.copied["song"] ?: 0, "song")}, ${plural(r.copied["playlist"] ?: 0, "playlist")}, ${plural(r.copied["event"] ?: 0, "play")}, ${plural(r.settingsImported, "setting")}.")
                         r.warnings.take(4).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 },
@@ -278,3 +278,5 @@ private fun ChoiceRow(title: String, options: List<Pair<String, String>>, select
         }
     }
 }
+
+private fun plural(n: Int, word: String) = if (n == 1) "1 $word" else "$n ${word}s"

@@ -1,6 +1,7 @@
 package dev.musicforge.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -106,10 +107,10 @@ fun ForgeTheme(
         DarkMode.AUTO -> isSystemInDarkTheme()
     }
     CompositionLocalProvider(LocalArtworkColors provides artwork) {
-        MaterialTheme(
-            colorScheme = if (dark) darkScheme(pureBlack) else LightScheme,
-            typography = ForgeTypography,
-            content = content,
-        )
+        val scheme = if (dark) darkScheme(pureBlack) else LightScheme
+        MaterialTheme(colorScheme = scheme, typography = ForgeTypography) {
+            // No Surface wraps the app, so Text would fall back to black in dark mode.
+            CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)
+        }
     }
 }
