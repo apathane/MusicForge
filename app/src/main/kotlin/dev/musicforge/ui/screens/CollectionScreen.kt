@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -185,13 +186,24 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
     val vm = viewModel(key = "${kind.name}:$id") { CollectionViewModel(graph, kind, id) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val list = rememberLazyListState()
+    var editing by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (editing) {
+        PlaylistEditDialog(
+            name = ui.title,
+            onRename = { graph.library.renamePlaylist(id, it); editing = false },
+            onDelete = { graph.library.deletePlaylist(id); editing = false; onBack() },
+            onDismiss = { editing = false },
+        )
+    }
     val nearEnd by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 >= list.layoutInfo.totalItemsCount - 8 } }
     LaunchedEffect(nearEnd, ui.hasMore) { if (nearEnd && ui.hasMore) vm.loadMore() }
 
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item {
-            Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 4.dp, end = 4.dp, top = 4.dp)) {
                 IconAction(ForgeIcons.Back, "Back", onBack)
+                Spacer(Modifier.weight(1f))
+                if (kind == CollectionKind.LOCAL_PLAYLIST) IconAction(ForgeIcons.More, "Playlist options") { editing = true }
             }
         }
         item { Header(ui, onPlay = { shuffle -> play(graph, ui, shuffle) }, onDownloadAll = {
@@ -212,6 +224,11 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
                 track.item,
                 track.subtitle,
                 number = if (kind == CollectionKind.ALBUM) index + 1 else null,
+                extraActions = if (kind == CollectionKind.LOCAL_PLAYLIST) {
+                    listOf("Remove from this playlist" to { graph.library.removeFromPlaylist(id, track.item.mediaId) })
+                } else {
+                    emptyList()
+                },
                 onPlay = { graph.player.play(ui.tracks.map { it.item }, index) },
             )
         }
@@ -277,4 +294,35 @@ private fun HeaderButton(label: String, icon: androidx.compose.ui.graphics.vecto
         Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = fg)
     }
+}
+
+@Composable
+private fun PlaylistEditDialog(name: String, onRename: (String) -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+    var text by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(name) }
+    var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (confirmDelete) "Delete \"$name\"?" else "Playlist") },
+        text = {
+            if (confirmDelete) {
+                Text("The songs stay in your library.")
+            } else {
+                androidx.compose.material3.OutlinedTextField(text, { text = it }, singleLine = true, label = { Text("Name") })
+            }
+        },
+        confirmButton = {
+            if (confirmDelete) {
+                androidx.compose.material3.TextButton(onDelete) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            } else {
+                androidx.compose.material3.TextButton({ onRename(text) }) { Text("Save") }
+            }
+        },
+        dismissButton = {
+            if (confirmDelete) {
+                androidx.compose.material3.TextButton({ confirmDelete = false }) { Text("Cancel") }
+            } else {
+                androidx.compose.material3.TextButton({ confirmDelete = true }) { Text("Delete playlist", color = MaterialTheme.colorScheme.error) }
+            }
+        },
+    )
 }

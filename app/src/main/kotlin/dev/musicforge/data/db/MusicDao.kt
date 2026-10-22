@@ -157,6 +157,21 @@ interface MusicDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT) suspend fun insert(playlist: PlaylistEntity)
 
+    /** Removes one occurrence (the earliest) of a song from a playlist. */
+    @Query(
+        """
+        DELETE FROM playlist_song_map WHERE id =
+          (SELECT id FROM playlist_song_map WHERE playlistId = :playlistId AND songId = :songId ORDER BY position LIMIT 1)
+        """,
+    )
+    suspend fun removeFromPlaylist(playlistId: String, songId: String)
+
+    @Query("UPDATE playlist SET name = :name, lastUpdateTime = :at WHERE id = :id")
+    suspend fun renamePlaylist(id: String, name: String, at: Long)
+
+    @Query("DELETE FROM playlist WHERE id = :id")
+    suspend fun deletePlaylist(id: String)
+
     @Query("UPDATE playlist SET lastUpdateTime = :at WHERE id = :id")
     suspend fun touchPlaylist(id: String, at: Long)
 

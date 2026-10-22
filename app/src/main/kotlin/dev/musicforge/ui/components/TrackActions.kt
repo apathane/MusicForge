@@ -70,7 +70,7 @@ fun DownloadBadge(id: String) {
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @OptIn(UnstableApi::class)
 @Composable
-fun TrackActionsSheet(item: MediaItem, onDismiss: () -> Unit) {
+fun TrackActionsSheet(item: MediaItem, extra: List<Pair<String, () -> Unit>> = emptyList(), onDismiss: () -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
     val download by remember(item.mediaId) { graph.downloads.state(item.mediaId) }.collectAsStateWithLifecycle(null)
@@ -99,6 +99,7 @@ fun TrackActionsSheet(item: MediaItem, onDismiss: () -> Unit) {
                 Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
             }
             Action(ForgeIcons.PlaylistAdd, "Add to playlist") { picking = true }
+            extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
             when (download?.state) {
                 Download.STATE_COMPLETED -> Action(ForgeIcons.Download, "Remove download") {
                     graph.downloads.remove(item.mediaId); onDismiss()

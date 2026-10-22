@@ -61,7 +61,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
     val counts by vm.counts.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
     val nav = LocalNavController.current
-    val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists == 0 } ?: false
+    val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists + it.downloaded + it.events == 0 } ?: false
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item {

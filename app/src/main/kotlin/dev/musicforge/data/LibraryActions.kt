@@ -35,6 +35,18 @@ class LibraryActions(
         }
     }
 
+    fun removeFromPlaylist(playlistId: String, songId: String) = scope.launch {
+        db.dao().removeFromPlaylist(playlistId, songId)
+        db.dao().touchPlaylist(playlistId, System.currentTimeMillis())
+    }
+
+    fun renamePlaylist(id: String, name: String) = scope.launch {
+        name.trim().takeIf { it.isNotEmpty() }?.let { db.dao().renamePlaylist(id, it, System.currentTimeMillis()) }
+    }
+
+    /** The playlist goes; the songs stay in the library (their map rows cascade away). */
+    fun deletePlaylist(id: String) = scope.launch { db.dao().deletePlaylist(id) }
+
     /** Same id style as Metrolist's local playlists (a UUID), so our backups read back there too. */
     fun createPlaylist(name: String, firstSong: MediaItem? = null) = scope.launch {
         val id = UUID.randomUUID().toString()
