@@ -50,6 +50,7 @@ import dev.musicforge.ui.screens.ArtistScreen
 import dev.musicforge.ui.screens.CollectionScreen
 import dev.musicforge.ui.screens.DownloadsScreen
 import dev.musicforge.ui.screens.LibraryAlbumsScreen
+import dev.musicforge.ui.screens.LoginScreen
 import dev.musicforge.ui.screens.LibraryArtistsScreen
 import dev.musicforge.ui.screens.HomeScreen
 import dev.musicforge.ui.screens.LibraryScreen
@@ -83,7 +84,8 @@ fun ForgeRoot(glass: GlassStyle) {
                 composable(Tab.Search.route) { SearchScreen() }
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
                 composable(Tab.Downloads.route) { DownloadsScreen() }
-                composable(SETTINGS_ROUTE) { SettingsScreen(onBack = { nav.popBackStack() }) }
+                composable(SETTINGS_ROUTE) { SettingsScreen(onBack = { nav.popBackStack() }, onSignIn = { nav.navigate(Routes.LOGIN) }) }
+                composable(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
                 composable(
                     Routes.COLLECTION,
                     arguments = listOf(navArgument("kind") { type = NavType.StringType }, navArgument("id") { type = NavType.StringType }),
@@ -100,7 +102,7 @@ fun ForgeRoot(glass: GlassStyle) {
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
-            if (route != SETTINGS_ROUTE) {
+            if (route != SETTINGS_ROUTE && route != Routes.LOGIN) {
                 Column(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,

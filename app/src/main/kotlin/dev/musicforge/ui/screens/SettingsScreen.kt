@@ -87,6 +87,14 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
             .getOrElse { RestoreState.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
+    fun signOut() = viewModelScope.launch {
+        graph.settings.edit { p ->
+            listOf(Keys.InnerTubeCookie, Keys.DataSyncId, Keys.InnerTubeAuthUser, Keys.AccountName, Keys.AccountEmail, Keys.AccountChannelHandle)
+                .forEach { p.remove(it) }
+        }
+        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+    }
+
     fun dismiss() {
         _restore.value = RestoreState.Idle
     }
@@ -97,7 +105,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit) {
     val context = LocalContext.current
     val vm = viewModel { SettingsViewModel(context.graph) }
     val restore by vm.restore.collectAsStateWithLifecycle()
@@ -112,6 +120,17 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
         ScreenHeader("Settings") { IconAction(ForgeIcons.ChevronRight, "Close", onBack) }
+
+        SectionTitle("Account")
+        Group {
+            val name = prefs?.get(Keys.AccountName)?.takeIf { it.isNotBlank() && prefs?.get(Keys.InnerTubeCookie) != null }
+            if (name == null) {
+                ActionRow("Sign in to YouTube Music", "Your likes, playlists, history and recommendations", onSignIn)
+            } else {
+                ActionRow("Signed in as $name", prefs?.get(Keys.AccountEmail).orEmpty().ifEmpty { "YouTube Music" }) {}
+                ActionRow("Sign out", "Keeps your library on this phone", vm::signOut)
+            }
+        }
 
         SectionTitle("Backup & restore")
         Group {
