@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -71,4 +72,15 @@ class AppGraph(val app: Application) {
     val library by lazy { dev.musicforge.data.LibraryActions(database, recorder, scope) }
 
     val player by lazy { PlayerConnection(app) }
+
+    val lyrics by lazy { dev.musicforge.data.lyrics.LyricsRepository(database.dao(), http) }
+
+    /** Colours and blurred backdrop of what's playing; recomputed once per track. */
+    val ambience by lazy {
+        dev.musicforge.ui.theme.ArtworkAmbience(
+            app,
+            CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            player.nowPlaying.map { it?.metadata?.artworkUri?.toString() },
+        )
+    }
 }

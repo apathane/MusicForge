@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.ui.ForgeRoot
-import dev.musicforge.ui.components.GlassStyle
 import dev.musicforge.ui.components.GlassTier
 import dev.musicforge.ui.theme.DarkMode
 import dev.musicforge.ui.theme.ForgeTheme
@@ -37,8 +36,21 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val current by look.collectAsStateWithLifecycle(initialValue = Look())
-            ForgeTheme(darkMode = current.darkMode, pureBlack = current.pureBlack) {
-                ForgeRoot(glass = GlassStyle(tier = current.glass))
+            val ambience by graph.ambience.ambience.collectAsStateWithLifecycle()
+            // The splash is drawn before any of our code runs, from a theme chosen now for next time.
+            androidx.compose.runtime.LaunchedEffect(current.darkMode, current.pureBlack) {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    splashScreen.setSplashScreenTheme(
+                        when (current.darkMode) {
+                            DarkMode.ON -> R.style.Theme_Forge_Dark
+                            DarkMode.OFF -> R.style.Theme_Forge_Light
+                            DarkMode.AUTO -> R.style.Theme_Forge
+                        },
+                    )
+                }
+            }
+            ForgeTheme(darkMode = current.darkMode, pureBlack = current.pureBlack, artwork = ambience.colors) {
+                ForgeRoot(glassTier = current.glass, ambience = ambience)
             }
         }
     }

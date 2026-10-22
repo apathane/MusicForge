@@ -2,4 +2,6 @@
 <resources>
     <color name="window">#FFFFFFFF</color>
     <color name="icon_bg">#FF000000</color>
+    <color name="window_dark">#FF000000</color>
+    <color name="window_light">#FFFFFFFF</color>
 </resources>

@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Follows the system theme ("Auto"). -->
     <style name="Theme.Forge" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <!-- Forced themes, so the next launch's splash matches what the app will paint. -->
+    <style name="Theme.Forge.Dark" parent="Theme.Forge">
+        <item name="android:windowBackground">@color/window_dark</item>
+    </style>
+    <style name="Theme.Forge.Light" parent="Theme.Forge">
+        <item name="android:windowBackground">@color/window_light</item>
     </style>
 </resources>

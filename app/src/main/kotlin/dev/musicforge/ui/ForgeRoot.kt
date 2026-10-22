@@ -30,10 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.graph
 import dev.musicforge.ui.player.MiniPlayer
+import dev.musicforge.ui.player.PlayerSheet
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -42,6 +45,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.GlassStyle
+import dev.musicforge.ui.components.GlassTier
+import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.components.LocalGlassStyle
 import dev.musicforge.ui.components.glass
 import androidx.navigation.NavType
@@ -72,11 +77,28 @@ val LocalBottomInset = staticCompositionLocalOf { PaddingValues(bottom = 96.dp) 
 val LocalNavController = staticCompositionLocalOf<NavHostController> { error("no nav controller") }
 
 @Composable
-fun ForgeRoot(glass: GlassStyle) {
+fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
     val nav = rememberNavController()
+    val windowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.coerceAtLeast(1)
+    val glass = GlassStyle(
+        tier = glassTier,
+        backdrop = ambience.backdrop.takeIf { glassTier != GlassTier.SOLID },
+        backdropScale = (ambience.backdrop?.width ?: 54).toFloat() / windowWidth,
+    )
     val connection = LocalContext.current.graph.player
     val now by connection.nowPlaying.collectAsStateWithLifecycle()
     val inset = PaddingValues(bottom = if (now != null) 172.dp else 96.dp)
+    var playerOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    // enableEdgeToEdge picks icon colours from the *system* theme; follow what we paint instead.
+    val lightContent = MaterialTheme.colorScheme.background.luminance() > 0.5f && !playerOpen
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+        androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = lightContent
+            isAppearanceLightNavigationBars = lightContent
+        }
+    }
     CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             NavHost(nav, startDestination = Tab.Home.route) {
@@ -108,7 +130,7 @@ fun ForgeRoot(glass: GlassStyle) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    now?.let { MiniPlayer(it, connection, onOpen = {}) }
+                    now?.let { MiniPlayer(it, connection, onOpen = { playerOpen = true }) }
                     NavPill(
                         current = Tab.entries.firstOrNull { it.route == route } ?: lastTab(nav),
                         onSelect = { tab ->
@@ -121,6 +143,7 @@ fun ForgeRoot(glass: GlassStyle) {
                     )
                 }
             }
+            now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }) }
         }
     }
 }

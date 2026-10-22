@@ -141,6 +141,9 @@ interface MusicDao {
     @Query("SELECT * FROM artist WHERE id = :id")
     suspend fun artist(id: String): ArtistEntity?
 
+    @Query("SELECT * FROM lyrics WHERE id = :id")
+    suspend fun lyrics(id: String): LyricsEntity?
+
     @Query("SELECT * FROM format WHERE id = :id")
     suspend fun format(id: String): FormatEntity?
 
