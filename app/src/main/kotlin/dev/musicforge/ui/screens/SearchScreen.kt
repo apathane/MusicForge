@@ -77,7 +77,7 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
     sealed interface Results {
         data object Idle : Results
         data object Loading : Results
-        data class Items(val items: List<YTItem>) : Results
+        data class Items(val items: List<YTItem>, val local: List<dev.musicforge.data.db.Song> = emptyList(), val offline: String? = null) : Results
         data class Failed(val message: String) : Results
     }
 
@@ -107,9 +107,14 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
         viewModelScope.launch {
             _results.value = Results.Loading
             graph.database.dao().insertSearch(SearchHistory(query = q))
+            val local = if (kind.value == SearchKind.Songs) graph.database.dao().searchLibrary(q) else emptyList()
             _results.value = YouTube.search(q, kind.value.filter).fold(
-                onSuccess = { r -> Results.Items(r.items) },
-                onFailure = { Results.Failed(it.message ?: "Search failed") },
+                onSuccess = { r -> Results.Items(r.items, local) },
+                onFailure = {
+                    // Offline: your own music still answers.
+                    if (local.isNotEmpty()) Results.Items(emptyList(), local, offline = "Offline: showing songs you have")
+                    else Results.Failed(it.message ?: "Search failed")
+                },
             )
         }
     }
@@ -171,7 +176,16 @@ fun SearchScreen() {
             }
             is SearchViewModel.Results.Failed -> item { EmptyState("Couldn't search", r.message) }
             is SearchViewModel.Results.Items -> {
-                if (r.items.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
+                r.offline?.let { note -> item { Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) } }
+                if (r.local.isNotEmpty()) {
+                    item { dev.musicforge.ui.components.SectionTitle("In your library") }
+                    items(r.local, key = { "l:" + it.id }) { s ->
+                        val item = androidx.compose.runtime.remember(s.id) { s.toMediaItem() }
+                        SongRow(item, s.artistLine, onPlay = { player.play(r.local.map { it.toMediaItem() }, r.local.indexOf(s)) })
+                    }
+                    if (r.items.isNotEmpty()) item { dev.musicforge.ui.components.SectionTitle("YouTube Music") }
+                }
+                if (r.items.isEmpty() && r.local.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
                 items(r.items, key = { it.id }) { result ->
                     when (result) {
                         is SongItem -> {

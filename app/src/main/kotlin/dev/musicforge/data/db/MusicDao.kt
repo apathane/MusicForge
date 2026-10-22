@@ -174,6 +174,20 @@ interface MusicDao {
     @Query("SELECT COUNT(DISTINCT songId) FROM event WHERE timestamp >= :since")
     fun distinctSongs(since: Long): Flow<Int>
 
+    /** Songs you have (in library, liked, downloaded or played) matching title or artist. */
+    @Transaction
+    @Query(
+        """
+        SELECT DISTINCT song.* FROM song
+        LEFT JOIN song_artist_map m ON m.songId = song.id
+        LEFT JOIN artist ON artist.id = m.artistId
+        WHERE (song.title LIKE '%' || :q || '%' OR artist.name LIKE '%' || :q || '%')
+          AND (song.inLibrary IS NOT NULL OR song.liked OR song.isDownloaded OR song.totalPlayTime > 0)
+        ORDER BY song.isDownloaded DESC, song.totalPlayTime DESC LIMIT :limit
+        """,
+    )
+    suspend fun searchLibrary(q: String, limit: Int = 12): List<Song>
+
     @Query("SELECT query FROM search_history ORDER BY id DESC LIMIT :limit")
     fun searchHistory(limit: Int = 20): Flow<List<String>>
 
