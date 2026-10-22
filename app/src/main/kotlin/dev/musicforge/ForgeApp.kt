@@ -19,6 +19,12 @@ class ForgeApp : Application() {
             delay(30_000)
             graph.autoBackup.runIfDue()
         }
+        // Bring up the download engine soon after start: it reconciles the library with
+        // the bytes actually on disk. DownloadManager wants the main looper.
+        graph.scope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            delay(3_000)
+            graph.downloads
+        }
     }
 }
 

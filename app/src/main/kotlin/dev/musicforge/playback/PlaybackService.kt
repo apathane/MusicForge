@@ -51,6 +51,8 @@ class PlaybackService : MediaSessionService() {
     private var eventWritten = false
     private var checkpointJob: Job? = null
     private var transitionAt = 0L
+    private var consecutiveErrors = 0
+    private var lastErrorAt = 0L
 
     private val readAhead by lazy { ReadAhead(this, graph.mediaEngine, graph.downloads, scope) }
 
@@ -174,6 +176,16 @@ class PlaybackService : MediaSessionService() {
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Timber.e(error, "playback error on %s", player.currentMediaItem?.mediaId)
+            // One bad track (removed, region-locked, offline and not cached) shouldn't end the
+            // music: move on, but stop after a few failures in a row instead of chewing the queue.
+            val now = android.os.SystemClock.elapsedRealtime()
+            consecutiveErrors = if (now - lastErrorAt < 15_000) consecutiveErrors + 1 else 1
+            lastErrorAt = now
+            if (consecutiveErrors <= 3 && player.hasNextMediaItem()) {
+                player.seekToNextMediaItem()
+                player.prepare()
+                player.play()
+            }
         }
     }
 

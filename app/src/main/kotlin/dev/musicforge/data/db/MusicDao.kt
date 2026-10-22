@@ -178,6 +178,9 @@ interface MusicDao {
     @Query("UPDATE song SET liked = :liked, likedDate = :at WHERE id = :id")
     suspend fun setLiked(id: String, liked: Boolean, at: Long?)
 
+    @Query("SELECT id FROM song WHERE isDownloaded")
+    suspend fun downloadedIds(): List<String>
+
     @Query("UPDATE song SET isDownloaded = :downloaded, dateDownload = :at WHERE id = :id")
     suspend fun setDownloaded(id: String, downloaded: Boolean, at: Long?)
 

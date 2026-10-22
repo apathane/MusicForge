@@ -97,6 +97,32 @@ class Downloads(
         manager.downloadIndex.getDownloads().use { c -> while (c.moveToNext()) loaded[c.download.request.id] = c.download }
         _states.value = loaded
         watchNetwork()
+        scope.launch { reconcile(loaded.values) }
+    }
+
+    /**
+     * The download index is the truth about bytes on disk; make the library agree with it.
+     * Recreates song rows that went missing (a restore, a crash mid-write) from the metadata
+     * stored with each request, and fixes flags that drifted in either direction.
+     */
+    private suspend fun reconcile(downloads: Collection<Download>) {
+        val done = downloads.filter { it.state == Download.STATE_COMPLETED }
+        var repaired = 0
+        for (d in done) {
+            val id = d.request.id
+            val row = dao.songEntity(id)
+            if (row == null) {
+                recorder.ensureSong(DownloadMeta.decode(id, d.request.data))
+                dao.setDownloaded(id, true, d.updateTimeMs)
+                repaired++
+            } else if (!row.isDownloaded) {
+                dao.setDownloaded(id, true, row.dateDownload ?: d.updateTimeMs)
+                repaired++
+            }
+        }
+        val doneIds = done.mapTo(HashSet()) { it.request.id }
+        dao.downloadedIds().filter { it !in doneIds }.forEach { dao.setDownloaded(it, false, null); repaired++ }
+        if (repaired > 0) Timber.i("download reconcile: repaired %d rows", repaired)
     }
 
     fun state(id: String): Flow<Download?> = states.map { it[id] }
@@ -113,7 +139,7 @@ class Downloads(
                     recorder.ensureSong(item)
                     val request = DownloadRequest.Builder(item.mediaId, item.mediaId.toUri())
                         .setCustomCacheKey(item.mediaId)
-                        .setData(item.mediaMetadata.title?.toString().orEmpty().toByteArray())
+                        .setData(DownloadMeta.encode(item))
                         .build()
                     DownloadService.sendAddDownload(context, ForgeDownloadService::class.java, request, false)
                     prefetchArtwork(item)

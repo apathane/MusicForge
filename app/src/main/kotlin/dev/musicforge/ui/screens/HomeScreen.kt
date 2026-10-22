@@ -86,8 +86,14 @@ class HomeViewModel : ViewModel() {
                 if (chip == null || chips.isEmpty()) chips = page.chips.orEmpty()
                 State.Ready(chips, chip?.title, page.sections.filter { it.items.isNotEmpty() }, continuation != null)
             },
-            onFailure = { State.Failed(it.message ?: "No connection") },
+            onFailure = { State.Failed(friendly(it)) },
         )
+    }
+
+    private fun friendly(e: Throwable): String = when (e) {
+        is java.net.UnknownHostException, is java.net.ConnectException, is java.net.SocketTimeoutException ->
+            "You're offline. Everything you've downloaded still plays."
+        else -> e.message ?: "Something went wrong"
     }
 
     /** The feed goes on as you scroll, like the official app's. */
@@ -160,7 +166,12 @@ fun HomeScreen() {
                 }
             }
             is HomeViewModel.State.Failed -> item {
-                EmptyState("Can't reach YouTube Music", s.message) { PillButton("Try again", { vm.load() }) }
+                EmptyState("Can't reach YouTube Music", s.message) {
+                    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PillButton("Open downloads", { nav.navigate(dev.musicforge.ui.Tab.Downloads.route) })
+                        PillButton("Try again", { vm.load() })
+                    }
+                }
             }
             is HomeViewModel.State.Ready -> itemsIndexed(s.sections, key = { i, sec -> "$i:${sec.title}" }) { _, section ->
                 Shelf(section.title, section.items) { item -> openItem(item, section.items, nav, player) }

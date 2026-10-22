@@ -42,7 +42,7 @@ class ForgeDownloadService : DownloadService(
 
     override fun getForegroundNotification(downloads: MutableList<Download>, notMetRequirements: Int): Notification {
         val title = when (downloads.size) {
-            1 -> Util.fromUtf8Bytes(downloads[0].request.data)
+            1 -> DownloadMeta.title(downloads[0].request.data)
             else -> "${downloads.size} songs"
         }
         val progress = notifications.buildProgressNotification(this, R.drawable.ic_download, null, title, downloads, notMetRequirements)
