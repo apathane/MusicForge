@@ -159,7 +159,8 @@ class PlayerConnection(private val context: Context) {
 
     fun togglePlay() {
         val c = controller ?: return
-        if (c.playerError != null) c.prepare()
+        // A restored queue (or one that hit an error) is idle until prepared.
+        if (c.playerError != null || c.playbackState == Player.STATE_IDLE) c.prepare()
         if (c.isPlaying) c.pause() else c.play()
     }
 

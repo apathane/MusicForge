@@ -28,6 +28,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,6 +64,7 @@ class PlaybackService : MediaLibraryService() {
     private var lastErrorAt = 0L
 
     private val readAhead by lazy { ReadAhead(this, graph.mediaEngine, graph.downloads, scope) }
+    private val queueStore by lazy { QueueStore(this, graph.database.dao()) }
 
     private var radioJob: Job? = null
     private var radioContinuation: String? = null
@@ -113,6 +115,15 @@ class PlaybackService : MediaLibraryService() {
             .setMediaButtonPreferences(listOf(likeButton(false)))
             .build()
 
+        // Pick up where you left off, paused: nothing is fetched until you press play.
+        scope.launch {
+            if (graph.settings.data.first()[Keys.PersistentQueue] == false || player.mediaItemCount > 0) return@launch
+            val saved = queueStore.load() ?: return@launch
+            if (player.mediaItemCount == 0) {
+                player.setMediaItems(saved.items, saved.index, saved.positionMs)
+                player.playWhenReady = false
+            }
+        }
         scope.launch {
             graph.settings.data.map { it[Keys.SkipSilence] ?: false }.distinctUntilChanged()
                 .collect { player.skipSilenceEnabled = it }
@@ -270,6 +281,14 @@ class PlaybackService : MediaLibraryService() {
             if (state == Player.STATE_READY) applyLoudness()
         }
 
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            // Read-ahead and radio wait for actual listening (not a restored, paused queue).
+            if (playWhenReady) {
+                updateReadAhead()
+                maybeExtendRadio()
+            }
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
@@ -354,6 +373,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun updateReadAhead() {
+        if (!player.playWhenReady) return
         val from = player.currentMediaItemIndex + 1
         val upcoming = (from until minOf(player.mediaItemCount, from + 5)).map { player.getMediaItemAt(it).mediaId }
         readAhead.update(upcoming)
@@ -364,8 +384,17 @@ class PlaybackService : MediaLibraryService() {
         return playedMs + running
     }
 
+    private fun saveQueue() {
+        val count = minOf(player.mediaItemCount, 200)
+        val ids = (0 until count).map { player.getMediaItemAt(it).mediaId }
+        val index = player.currentMediaItemIndex
+        val position = player.currentPosition
+        graph.scope.launch { runCatching { queueStore.save(ids, index, position) } }
+    }
+
     /** Persist uncounted play time, and the play event once it counts. App scope: survives us. */
     private fun checkpoint() {
+        saveQueue()
         val item = currentItem ?: return
         val played = playedSoFar()
         val delta = played - checkpointedMs
@@ -405,6 +434,7 @@ class PlaybackService : MediaLibraryService() {
      * radio for what's playing, the same "up next" the official app gives.
      */
     private fun maybeExtendRadio() {
+        if (!player.playWhenReady) return
         if (player.mediaItemCount - player.currentMediaItemIndex > 3) return
         if (radioJob?.isActive == true) return
         val current = player.currentMediaItem ?: return
