@@ -22,6 +22,7 @@ class ChunkedDataSourceTest {
     private inner class FakeServer(
         private val shortReadAt: Long? = null,
         private val refuseFrom: Long? = null,
+        private val deadFrom: Long? = null,
     ) : DataSource {
         val ranges = mutableListOf<LongRange>()
         private var pos = 0L
@@ -36,6 +37,8 @@ class ChunkedDataSourceTest {
             pos = dataSpec.position
             end = dataSpec.position + dataSpec.length
             ranges += pos until end
+            // A server that accepts the range and then sends nothing.
+            if (deadFrom != null && pos >= deadFrom) end = pos
             // Simulate a connection that drops early once, mid-range.
             if (shortReadAt != null && !truncatedOnce && shortReadAt in pos until end) {
                 end = shortReadAt
@@ -107,6 +110,13 @@ class ChunkedDataSourceTest {
         assertThat(bytes).isEqualTo(data)
         // The next range starts exactly where the truncated one stopped.
         assertThat(server.ranges.map { it.first }).contains(3_000L)
+    }
+
+    @Test fun deadServerIsAnErrorNotAShortFile() {
+        val source = ChunkedDataSource(FakeServer(deadFrom = 4096)) { _, _ -> }
+        val thrown = runCatching { readAll(source, spec()) }.exceptionOrNull()
+        assertThat(thrown).isInstanceOf(java.io.IOException::class.java)
+        assertThat(thrown!!.message).contains("5904 bytes early")
     }
 
     @Test fun reportsRefusalWithVideoId() {

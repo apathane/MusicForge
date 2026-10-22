@@ -87,13 +87,18 @@ class ChunkedDataSource(
             }
             chunkRemaining = 0
         }
-        return C.RESULT_END_OF_INPUT
+        // Never report a short stream as complete: a truncated file in the cache is worse
+        // than an error, which Media3 retries from the current position.
+        throw java.io.IOException("stream ended $remaining bytes early at $position")
     }
 
     private fun closeChunk() {
         if (chunkOpen) {
-            chunkOpen = false
-            upstream.close()
+            try {
+                upstream.close()
+            } finally {
+                chunkOpen = false
+            }
         }
     }
 
