@@ -131,7 +131,9 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                 .graphicsLayer {
                     translationY = offset.value
                     shape = sheetShape
-                    clip = true
+                    // Fully open, nothing is painted behind the sheet (no window background), so
+                    // rounded corners would show stale pixels: square it off at rest.
+                    clip = offset.value > 0.5f
                 }
                 .playerBackground(ambience, remember(ambience.backdrop) { ambience.backdrop?.let(::withScrim) }),
         ) {
