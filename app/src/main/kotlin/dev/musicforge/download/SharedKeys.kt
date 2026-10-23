@@ -9,8 +9,10 @@ import androidx.media3.exoplayer.offline.DownloaderFactory
 import androidx.media3.exoplayer.offline.WritableDownloadIndex
 
 /** The key this download's bytes live under, when it shares another song's file. */
+@OptIn(UnstableApi::class)
 fun DownloadRequest.sharedKey(): String? = customCacheKey?.takeIf { it != id }
 
+@OptIn(UnstableApi::class)
 private fun DownloadRequest.storageKey(): String = customCacheKey ?: id
 
 /** Keeps shared bytes until the last download pointing at them is removed (ConvX's approach). */
