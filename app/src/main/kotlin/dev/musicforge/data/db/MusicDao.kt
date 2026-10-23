@@ -48,7 +48,8 @@ data class HourCount(val hour: Int, val plays: Int)
 /** An artist the listener asked to hear less of, and until when. */
 data class LessOfArtist(
     @Embedded val artist: ArtistEntity,
-    val expiresAt: Long,
+    /** Null: until the listener resets Home. */
+    val expiresAt: Long?,
 )
 
 data class LibraryCounts(
@@ -314,8 +315,8 @@ interface MusicDao {
 
     @Query(
         """
-        SELECT artist.*, MAX(f.expiresAt) AS expiresAt FROM recommendation_feedback f JOIN artist ON artist.id = f.artistId
-        WHERE f.action = 'LESS_OF_ARTIST' AND f.expiresAt > :now GROUP BY artist.id ORDER BY artist.name
+        SELECT artist.*, CASE WHEN COUNT(*) > COUNT(f.expiresAt) THEN NULL ELSE MAX(f.expiresAt) END AS expiresAt FROM recommendation_feedback f JOIN artist ON artist.id = f.artistId
+        WHERE f.action = 'LESS_OF_ARTIST' AND (f.expiresAt IS NULL OR f.expiresAt > :now) GROUP BY artist.id ORDER BY artist.name
         """,
     )
     fun lessOfArtists(now: Long): Flow<List<LessOfArtist>>

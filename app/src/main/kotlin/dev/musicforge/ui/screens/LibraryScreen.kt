@@ -46,6 +46,7 @@ import dev.musicforge.ui.components.SectionTitle
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -67,10 +68,10 @@ class LibraryViewModel(graph: AppGraph) : ViewModel() {
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
     val found: StateFlow<Pair<List<dev.musicforge.data.db.Song>, List<PlaylistSummary>>?> = query
         .debounce(150)
-        .mapLatest { q ->
-            val t = q.trim()
-            if (t.isEmpty()) null
-            else dao.searchLibrary(t, 50) to playlists.value.filter { it.playlist.name.contains(t, ignoreCase = true) }
+        .mapLatest { q -> q.trim().takeIf { it.isNotEmpty() }?.let { t -> t to dao.searchLibrary(t, 50) } }
+        // Playlist matches follow the live list, so a rename or a new playlist shows without retyping.
+        .combine(dao.playlists()) { hit, lists ->
+            hit?.let { (t, songs) -> songs to lists.filter { it.playlist.name.contains(t, ignoreCase = true) } }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

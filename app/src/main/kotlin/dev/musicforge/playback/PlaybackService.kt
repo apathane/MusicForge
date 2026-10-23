@@ -128,7 +128,10 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         scope.launch {
-            graph.settings.data.map { it[Keys.Autoplay] ?: true }.distinctUntilChanged().collect { autoplay = it }
+            graph.settings.data.map { it[Keys.Autoplay] ?: true }.distinctUntilChanged().collect {
+                autoplay = it
+                if (!it) radioJob?.cancel()
+            }
         }
         scope.launch {
             graph.settings.data.map { it[Keys.SkipSilence] ?: false }.distinctUntilChanged()
@@ -461,6 +464,10 @@ class PlaybackService : MediaLibraryService() {
         if (radioJob?.isActive == true) return
         val current = player.currentMediaItem ?: return
         radioJob = scope.launch {
+            // The stored value, not the cached one: right after a cold start, or a switch flipped
+            // while this fetch was in flight, the cache can still say on.
+            suspend fun allowed() = graph.settings.data.first()[Keys.Autoplay] != false
+            if (!allowed()) return@launch
             val seed = radioSeed
             val endpoint = if (seed != null && radioContinuation != null) {
                 WatchEndpoint(videoId = seed, playlistId = "RDAMVM$seed")
@@ -472,7 +479,7 @@ class PlaybackService : MediaLibraryService() {
             radioContinuation = result.continuation
             val queued = (0 until player.mediaItemCount).mapTo(HashSet()) { player.getMediaItemAt(it).mediaId }
             val fresh = result.items.filter { it.id !in queued }.map { it.toMediaItem().markedFromRadio() }
-            if (fresh.isNotEmpty()) player.addMediaItems(fresh)
+            if (fresh.isNotEmpty() && allowed()) player.addMediaItems(fresh)
         }
     }
 

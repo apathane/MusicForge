@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -367,7 +368,7 @@ private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsVi
 }
 
 @Composable
-private fun monoSwitch() = SwitchDefaults.colors(
+internal fun monoSwitch() = SwitchDefaults.colors(
     checkedTrackColor = MaterialTheme.colorScheme.primary,
     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
 )
@@ -392,13 +393,20 @@ private fun ActionRow(title: String, subtitle: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(horizontal = 16.dp, vertical = 8.dp),
+        // One toggleable row (not a clickable row holding a second, clickable switch), so a screen
+        // reader announces it as a switch with its state.
+        Modifier.fillMaxWidth()
+            .toggleable(value = checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-        Switch(checked, onChange, colors = monoSwitch())
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        Switch(checked, onCheckedChange = null, colors = monoSwitch())
     }
 }
 

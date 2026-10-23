@@ -1,8 +1,8 @@
 package dev.musicforge.ui.screens
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.map
 import dev.musicforge.data.prefs.Keys
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -72,30 +72,18 @@ fun TasteScreen(onBack: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
         }
-        item {
-            val prefs by graph.settings.data.collectAsStateWithLifecycle(null)
-            val paused = prefs?.get(Keys.SuggestionsPaused) == true
-            Row(
-                Modifier.fillMaxWidth().clickable { scope.launch { graph.settings.edit { it[Keys.SuggestionsPaused] = !paused } } }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        // Settings rows are built for an inset card (16 dp); here the screen's gutter is 20.
+        item(key = "pause") {
+            Box(Modifier.padding(horizontal = 4.dp)) {
+            val paused by remember { graph.settings.data.map { it[Keys.SuggestionsPaused] == true } }.collectAsStateWithLifecycle(false)
+            ToggleRow(
+                "Pause suggestions",
+                paused,
+                subtitle = "Home's own suggestion shelves step aside; what you played and saved stays. Radio has its own switch.",
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Pause suggestions", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "Home keeps what you played, downloaded and saved, and stops guessing from it",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                androidx.compose.material3.Switch(
-                    paused,
-                    { on -> scope.launch { graph.settings.edit { it[Keys.SuggestionsPaused] = on } } },
-                    colors = androidx.compose.material3.SwitchDefaults.colors(
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
+                // Flip what is stored, not what this screen last saw: a tap before the first read can't undo itself.
+                scope.launch { graph.settings.edit { p -> p[Keys.SuggestionsPaused] = p[Keys.SuggestionsPaused] != true } }
+            }
             }
         }
         item { SectionHeader("When you listen", "Plays by hour of the day, all time. Around this hour reads this.") }
@@ -110,15 +98,21 @@ fun TasteScreen(onBack: () -> Unit) {
         items(hidden, key = { "h:" + it.id }) { s ->
             TrackRow(s.song.title, s.artistLine, s.song.thumbnailUrl, onClick = { scope.launch { dao.unhide(s.id) } })
         }
-        item { SectionHeader("Artists you wanted less of", if (lessOf.isEmpty()) "None right now." else "Off the suggestion shelves until the date shown; tap to undo") }
+        item { SectionHeader("Artists you wanted less of", if (lessOf.isEmpty()) "None right now." else "Kept off the suggestion shelves for a while; tap to undo") }
         items(lessOf, key = { "l:" + it.artist.id }) { l ->
-            val days = ((l.expiresAt - now) / 86_400_000L).coerceAtLeast(0)
-            TrackRow(l.artist.name, "For $days more days", l.artist.thumbnailUrl, onClick = { scope.launch { dao.clearLessOf(l.artist.id) } })
+            TrackRow(l.artist.name, lessOfLeft(l.expiresAt, now), l.artist.thumbnailUrl, onClick = { scope.launch { dao.clearLessOf(l.artist.id) } })
         }
-        if (hours.isEmpty() && artists.isEmpty() && hidden.isEmpty()) {
+        if (hours.isEmpty() && artists.isEmpty() && hidden.isEmpty() && lessOf.isEmpty()) {
             item { EmptyState("Nothing yet", "Play some music: this fills in as you listen.") }
         }
     }
+}
+
+/** "For 3 more days", rounded up so the last day doesn't read as zero; null means until reset. */
+private fun lessOfLeft(expiresAt: Long?, now: Long): String {
+    if (expiresAt == null) return "Until you reset Home"
+    val days = ((expiresAt - now + 86_399_999L) / 86_400_000L).coerceAtLeast(1)
+    return if (days == 1L) "For 1 more day" else "For $days more days"
 }
 
 /**

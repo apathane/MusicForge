@@ -63,6 +63,7 @@ import dev.musicforge.ui.designsystem.signalSurface
 import dev.musicforge.ui.openItem
 import dev.musicforge.ui.theme.ForgeTheme
 import java.util.Calendar
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 @Composable
@@ -72,7 +73,7 @@ fun HomeRoot() {
     val once = remember { context.getSharedPreferences("forge.once", android.content.Context.MODE_PRIVATE) }
     val vm = viewModel {
         HomeViewModel(
-            HomeRepository(graph.database.dao(), graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.SuggestionsPaused] == true }),
+            HomeRepository(graph.database.dao(), graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.SuggestionsPaused] == true }.distinctUntilChanged()),
             graph.player,
             welcomeDismissed = once.getBoolean("welcomeDismissed", false),
             onWelcomeDismissed = { once.edit().putBoolean("welcomeDismissed", true).apply() },
