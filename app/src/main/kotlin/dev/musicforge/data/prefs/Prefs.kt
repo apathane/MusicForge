@@ -45,6 +45,8 @@ object Keys {
     val PureBlack = bool("pureBlack")
     val GlassTier = str("forge.glassTier") // SOLID / ARTWORK / LIVE
     val ExportToMusic = bool("forge.exportToMusic")
+    /** Same name as Metrolist and ConvX, so a restore carries it across. */
+    val AutoDownloadOnLike = bool("autoDownloadOnLike")
     val EqEnabled = bool("forge.eqEnabled")
     val EqLevels = str("forge.eqLevelsMb")
     val EqPreset = str("forge.eqPreset")
@@ -77,7 +79,7 @@ object Keys {
         AccountChannelHandle, ContentLanguage, ContentCountry, DarkMode, PureBlack, AudioQuality,
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
-        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled,
+        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,

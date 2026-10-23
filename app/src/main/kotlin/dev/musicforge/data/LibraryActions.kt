@@ -17,6 +17,8 @@ class LibraryActions(
     private val db: MusicDatabase,
     private val recorder: PlayRecorder,
     private val appScope: CoroutineScope,
+    /** Called after a song is liked (auto-download, if the user wants it). */
+    private val onLiked: suspend (MediaItem) -> Unit = {},
 ) {
     /** One writer at a time, in the order edits were made: two quick drags can't land swapped. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -25,6 +27,7 @@ class LibraryActions(
     fun setLiked(item: MediaItem, liked: Boolean) = scope.launch {
         recorder.ensureSong(item)
         db.dao().setLiked(item.mediaId, liked, if (liked) System.currentTimeMillis() else null)
+        if (liked) onLiked(item)
         if (YouTube.cookie != null) {
             YouTube.likeVideo(item.mediaId, liked).onFailure { Timber.w(it, "YouTube like sync failed") }
         }

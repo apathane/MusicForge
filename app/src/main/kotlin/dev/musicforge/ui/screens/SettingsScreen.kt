@@ -250,6 +250,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         SectionTitle("Downloads")
         Group {
             val context = LocalContext.current
+            ToggleRow("Download songs you like", prefs?.get(Keys.AutoDownloadOnLike) ?: false) { vm.set(Keys.AutoDownloadOnLike, it) }
             val exporter = context.graph.musicExport
             if (exporter.supported) {
                 ToggleRow("Also save to Music folder", prefs?.get(Keys.ExportToMusic) ?: false) { vm.set(Keys.ExportToMusic, it) }
