@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +80,7 @@ fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
 @Composable
 fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier, fallbackLetter: String? = null) {
     val px = with(LocalDensity.current) { size.roundToPx() }
+    val context = LocalContext.current
     Box(
         modifier
             .size(size)
@@ -98,7 +100,10 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
             // the baked-in black bars (360/270) so they read as square covers like album art.
             val letterboxed = "i.ytimg.com" in url
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current).data(url).size(px).crossfade(true).build(),
+                // Small thumbnails: right-sized file, no fade (a fade per row costs frames while scrolling).
+                model = remember(url, px) {
+                    ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, px)).size(px).crossfade(px > 300).build()
+                },
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(size).then(

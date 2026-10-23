@@ -85,6 +85,17 @@ val MediaMetadata.durationSec: Int? get() = extras?.getInt(EXTRA_DURATION, -1)?.
  * YouTube Music thumbnails come sized in the URL (`=w120-h120`). Ask for 544 px:
  * enough for the full-screen player at 1080p, and Coil downsamples for small slots.
  */
+/**
+ * The same artwork at about [px] pixels: Google's image server resizes on request, so a 48 dp
+ * row fetches and decodes a ~128 px file instead of the 544 px player cover. Steps keep the
+ * number of cached variants small. Video thumbnails (i.ytimg.com) come in fixed sizes; unchanged.
+ */
+fun sizedArtwork(url: String, px: Int): String {
+    if (!Regex("=w\\d+-h\\d+").containsMatchIn(url)) return url
+    val step = listOf(128, 256, 544).firstOrNull { it >= px } ?: 544
+    return url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w$step-h$step-l90-rj")
+}
+
 fun hiResArtwork(url: String): String =
     when {
         Regex("=w\\d+-h\\d+").containsMatchIn(url) -> url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w544-h544-l90-rj")
