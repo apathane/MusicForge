@@ -282,6 +282,15 @@ interface MusicDao {
     @Query("UPDATE song SET isDownloaded = :downloaded, dateDownload = :at WHERE id = :id")
     suspend fun setDownloaded(id: String, downloaded: Boolean, at: Long?)
 
+    /** Corrections still in force at [now]. */
+    @Query("SELECT * FROM recommendation_feedback WHERE expiresAt IS NULL OR expiresAt > :now")
+    fun activeFeedback(now: Long): Flow<List<RecommendationFeedback>>
+
+    @Insert suspend fun insert(feedback: RecommendationFeedback)
+
+    @Query("DELETE FROM recommendation_feedback")
+    suspend fun clearFeedback()
+
     @Query("UPDATE song SET totalPlayTime = totalPlayTime + :ms WHERE id = :id")
     suspend fun addPlayTime(id: String, ms: Long)
 }

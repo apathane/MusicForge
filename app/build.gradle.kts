@@ -54,6 +54,10 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // MigrationTestHelper reads the exported Room schemas as assets, and Robolectric only sees the
+    // app's merged assets, so they ride in debug builds (about 100 KB); release ships without them.
+    sourceSets.getByName("debug").assets.directories.add("$projectDir/schemas")
+
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/INDEX.LIST", "/META-INF/*.version")
     }

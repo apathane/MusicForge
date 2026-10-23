@@ -52,6 +52,10 @@ data class LocalSignals(
     val forgotten: List<Song> = emptyList(),
     /** Changes once a day, so the forgotten-likes shelf turns over daily but holds still within a day. */
     val daySeed: Int = 0,
+    /** Songs the listener said "not for me" to: never on Home. */
+    val hidden: Set<String> = emptySet(),
+    /** Artists the listener wants less of: kept off the suggestion shelves while in force. */
+    val lessOf: Set<String> = emptySet(),
 )
 
 /**
@@ -63,7 +67,8 @@ object HomeComposer {
     const val MAX_PER_ARTIST = 2
     private const val SHELF = 12
 
-    fun compose(s: LocalSignals): List<HomeSection> {
+    fun compose(signals: LocalSignals): List<HomeSection> {
+        val s = signals.corrected()
         // Each shelf skips what a shelf above already shows.
         val shown = HashSet<String>()
         return listOfNotNull(
@@ -74,6 +79,23 @@ object HomeComposer {
             downloads(s),
             library(s),
             stats(s),
+        )
+    }
+
+    /**
+     * The listener's corrections applied up front: hidden songs leave every shelf, a "less of"
+     * artist leaves the suggestion shelves. Recently played and downloads stay factual.
+     */
+    private fun LocalSignals.corrected(): LocalSignals {
+        if (hidden.isEmpty() && lessOf.isEmpty()) return this
+        val keep = { song: Song -> song.id !in hidden }
+        val suggest = { song: Song -> keep(song) && song.artists.none { it.id in lessOf } }
+        return copy(
+            recent = recent.filter(keep),
+            downloads = downloads.filter(keep),
+            aroundNow = aroundNow.filter { suggest(it.first) },
+            rotation = rotation.filter { suggest(it.first) },
+            forgotten = forgotten.filter(suggest),
         )
     }
 

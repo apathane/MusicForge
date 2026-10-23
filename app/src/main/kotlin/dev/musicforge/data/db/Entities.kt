@@ -283,3 +283,24 @@ data class SongAnalysis(
     override fun equals(other: Any?) = other is SongAnalysis && other.id == id && other.analyzedAt == analyzedAt
     override fun hashCode() = id.hashCode()
 }
+
+/*
+ * MusicForge's own tables. Not part of the upstream schemas, so a Metrolist or ConvX restore
+ * neither copies nor wipes them (BackupImporter.TABLE_ORDER lists only upstream tables).
+ */
+
+/** The listener's correction of a Home suggestion: hide a song, or hear less of an artist for a while. */
+@Entity(tableName = "recommendation_feedback", indices = [Index("mediaId"), Index("artistId"), Index("expiresAt")])
+data class RecommendationFeedback(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Set for [Action.HIDE]. */
+    val mediaId: String? = null,
+    /** Set for [Action.LESS_OF_ARTIST]. */
+    val artistId: String? = null,
+    val action: String,
+    val createdAt: Long,
+    /** Null means it lasts until the listener resets Home. */
+    val expiresAt: Long? = null,
+) {
+    enum class Action { HIDE, LESS_OF_ARTIST }
+}

@@ -4,6 +4,7 @@ import dev.musicforge.data.db.ArtistStat
 import dev.musicforge.data.db.LibraryCounts
 import dev.musicforge.data.db.MusicDao
 import dev.musicforge.data.db.PlaylistSummary
+import dev.musicforge.data.db.RecommendationFeedback
 import dev.musicforge.data.db.Song
 import dev.musicforge.data.db.SongStat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +35,9 @@ class HomeRepository(private val dao: MusicDao, private val now: () -> Long = Sy
             dao.topArtists(week, 1),
             withCredits(dao.songsAtHours(hours)),
             dao.forgottenLikes(likedBefore = start - 45 * DAY_MS, notPlayedSince = start - 30 * DAY_MS),
+            dao.activeFeedback(start),
         ) { values ->
+            val feedback = values[9] as List<RecommendationFeedback>
             @Suppress("UNCHECKED_CAST")
             LocalSignals(
                 recent = values[0] as List<Song>,
@@ -49,9 +52,27 @@ class HomeRepository(private val dao: MusicDao, private val now: () -> Long = Sy
                 hour = hour,
                 forgotten = values[8] as List<Song>,
                 daySeed = daySeed,
+                hidden = feedback.mapNotNullTo(HashSet()) { f -> f.mediaId.takeIf { f.action == RecommendationFeedback.Action.HIDE.name } },
+                lessOf = feedback.mapNotNullTo(HashSet()) { f -> f.artistId.takeIf { f.action == RecommendationFeedback.Action.LESS_OF_ARTIST.name } },
             )
         }
     }
+
+    /** "Not for me": the song leaves Home until the listener resets it. */
+    suspend fun hide(songId: String) =
+        dao.insert(RecommendationFeedback(mediaId = songId, action = RecommendationFeedback.Action.HIDE.name, createdAt = now()))
+
+    /** "Less of this artist": off the suggestion shelves for [LESS_OF_DAYS] days. */
+    suspend fun lessOf(artistId: String) = now().let { t ->
+        dao.insert(
+            RecommendationFeedback(
+                artistId = artistId, action = RecommendationFeedback.Action.LESS_OF_ARTIST.name,
+                createdAt = t, expiresAt = t + LESS_OF_DAYS * DAY_MS,
+            ),
+        )
+    }
+
+    suspend fun reset() = dao.clearFeedback()
 
     /** Play stats carry no artist credits; shelves need them for their per-artist cap. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -65,5 +86,6 @@ class HomeRepository(private val dao: MusicDao, private val now: () -> Long = Sy
 
     private companion object {
         const val DAY_MS = 24 * 60 * 60 * 1000L
+        const val LESS_OF_DAYS = 30L
     }
 }

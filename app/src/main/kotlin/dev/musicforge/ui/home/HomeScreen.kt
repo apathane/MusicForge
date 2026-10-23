@@ -1,6 +1,7 @@
 package dev.musicforge.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +54,7 @@ import dev.musicforge.ui.components.PillButton
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
+import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.designsystem.SectionHeader
 import dev.musicforge.ui.designsystem.Signal
 import dev.musicforge.ui.designsystem.SignalChip
@@ -124,7 +127,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             SectionHeader(section.title, section.reason)
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(section.items, key = { _, it -> it.key }) { i, item ->
-                    (item as? HomeItem.Track)?.let { SongCard(it.song) { onAction(HomeAction.PlayFrom(section.id, i)) } }
+                    (item as? HomeItem.Track)?.let {
+                        SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
+                    }
                 }
             }
         }
@@ -169,13 +174,32 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
 
 private val CardSize = 128.dp
 
+/**
+ * A song on a shelf: tap plays, long-press opens its actions with why it is here and the two
+ * corrections, "Not for me" and "Less of <artist>".
+ */
 @Composable
-private fun SongCard(song: Song, onClick: () -> Unit) {
-    Column(Modifier.width(CardSize).clickable(onClick = onClick)) {
+private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) -> Unit, onClick: () -> Unit) {
+    var menu by remember { androidx.compose.runtime.mutableStateOf(false) }
+    Column(
+        Modifier.width(CardSize).combinedClickable(onClick = onClick, onLongClick = { menu = true }, onLongClickLabel = "More options"),
+    ) {
         Artwork(song.song.thumbnailUrl, CardSize, corner = Signal.radiusSmall)
         Spacer(Modifier.height(6.dp))
         Text(song.song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(song.artistLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    if (menu) {
+        val media = remember(song.id) { song.toMediaItem() }
+        val artist = song.artists.firstOrNull()
+        TrackActionsSheet(
+            media,
+            extra = listOfNotNull(
+                "Not for me" to { onAction(HomeAction.Hide(song.id)) },
+                artist?.let { "Less of ${it.name}" to { onAction(HomeAction.LessOf(it.id)) } },
+            ),
+            why = "On Home because: ${section.reason.replaceFirstChar { it.lowercase() }}. From your own library.",
+        ) { menu = false }
     }
 }
 

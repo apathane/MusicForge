@@ -131,6 +131,11 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.widget.Toast.makeText(graph.app, "Saved $ok of ${ids.size} to Music/MusicForge", android.widget.Toast.LENGTH_LONG).show()
     }
 
+    fun resetHome() = viewModelScope.launch {
+        dev.musicforge.recommendation.HomeRepository(graph.database.dao()).reset()
+        android.widget.Toast.makeText(graph.app, "Home reset: every suggestion is back", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     fun dismiss() {
         _restore.value = RestoreState.Idle
     }
@@ -256,6 +261,13 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 ActionRow("Save all downloads to Music now", "Music/MusicForge · other players and your PC can use them") {
                     vm.exportAll()
                 }
+            }
+        }
+
+        SectionTitle("Home")
+        Group {
+            ActionRow("Reset Home", "Bring back songs you hid and artists you wanted less of") {
+                vm.resetHome()
             }
         }
 

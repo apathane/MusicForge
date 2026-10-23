@@ -95,6 +95,28 @@ class HomeComposerTest {
     }
 
     @Test
+    fun hiddenSongsLeaveEveryShelfAndLessOfLeavesOnlySuggestions() {
+        val mine = song("m", artist = "loud")
+        val others = (1..4).map { song("o$it") }
+        val s = LocalSignals(
+            recent = listOf(mine),
+            downloads = listOf(mine),
+            rotation = (others + song("m2", artist = "loud")).map { it to 3 },
+        )
+        fun ids(sig: LocalSignals, id: String) =
+            HomeComposer.compose(sig).firstOrNull { it.id == id }?.items?.map { (it as HomeItem.Track).song.id }.orEmpty()
+
+        val hidden = s.copy(hidden = setOf("m"))
+        assertThat(ids(hidden, "jump-back-in")).doesNotContain("m")
+        assertThat(ids(hidden, "your-downloads")).doesNotContain("m")
+
+        val less = s.copy(lessOf = setOf("loud"))
+        assertThat(ids(less, "your-rotation")).doesNotContain("m2")
+        // Recently played is history, not a suggestion: it stays true.
+        assertThat(ids(less, "jump-back-in")).contains("m")
+    }
+
+    @Test
     fun hourLabels() {
         assertThat(listOf(0, 9, 12, 13, 23).map(HomeComposer::hourLabel)).containsExactly("midnight", "9 am", "noon", "1 pm", "11 pm").inOrder()
     }

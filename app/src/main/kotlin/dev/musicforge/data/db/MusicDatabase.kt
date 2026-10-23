@@ -1,6 +1,7 @@
 package dev.musicforge.data.db
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -12,9 +13,12 @@ import androidx.room.RoomDatabase
         SearchHistory::class, FormatEntity::class, LyricsEntity::class, Event::class,
         RelatedSongMap::class, SetVideoIdEntity::class, PlayCountEntity::class,
         RecognitionHistory::class, SpeedDialItem::class, PodcastEntity::class, SongAnalysis::class,
+        RecommendationFeedback::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    // 2: recommendation_feedback (a new table only; upstream tables untouched).
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun dao(): MusicDao

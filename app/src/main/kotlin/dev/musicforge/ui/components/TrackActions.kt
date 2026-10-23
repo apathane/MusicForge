@@ -70,7 +70,13 @@ fun DownloadBadge(id: String) {
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @OptIn(UnstableApi::class)
 @Composable
-fun TrackActionsSheet(item: MediaItem, extra: List<Pair<String, () -> Unit>> = emptyList(), onDismiss: () -> Unit) {
+fun TrackActionsSheet(
+    item: MediaItem,
+    extra: List<Pair<String, () -> Unit>> = emptyList(),
+    /** Why a suggestion is on screen ("Why this?"), shown under the title. */
+    why: String? = null,
+    onDismiss: () -> Unit,
+) {
     val context = LocalContext.current
     val graph = context.graph
     val download by remember(item.mediaId) { graph.downloads.state(item.mediaId) }.collectAsStateWithLifecycle(null)
@@ -86,6 +92,14 @@ fun TrackActionsSheet(item: MediaItem, extra: List<Pair<String, () -> Unit>> = e
                     Text(meta.title?.toString().orEmpty(), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(meta.artist?.toString().orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
+            }
+            why?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                )
             }
             Spacer(Modifier.height(8.dp))
             if (picking) {

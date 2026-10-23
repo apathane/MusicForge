@@ -53,6 +53,10 @@ sealed interface HomeAction {
     data class SelectChip(val chip: HomePage.Chip?) : HomeAction
     data object LoadMore : HomeAction
     data object Retry : HomeAction
+    /** "Not for me" on a suggestion. */
+    data class Hide(val songId: String) : HomeAction
+    /** "Less of this artist" for a while. */
+    data class LessOf(val artistId: String) : HomeAction
 }
 
 sealed interface HomeEvent {
@@ -60,7 +64,7 @@ sealed interface HomeEvent {
 }
 
 class HomeViewModel(
-    repository: HomeRepository,
+    private val repository: HomeRepository,
     private val player: PlayerConnection,
     welcomeDismissed: Boolean,
     private val onWelcomeDismissed: () -> Unit,
@@ -95,6 +99,8 @@ class HomeViewModel(
             is HomeAction.SelectChip -> loadRemote(action.chip)
             HomeAction.LoadMore -> loadMore()
             HomeAction.Retry -> loadRemote(null)
+            is HomeAction.Hide -> viewModelScope.launch { repository.hide(action.songId) }
+            is HomeAction.LessOf -> viewModelScope.launch { repository.lessOf(action.artistId) }
         }
     }
 
