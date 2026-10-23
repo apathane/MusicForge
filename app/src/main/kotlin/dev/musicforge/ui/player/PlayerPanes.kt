@@ -55,6 +55,7 @@ import dev.musicforge.data.lyrics.Lyrics
 import dev.musicforge.graph
 import dev.musicforge.playback.NowPlaying
 import dev.musicforge.playback.durationSec
+import dev.musicforge.playback.isFromRadio
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 
@@ -141,6 +142,12 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
     }
 }
 
+/** Radio's picks say so; what you chose shows just its artist. */
+private fun queueSubtitle(meta: androidx.media3.common.MediaMetadata): String {
+    val artist = meta.artist?.toString().orEmpty()
+    return if (meta.isFromRadio) "Radio pick · $artist" else artist
+}
+
 /** The queue: tap to jump, drag the handle to reorder, ✕ to remove. */
 @Composable
 fun QueuePane() {
@@ -188,7 +195,7 @@ fun QueuePane() {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(item.mediaMetadata.title?.toString().orEmpty(), color = white, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(item.mediaMetadata.artist?.toString().orEmpty(), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(queueSubtitle(item.mediaMetadata), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (!playing) {
                         Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable { connection.removeAt(i) }, contentAlignment = Alignment.Center) {
