@@ -40,6 +40,7 @@ class PlaybackService : MediaLibraryService() {
         const val CHECKPOINT_MS = 30_000L
         const val TARGET_LUFS = -14.0
         const val ACTION_LIKE = "dev.musicforge.LIKE"
+        const val WIDGET_ART_PX = 168
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -67,6 +68,8 @@ class PlaybackService : MediaLibraryService() {
     private val queueStore by lazy { QueueStore(this, graph.database.dao()) }
 
     private var radioJob: Job? = null
+    private var widgetJob: Job? = null
+    private var widgetArt: Pair<String, android.graphics.Bitmap?>? = null
     private var radioContinuation: String? = null
     private var radioSeed: String? = null
 
@@ -250,6 +253,16 @@ class PlaybackService : MediaLibraryService() {
             return Futures.immediateFuture(androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS))
         }
 
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = future {
+            // Headset play button, widget or the system's resume card with nothing loaded.
+            val saved = queueStore.load() ?: throw UnsupportedOperationException("no saved queue")
+            MediaSession.MediaItemsWithStartPosition(saved.items, saved.index, saved.positionMs)
+        }
+
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -315,6 +328,7 @@ class PlaybackService : MediaLibraryService() {
                 checkpointJob?.cancel()
                 checkpoint()
             }
+            updateWidget()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -332,6 +346,7 @@ class PlaybackService : MediaLibraryService() {
                 scope.launch(Dispatchers.IO) { runCatching { recorder.ensureSong(mediaItem) } }
             }
             maybeExtendRadio()
+            updateWidget()
         }
 
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -457,6 +472,35 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    /** Push now-playing to the home-screen widget; artwork is fetched once per track, small. */
+    private fun updateWidget() {
+        val item = player.currentMediaItem
+        val meta = item?.mediaMetadata
+        val playing = player.isPlaying
+        widgetJob?.cancel()
+        widgetJob = scope.launch {
+            val id = item?.mediaId
+            val art = when {
+                id == null -> null
+                widgetArt?.first == id -> widgetArt?.second
+                else -> withContext(Dispatchers.IO) {
+                    runCatching {
+                        val request = coil3.request.ImageRequest.Builder(this@PlaybackService)
+                            .data(meta?.artworkUri)
+                            .size(WIDGET_ART_PX)
+                            .build()
+                        val result = coil3.SingletonImageLoader.get(this@PlaybackService).execute(request) as? coil3.request.SuccessResult
+                        (result?.image as? coil3.BitmapImage)?.bitmap
+                    }.getOrNull()
+                }.also { widgetArt = id to it }
+            }
+            dev.musicforge.widget.PlayerWidget.push(
+                this@PlaybackService,
+                dev.musicforge.widget.PlayerWidget.State(meta?.title?.toString(), meta?.artist?.toString(), playing, art),
+            )
+        }
+    }
+
     private fun resetRadio() {
         radioJob?.cancel()
         radioSeed = null
@@ -474,6 +518,16 @@ class PlaybackService : MediaLibraryService() {
                 .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName),
         )
         checkpointJob?.cancel()
+        widgetJob?.cancel()
+        dev.musicforge.widget.PlayerWidget.push(
+            this,
+            dev.musicforge.widget.PlayerWidget.State(
+                player.currentMediaItem?.mediaMetadata?.title?.toString(),
+                player.currentMediaItem?.mediaMetadata?.artist?.toString(),
+                false,
+                widgetArt?.second,
+            ),
+        )
         readAhead.release()
         player.removeListener(listener)
         flushPlay()
