@@ -173,6 +173,28 @@ interface MusicDao {
     )
     fun topArtists(since: Long, limit: Int = 12): Flow<List<ArtistStat>>
 
+    /** Songs played at least twice at these local hours of the day, across all history. */
+    @Query(
+        """
+        SELECT song.*, COUNT(event.id) AS plays, SUM(event.playTime) AS timeMs
+        FROM event JOIN song ON song.id = event.songId
+        WHERE CAST(strftime('%H', event.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) IN (:hours)
+        GROUP BY event.songId HAVING plays >= 2 ORDER BY plays DESC, timeMs DESC LIMIT :limit
+        """,
+    )
+    fun songsAtHours(hours: List<Int>, limit: Int = 40): Flow<List<SongStat>>
+
+    /** Liked before [likedBefore] and not played since [notPlayedSince]: the ones that slipped away. */
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM song WHERE liked AND likedDate < :likedBefore
+          AND id NOT IN (SELECT songId FROM event WHERE timestamp >= :notPlayedSince)
+        ORDER BY likedDate LIMIT :limit
+        """,
+    )
+    fun forgottenLikes(likedBefore: Long, notPlayedSince: Long, limit: Int = 60): Flow<List<Song>>
+
     @Query("SELECT COALESCE(SUM(playTime), 0) FROM event WHERE timestamp >= :since")
     fun listenedMs(since: Long): Flow<Long>
 

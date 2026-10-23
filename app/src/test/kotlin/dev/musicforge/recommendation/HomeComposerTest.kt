@@ -67,6 +67,39 @@ class HomeComposerTest {
     }
 
     @Test
+    fun aroundThisHourNamesTheHourAndNeedsARealHabit() {
+        val habit = (1..5).map { song("n$it") to 3 }
+        val section = HomeComposer.compose(LocalSignals(aroundNow = habit, hour = 22)).first { it.id == "around-this-hour" }
+        assertThat(section.reason).isEqualTo("What you play around 10 pm")
+        assertThat(HomeComposer.compose(LocalSignals(aroundNow = habit.take(3), hour = 22)).map { it.id })
+            .doesNotContain("around-this-hour")
+    }
+
+    @Test
+    fun noSongAppearsOnTwoShelves() {
+        val same = (1..6).map { song("x$it") }
+        val sections = HomeComposer.compose(
+            LocalSignals(recent = same.take(2), aroundNow = same.map { it to 3 }, rotation = same.map { it to 3 }, forgotten = same),
+        )
+        val ids = sections.flatMap { s -> s.items.filterIsInstance<HomeItem.Track>().map { it.song.id } }
+        assertThat(ids).containsNoDuplicates()
+    }
+
+    @Test
+    fun forgottenLikesTurnOverDailyButHoldStillWithinADay() {
+        val liked = (1..30).map { song("l$it") }
+        fun shelf(day: Int) = HomeComposer.compose(LocalSignals(forgotten = liked, daySeed = day))
+            .first { it.id == "liked-then-forgotten" }.items.map { it.key }
+        assertThat(shelf(100)).isEqualTo(shelf(100))
+        assertThat(shelf(100)).isNotEqualTo(shelf(101))
+    }
+
+    @Test
+    fun hourLabels() {
+        assertThat(listOf(0, 9, 12, 13, 23).map(HomeComposer::hourLabel)).containsExactly("midnight", "9 am", "noon", "1 pm", "11 pm").inOrder()
+    }
+
+    @Test
     fun sameSignalsGiveTheSameHome() {
         val s = LocalSignals(recent = listOf(song("a"), song("b")), rotation = (1..4).map { song("t$it") to 2 })
         assertThat(HomeComposer.compose(s)).isEqualTo(HomeComposer.compose(s))

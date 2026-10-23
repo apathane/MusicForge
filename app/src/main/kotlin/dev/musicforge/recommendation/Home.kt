@@ -44,6 +44,14 @@ data class LocalSignals(
     val likedCount: Int = 0,
     val weekMs: Long = 0,
     val topArtistThisWeek: String? = null,
+    /** Songs played at this hour of the day (±1 h) across history, with play counts. */
+    val aroundNow: List<Pair<Song, Int>> = emptyList(),
+    /** The hour [aroundNow] is about, 0..23. */
+    val hour: Int = 12,
+    /** Liked 45+ days ago, not played in the last 30, oldest like first. */
+    val forgotten: List<Song> = emptyList(),
+    /** Changes once a day, so the forgotten-likes shelf turns over daily but holds still within a day. */
+    val daySeed: Int = 0,
 )
 
 /**
@@ -55,40 +63,71 @@ object HomeComposer {
     const val MAX_PER_ARTIST = 2
     private const val SHELF = 12
 
-    fun compose(s: LocalSignals): List<HomeSection> = listOfNotNull(
-        jumpBackIn(s),
-        rotation(s),
-        downloads(s),
-        library(s),
-        stats(s),
-    )
+    fun compose(s: LocalSignals): List<HomeSection> {
+        // Each shelf skips what a shelf above already shows.
+        val shown = HashSet<String>()
+        return listOfNotNull(
+            jumpBackIn(s)?.also { shown += it.ids() },
+            aroundThisHour(s, shown)?.also { shown += it.ids() },
+            rotation(s, shown)?.also { shown += it.ids() },
+            forgotten(s, shown),
+            downloads(s),
+            library(s),
+            stats(s),
+        )
+    }
 
     /** Nothing personal to show yet: Home asks for intent instead of guessing. */
     fun isColdStart(s: LocalSignals) = compose(s).isEmpty()
+
+    private fun HomeSection.ids() = items.filterIsInstance<HomeItem.Track>().map { it.song.id }
 
     private fun jumpBackIn(s: LocalSignals) = s.recent.take(SHELF).takeIf { it.isNotEmpty() }?.let { songs ->
         HomeSection("jump-back-in", "Jump back in", "Recently played", HomeLayout.SHELF, songs.map { HomeItem.Track(it) })
     }
 
     /**
-     * Songs on repeat this month, at least two plays each, no more than [MAX_PER_ARTIST] per
-     * artist so one album binge doesn't fill the shelf, and none already in Jump back in.
+     * Up to [SHELF] songs, at most [MAX_PER_ARTIST] per artist so one album binge doesn't fill
+     * the shelf, none already [shown]. Fewer than [min] means there's no real pattern yet.
      */
-    private fun rotation(s: LocalSignals): HomeSection? {
-        val recent = s.recent.take(SHELF).mapTo(HashSet()) { it.id }
+    private fun pick(songs: Sequence<Song>, shown: Set<String>, min: Int = 3): List<HomeItem>? {
         val perArtist = HashMap<String, Int>()
-        val picked = s.rotation.asSequence()
-            .filter { (song, plays) -> plays >= 2 && song.id !in recent }
-            .filter { (song, _) ->
+        val picked = songs
+            .filter { it.id !in shown }
+            .filter { song ->
                 val artist = song.artists.firstOrNull()?.id ?: song.artistLine
                 val n = perArtist.getOrDefault(artist, 0)
                 (n < MAX_PER_ARTIST).also { if (it) perArtist[artist] = n + 1 }
             }
             .take(SHELF)
-            .map { HomeItem.Track(it.first) }
+            .map { HomeItem.Track(it) }
             .toList()
-        if (picked.size < 3) return null
-        return HomeSection("your-rotation", "Your rotation", "On repeat this month", HomeLayout.SHELF, picked)
+        return picked.takeIf { it.size >= min }
+    }
+
+    /** What this listener reaches for at this time of day: a habit, not a trend. */
+    private fun aroundThisHour(s: LocalSignals, shown: Set<String>) =
+        pick(s.aroundNow.asSequence().map { it.first }, shown, min = 4)?.let {
+            HomeSection("around-this-hour", "Around this hour", "What you play around ${hourLabel(s.hour)}", HomeLayout.SHELF, it)
+        }
+
+    /** Songs on repeat this month, at least two plays each. */
+    private fun rotation(s: LocalSignals, shown: Set<String>) =
+        pick(s.rotation.asSequence().filter { it.second >= 2 }.map { it.first }, shown)?.let {
+            HomeSection("your-rotation", "Your rotation", "On repeat this month", HomeLayout.SHELF, it)
+        }
+
+    /** Likes that slipped away, a different handful each day. */
+    private fun forgotten(s: LocalSignals, shown: Set<String>) =
+        pick(s.forgotten.shuffled(kotlin.random.Random(s.daySeed)).asSequence(), shown)?.let {
+            HomeSection("liked-then-forgotten", "Liked, then forgotten", "You liked these, then stopped playing them", HomeLayout.SHELF, it)
+        }
+
+    fun hourLabel(hour: Int): String = when (val h = hour.mod(24)) {
+        0 -> "midnight"
+        12 -> "noon"
+        in 1..11 -> "$h am"
+        else -> "${h - 12} pm"
     }
 
     private fun downloads(s: LocalSignals) = s.downloads.take(5).takeIf { it.isNotEmpty() }?.let { songs ->
