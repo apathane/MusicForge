@@ -8,7 +8,7 @@ plugins {
 }
 
 // Phase codename doubles as the launcher label until the app gets a real name.
-val codename = "Reprise"
+val codename = "Nocturne"
 
 android {
     namespace = "dev.musicforge"
