@@ -308,7 +308,7 @@ private val artShape = RoundedCornerShape(14.dp)
 private fun BigArtwork(now: NowPlaying) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
     // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
-    val letterboxed = "i.ytimg.com" in now.metadata.artworkUri?.toString().orEmpty()
+    val letterboxed = dev.musicforge.playback.isLetterboxedThumbnail(now.metadata.artworkUri?.toString().orEmpty())
     val tile = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color.White.copy(alpha = 0.08f)) }
     AsyncImage(
         model = now.metadata.artworkUri,

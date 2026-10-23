@@ -96,6 +96,13 @@ fun sizedArtwork(url: String, px: Int): String {
     return url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w$step-h$step-l90-rj")
 }
 
+/**
+ * YouTube's 4:3 thumbnails (default, hqdefault, sddefault) carry a 16:9 picture between black
+ * bars; the 16:9 ones (mqdefault, hq720, maxresdefault) don't and must not be zoomed.
+ */
+fun isLetterboxedThumbnail(url: String): Boolean =
+    "i.ytimg.com" in url && Regex("/(default|hqdefault|sddefault)\\.jpg").containsMatchIn(url)
+
 fun hiResArtwork(url: String): String =
     when {
         Regex("=w\\d+-h\\d+").containsMatchIn(url) -> url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w544-h544-l90-rj")

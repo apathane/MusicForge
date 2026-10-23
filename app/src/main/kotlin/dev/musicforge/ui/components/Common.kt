@@ -101,7 +101,7 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
             // YouTube video thumbnails are 4:3 with the 16:9 picture letterboxed inside; zoom past
             // the baked-in black bars (360/270) so they read as square covers like album art. The
             // zoom is part of the image's scaling, not a separate layer.
-            val letterboxed = "i.ytimg.com" in url
+            val letterboxed = dev.musicforge.playback.isLetterboxedThumbnail(url)
             val tile = remember(placeholder) { androidx.compose.ui.graphics.painter.ColorPainter(placeholder) }
             AsyncImage(
                 // Right-sized file; fade only for big artwork (a fade draws both images: GPU time on the X7b).
