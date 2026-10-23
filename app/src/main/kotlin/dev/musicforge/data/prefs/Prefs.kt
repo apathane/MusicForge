@@ -60,6 +60,8 @@ object Keys {
     val SkipSilence = bool("skipSilence")
     val AudioNormalization = bool("audioNormalization")
     val PersistentQueue = bool("persistentQueue")
+    /** Metrolist's name: carry on with radio when the queue runs out. */
+    val Autoplay = bool("autoplay")
     val CrossfadeEnabled = bool("crossfadeEnabled")
     val CrossfadeSeconds = float("crossfadeDuration")
     val CrossfadeGapless = bool("crossfadeGapless")
@@ -79,7 +81,7 @@ object Keys {
         AccountChannelHandle, ContentLanguage, ContentCountry, DarkMode, PureBlack, AudioQuality,
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
-        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike,
+        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike, Autoplay,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,

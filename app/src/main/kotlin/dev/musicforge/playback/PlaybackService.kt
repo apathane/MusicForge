@@ -128,6 +128,9 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         scope.launch {
+            graph.settings.data.map { it[Keys.Autoplay] ?: true }.distinctUntilChanged().collect { autoplay = it }
+        }
+        scope.launch {
             graph.settings.data.map { it[Keys.SkipSilence] ?: false }.distinctUntilChanged()
                 .collect { player.skipSilenceEnabled = it }
         }
@@ -450,8 +453,10 @@ class PlaybackService : MediaLibraryService() {
      * Endless listening: when the queue is about to run out, continue with YouTube Music's
      * radio for what's playing, the same "up next" the official app gives.
      */
+    private var autoplay = true
+
     private fun maybeExtendRadio() {
-        if (!player.playWhenReady) return
+        if (!autoplay || !player.playWhenReady) return
         if (player.mediaItemCount - player.currentMediaItemIndex > 3) return
         if (radioJob?.isActive == true) return
         val current = player.currentMediaItem ?: return
