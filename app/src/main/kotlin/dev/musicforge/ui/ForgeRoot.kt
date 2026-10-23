@@ -119,9 +119,11 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                         onSignIn = { nav.navigate(Routes.LOGIN) },
                         onAbout = { nav.navigate(Routes.ABOUT) },
                         onEqualizer = { nav.navigate(Routes.EQUALIZER) },
+                        onTaste = { nav.navigate(Routes.TASTE) },
                     ) }
                 composable(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
                 composable(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
+                composable(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
                 composable(

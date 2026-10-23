@@ -43,6 +43,14 @@ data class ArtistStat(
     val timeMs: Long,
 )
 
+data class HourCount(val hour: Int, val plays: Int)
+
+/** An artist the listener asked to hear less of, and until when. */
+data class LessOfArtist(
+    @Embedded val artist: ArtistEntity,
+    val expiresAt: Long,
+)
+
 data class LibraryCounts(
     val songs: Int,
     val liked: Int,
@@ -290,6 +298,33 @@ interface MusicDao {
     fun activeFeedback(now: Long): Flow<List<RecommendationFeedback>>
 
     @Insert suspend fun insert(feedback: RecommendationFeedback)
+
+    /** Plays per local hour of the day, across all history (hours with none are absent). */
+    @Query(
+        """
+        SELECT CAST(strftime('%H', timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hour, COUNT(*) AS plays
+        FROM event GROUP BY hour ORDER BY hour
+        """,
+    )
+    fun playsByHour(): Flow<List<HourCount>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE id IN (SELECT mediaId FROM recommendation_feedback WHERE action = 'HIDE') ORDER BY title")
+    fun hiddenSongs(): Flow<List<Song>>
+
+    @Query(
+        """
+        SELECT artist.*, MAX(f.expiresAt) AS expiresAt FROM recommendation_feedback f JOIN artist ON artist.id = f.artistId
+        WHERE f.action = 'LESS_OF_ARTIST' AND f.expiresAt > :now GROUP BY artist.id ORDER BY artist.name
+        """,
+    )
+    fun lessOfArtists(now: Long): Flow<List<LessOfArtist>>
+
+    @Query("DELETE FROM recommendation_feedback WHERE action = 'HIDE' AND mediaId = :songId")
+    suspend fun unhide(songId: String)
+
+    @Query("DELETE FROM recommendation_feedback WHERE action = 'LESS_OF_ARTIST' AND artistId = :artistId")
+    suspend fun clearLessOf(artistId: String)
 
     @Query("DELETE FROM recommendation_feedback")
     suspend fun clearFeedback()
