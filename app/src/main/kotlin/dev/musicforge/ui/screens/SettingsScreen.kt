@@ -80,7 +80,14 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         _restore.value = RestoreState.Working
         _restore.value = runCatching {
             graph.autoBackup.snapshotBeforeRestore()
-            RestoreState.Done(graph.backupImporter.import(uri, includeAccount, graph.downloads.completedIds()))
+            val result = graph.backupImporter.import(uri, includeAccount, graph.downloads.completedIds())
+            val from = when (result.origin) {
+                dev.musicforge.data.backup.BackupImporter.Origin.METROLIST -> "Metrolist"
+                dev.musicforge.data.backup.BackupImporter.Origin.CONVX -> "ConvX"
+                else -> "your backup"
+            }
+            graph.redownloads.offer(from, result.wereDownloaded)
+            RestoreState.Done(result)
         }
             .getOrElse { RestoreState.Failed(it.message ?: it.javaClass.simpleName) }
     }
@@ -327,6 +334,9 @@ private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsVi
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("${plural(r.copied["song"] ?: 0, "song")}, ${plural(r.copied["playlist"] ?: 0, "playlist")}, ${plural(r.copied["event"] ?: 0, "play")}, ${plural(r.settingsImported, "setting")}.")
+                        if (r.wereDownloaded.isNotEmpty()) {
+                            Text("${plural(r.wereDownloaded.size, "song")} were downloaded in your old app. Bring them back from the Downloads tab.")
+                        }
                         r.warnings.take(4).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 },

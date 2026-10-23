@@ -160,6 +160,7 @@ class BackupImporterTest {
         assertThat(counts.playlists).isEqualTo(1)
         assertThat(counts.events).isEqualTo(2)
         assertThat(counts.downloaded).isEqualTo(0) // no bytes on this device
+        assertThat(result.wereDownloaded).containsExactly("s1") // offered for re-download
         val s1 = dao.song("s1").first()!!
         assertThat(s1.artists.map { it.name }).containsExactly("Portishead")
         assertThat(s1.song.likedDate).isEqualTo(1_700_000_000_000L)

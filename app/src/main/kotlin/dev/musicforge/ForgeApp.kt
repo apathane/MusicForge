@@ -12,6 +12,12 @@ class ForgeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
+        // Debug builds log every image request: a failed cover is otherwise just a grey tile.
+        if (BuildConfig.DEBUG) {
+            coil3.SingletonImageLoader.setSafe { ctx ->
+                coil3.ImageLoader.Builder(ctx).logger(coil3.util.DebugLogger()).build()
+            }
+        }
         graph = AppGraph(this)
         graph.youTubeSession.start()
         // Off the startup path: a daily safety copy of the library.

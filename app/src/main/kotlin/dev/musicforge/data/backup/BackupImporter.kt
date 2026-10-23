@@ -47,6 +47,8 @@ class BackupImporter(
         val copied: Map<String, Int>,
         val settingsImported: Int,
         val warnings: List<String>,
+        /** Songs the backup marked as downloaded that we don't hold: offered for re-download. */
+        val wereDownloaded: List<String> = emptyList(),
     )
 
     class InvalidBackupException(message: String) : Exception(message)
@@ -80,9 +82,10 @@ class BackupImporter(
             val worth = listOf("song", "playlist", "event").sumOf { info.rowCounts[it] ?: 0 }
             if (worth == 0) throw InvalidBackupException("This backup is empty: no songs, playlists or history to restore")
             val warnings = mutableListOf<String>()
-            val copied = copyTables(staged.db, info, downloadedIds, warnings)
+            val wereDownloaded = mutableListOf<String>()
+            val copied = copyTables(staged.db, info, downloadedIds, warnings, wereDownloaded)
             val imported = staged.settings?.let { importSettings(it, includeAccount, warnings) } ?: 0
-            Result(if (staged.isOurs) Origin.MUSICFORGE else info.origin, copied, imported, warnings)
+            Result(if (staged.isOurs) Origin.MUSICFORGE else info.origin, copied, imported, warnings, wereDownloaded)
         }
 
     // ---- staging ----
@@ -233,6 +236,7 @@ class BackupImporter(
         info: DbInfo,
         downloadedIds: Set<String>,
         warnings: MutableList<String>,
+        wereDownloaded: MutableList<String>,
     ): Map<String, Int> {
         // No ATTACH: on Android it permanently turns WAL off for Room's connection pool and
         // throws inside a transaction. Rows are streamed from a separate connection instead.
@@ -284,6 +288,10 @@ class BackupImporter(
                 }
                 restoreStash(db)
                 syncEpisodeFlags(db)
+                // Downloads don't travel in backups; remember which ones the old app had.
+                db.query("SELECT id FROM song WHERE isDownloaded = 1 ORDER BY dateDownload DESC").use { c ->
+                    while (c.moveToNext()) c.getString(0).takeIf { it !in downloadedIds }?.let(wereDownloaded::add)
+                }
                 resetDownloads(db, downloadedIds)
             }
         }
