@@ -133,26 +133,42 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                     shape = sheetShape
                     clip = true
                 }
-                .playerBackground(ambience),
+                .playerBackground(ambience, remember(ambience.backdrop) { ambience.backdrop?.let(::withScrim) }),
         ) {
             PlayerContent(now, onClose, dismissDrag)
         }
     }
 }
 
-/** Blurred artwork stretched to the screen, then a scrim so white text always reads. */
-private fun Modifier.playerBackground(ambience: Ambience): Modifier = drawBehind {
-    val backdrop = ambience.backdrop
-    val base = ambience.colors.ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114)
-    drawRect(base)
-    if (backdrop != null) {
+private val playerScrim = Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.18f), 0.55f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.72f))
+
+/**
+ * The scrim (so white text always reads) baked into the small blurred backdrop once per
+ * track: drawing it full-screen every frame was a third full-screen fill on the X7b.
+ */
+private fun withScrim(backdrop: androidx.compose.ui.graphics.ImageBitmap): androidx.compose.ui.graphics.ImageBitmap {
+    val out = androidx.compose.ui.graphics.ImageBitmap(backdrop.width, backdrop.height)
+    val canvas = androidx.compose.ui.graphics.Canvas(out)
+    val size = androidx.compose.ui.geometry.Size(backdrop.width.toFloat(), backdrop.height.toFloat())
+    androidx.compose.ui.graphics.drawscope.CanvasDrawScope().draw(androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr, canvas, size) {
+        drawImage(backdrop)
+        drawRect(playerScrim)
+    }
+    return out
+}
+
+/** Blurred artwork stretched to the screen; one full-screen draw when there is artwork. */
+private fun Modifier.playerBackground(ambience: Ambience, scrimmed: androidx.compose.ui.graphics.ImageBitmap?): Modifier = drawBehind {
+    if (scrimmed != null) {
         drawImage(
-            backdrop,
+            scrimmed,
             dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
             filterQuality = FilterQuality.Low,
         )
+    } else {
+        drawRect(ambience.colors.ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114))
+        drawRect(playerScrim)
     }
-    drawRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.18f), 0.55f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.72f)))
 }
 
 @OptIn(UnstableApi::class)
@@ -290,11 +306,14 @@ private val artShape = RoundedCornerShape(14.dp)
 private fun BigArtwork(now: NowPlaying) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
     // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
-    val zoom = if ("i.ytimg.com" in now.metadata.artworkUri?.toString().orEmpty()) 4f / 3f else 1f
+    val letterboxed = "i.ytimg.com" in now.metadata.artworkUri?.toString().orEmpty()
+    val tile = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color.White.copy(alpha = 0.08f)) }
     AsyncImage(
         model = now.metadata.artworkUri,
         contentDescription = null,
-        contentScale = ContentScale.Crop,
+        placeholder = tile,
+        error = tile,
+        contentScale = if (letterboxed) dev.musicforge.ui.components.CropPastLetterbox else ContentScale.Crop,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
@@ -305,9 +324,7 @@ private fun BigArtwork(now: NowPlaying) {
                 shadowElevation = 20.dp.toPx()
                 shape = artShape
                 clip = true
-            }
-            .background(Color.White.copy(alpha = 0.08f))
-            .graphicsLayer { scaleX = zoom; scaleY = zoom },
+            },
     )
 }
 

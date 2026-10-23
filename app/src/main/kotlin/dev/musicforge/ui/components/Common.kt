@@ -119,7 +119,7 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
 }
 
 /** Crop, then zoom 4/3 so a letterboxed 16:9 picture inside a 4:3 thumbnail fills the square. */
-private object CropPastLetterbox : ContentScale {
+internal object CropPastLetterbox : ContentScale {
     override fun computeScaleFactor(srcSize: androidx.compose.ui.geometry.Size, dstSize: androidx.compose.ui.geometry.Size): androidx.compose.ui.layout.ScaleFactor {
         val s = maxOf(dstSize.width / srcSize.width, dstSize.height / srcSize.height) * 4f / 3f
         return androidx.compose.ui.layout.ScaleFactor(s, s)

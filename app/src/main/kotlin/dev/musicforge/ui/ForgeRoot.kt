@@ -106,7 +106,8 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
         }
     }
     CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // Under a fully open player the screen behind is never seen: don't paint it at all.
+        Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
             NavHost(nav, startDestination = Tab.Home.route, modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }) {
                 composable(Tab.Home.route) { HomeScreen() }
