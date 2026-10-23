@@ -8,7 +8,8 @@ The app doesn't have a name yet. Until it does, each development phase ships und
 
 | | |
 |---|---|
-| **Listen** | Home feed with mood chips and endless scroll, search with filters and suggestions, radio that keeps the queue going, synced lyrics (LRCLIB first, then YouTube Music), a sleep timer that fades out, loudness levelling to −14 LUFS, a 5-band equalizer that runs inside the app so it works even where the phone's own equalizer is locked |
+| **Home** | Built from your own listening, never invented: Jump back in, Around this hour (what you tend to play at this time of day), Your rotation, Liked then forgotten (a different handful each day), your downloads, your playlists, the last 7 days. Every shelf says why it's there; long-press a song for "Not for me" or "Less of" an artist, undone in Settings. YouTube Music's own feed follows, labelled as such. A fresh install shows a welcome, not fake albums |
+| **Listen** | YouTube Music's feed with mood chips and endless scroll, search with filters and suggestions, radio that keeps the queue going, synced lyrics (LRCLIB first, then YouTube Music), a sleep timer that fades out, loudness levelling to −14 LUFS, a 5-band equalizer that runs inside the app so it works even where the phone's own equalizer is locked |
 | **Download** | Media3 downloads that survive the app being killed and resume from the last byte; songs you like can download themselves; two copies of the same recording under different video ids share one file |
 | **Keep** | Liked songs, playlists you can reorder, albums, artists, history, listening stats by week, month and year; the queue comes back after a restart, paused |
 | **Move in** | Restores real Metrolist and ConvX backups, including the sign-in. Backups don't carry music files, so it remembers what the old app had downloaded and offers it back in one tap with the size up front |
