@@ -9,6 +9,9 @@ import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.offline.DefaultDownloadIndex
+import androidx.media3.exoplayer.offline.DefaultDownloaderFactory
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
@@ -19,11 +22,14 @@ import coil3.request.ImageRequest
 import dev.musicforge.data.db.MusicDao
 import dev.musicforge.playback.MediaEngine
 import dev.musicforge.playback.PlayRecorder
+import dev.musicforge.playback.credits
+import dev.musicforge.playback.durationSec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -58,18 +64,25 @@ class Downloads(
     /** Bounds the DB/metadata work for a 500-song "download all", before Media3 queues it. */
     private val preparation = Semaphore(3)
 
+    private val index = DefaultDownloadIndex(engine.databaseProvider)
+
     val manager: DownloadManager = DownloadManager(
         context,
-        engine.databaseProvider,
-        engine.downloadCache,
-        engine.upstream(forDownload = true),
-        Executors.newFixedThreadPool(3),
+        index,
+        SharedKeyDownloaderFactory(
+            DefaultDownloaderFactory(
+                CacheDataSource.Factory().setCache(engine.downloadCache).setUpstreamDataSourceFactory(engine.upstream(forDownload = true)),
+                Executors.newFixedThreadPool(3),
+            ),
+            index,
+        ),
     ).apply {
         maxParallelDownloads = 3
         addListener(object : DownloadManager.Listener {
             override fun onDownloadChanged(manager: DownloadManager, download: Download, finalException: Exception?) {
                 _states.update { it + (download.request.id to download) }
                 val id = download.request.id
+                download.request.sharedKey()?.let { engine.storageKeys[id] = it }
                 scope.launch {
                     when (download.state) {
                         Download.STATE_COMPLETED -> {
@@ -89,6 +102,7 @@ class Downloads(
 
             override fun onDownloadRemoved(manager: DownloadManager, download: Download) {
                 _states.update { it - download.request.id }
+                engine.storageKeys.remove(download.request.id)
                 scope.launch { dao.setDownloaded(download.request.id, false, null) }
             }
         })
@@ -98,6 +112,7 @@ class Downloads(
         // The index survives restarts; load it so the UI knows what's done and what's pending.
         val loaded = HashMap<String, Download>()
         manager.downloadIndex.getDownloads().use { c -> while (c.moveToNext()) loaded[c.download.request.id] = c.download }
+        loaded.values.forEach { d -> d.request.sharedKey()?.let { engine.storageKeys[d.request.id] = it } }
         _states.value = loaded
         watchNetwork()
         scope.launch { reconcile(loaded.values) }
@@ -127,8 +142,9 @@ class Downloads(
         // Flagged but not in the index: clear only if the bytes really aren't there. The
         // cache keeps its own index, so a lost download index alone mustn't hide playable songs.
         dao.downloadedIds().filter { it !in doneIds }.forEach { id ->
-            val length = dao.format(id)?.contentLength?.takeIf { it > 0 }
-            val stillCached = length != null && engine.downloadCache.isCached(id, 0, length)
+            val key = engine.storageKey(id)
+            val length = (dao.format(key) ?: dao.format(id))?.contentLength?.takeIf { it > 0 }
+            val stillCached = length != null && engine.downloadCache.isCached(key, 0, length)
             if (!stillCached) {
                 dao.setDownloaded(id, false, null)
                 repaired++
@@ -149,8 +165,11 @@ class Downloads(
                     val current = manager.downloadIndex.getDownload(item.mediaId)
                     if (current?.state == Download.STATE_COMPLETED) return@withPermit
                     recorder.ensureSong(item)
+                    // Same recording already downloaded under another id: share its bytes.
+                    val owner = duplicateOwner(item)
+                    if (owner != null) Timber.i("download %s shares the bytes of %s", item.mediaId, owner)
                     val request = DownloadRequest.Builder(item.mediaId, item.mediaId.toUri())
-                        .setCustomCacheKey(item.mediaId)
+                        .setCustomCacheKey(owner?.let(engine::storageKey) ?: item.mediaId)
                         .setData(DownloadMeta.encode(item))
                         .build()
                     DownloadService.sendAddDownload(context, ForgeDownloadService::class.java, request, false)
@@ -158,6 +177,21 @@ class Downloads(
                 }
             }
         }
+    }
+
+    private suspend fun duplicateOwner(item: MediaItem): String? {
+        val meta = item.mediaMetadata
+        val target = Duplicates.Candidate(
+            item.mediaId,
+            meta.title?.toString().orEmpty(),
+            meta.credits.firstOrNull()?.name ?: meta.artist?.toString(),
+            meta.durationSec ?: dao.songEntity(item.mediaId)?.duration ?: 0,
+        )
+        val completed = completedIds()
+        val downloaded = dao.downloadedSongs().first()
+            .filter { it.id in completed }
+            .map { Duplicates.Candidate(it.id, it.song.title, it.artists.firstOrNull()?.name, it.song.duration) }
+        return Duplicates.ownerOf(target, downloaded)
     }
 
     fun remove(id: String) = DownloadService.sendRemoveDownload(context, ForgeDownloadService::class.java, id, false)

@@ -12,6 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
 import dev.musicforge.data.db.MusicDao
+import dev.musicforge.data.lyrics.Lrc
 import dev.musicforge.playback.MediaEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -32,6 +33,7 @@ class MusicExport(
     private val engine: MediaEngine,
     private val dao: MusicDao,
     private val folderName: String,
+    private val lyrics: dev.musicforge.data.lyrics.LyricsRepository? = null,
 ) {
     val supported get() = Build.VERSION.SDK_INT >= 29
 
@@ -78,7 +80,8 @@ class MusicExport(
     @RequiresApi(29)
     private suspend fun exportQ(id: String): Boolean {
         val song = dao.song(id).firstOrNull() ?: return false
-        val format = dao.format(id) ?: return false
+        val key = engine.storageKey(id)
+        val format = dao.format(key) ?: dao.format(id) ?: return false
         val artist = song.artistLine.ifBlank { "Unknown artist" }
         val ext = when {
             "webm" in format.mimeType -> "ogg"
@@ -90,28 +93,38 @@ class MusicExport(
         val raw = java.io.File(context.cacheDir, "export-$id.raw")
         val remuxed = java.io.File(context.cacheDir, "export-$id.ogg")
         try {
-            copyFromCache(id, format.contentLength, raw)
+            copyFromCache(key, format.contentLength, raw)
             // MediaStore won't take audio/webm in Music/ (".webm" is treated as video), so WebM/Opus
             // is remuxed into Ogg/Opus: same audio packets, no re-encode, playable everywhere.
+            val lrc = lyricsText(id, song.song.title, artist, song.song.albumName, song.song.duration)
             val (file, mime, _) = when {
                 "webm" in format.mimeType -> {
                     remuxToOgg(raw, remuxed)
                     // Tags inside the file: the media scanner (and any other player) reads these.
-                    OggTags.write(
-                        remuxed,
-                        buildMap {
-                            put("TITLE", song.song.title)
-                            put("ARTIST", artist)
-                            song.song.albumName?.let { put("ALBUM", it) }
-                            song.song.year?.let { put("DATE", it.toString()) }
-                        },
-                    )
+                    val tags = buildMap {
+                        put("TITLE", song.song.title)
+                        put("ARTIST", artist)
+                        song.song.albumName?.let { put("ALBUM", it) }
+                        song.song.year?.let { put("DATE", it.toString()) }
+                        // Namida, Poweramp, foobar2000 and others read LRC from this tag.
+                        lrc?.let { put("LYRICS", it) }
+                    }
+                    // The cover must fit the one tag page with everything else (~64 KB).
+                    val budget = 60_000 - tags.entries.sumOf { it.key.length + it.value.toByteArray().size + 5 }
+                    val picture = cover(song.song.thumbnailUrl, budget)
+                    if (!OggTags.write(remuxed, tags + listOfNotNull(picture?.let { "METADATA_BLOCK_PICTURE" to it }))) {
+                        OggTags.write(remuxed, tags)
+                    }
                     Triple(remuxed, "audio/ogg", "ogg")
                 }
                 "mp4" in format.mimeType || "m4a" in format.mimeType -> Triple(raw, "audio/mp4", "m4a")
                 else -> return false
             }
-            return publish(file, mime, name, song.song.title, artist, song.song.albumName)
+            val ok = publish(file, mime, name, song.song.title, artist, song.song.albumName)
+            // A sidecar .lrc too, for players that only look next to the file.
+            if (ok && lrc != null && Lrc.parse(lrc) != null) runCatching { publishLrc(name.substringBeforeLast('.') + ".lrc", lrc) }
+                .onFailure { Timber.w(it, "lrc sidecar for %s", id) }
+            return ok
         } finally {
             raw.delete()
             remuxed.delete()
@@ -165,6 +178,67 @@ class MusicExport(
         return output
     }
 
+    /** Synced lyrics as LRC text (or plain lyrics); never blocks an export for long. */
+    private suspend fun lyricsText(id: String, title: String, artist: String, album: String?, durationSec: Int): String? {
+        val repo = lyrics ?: return null
+        val found = kotlinx.coroutines.withTimeoutOrNull(10_000) {
+            runCatching { repo.lyrics(id, title, artist, album, durationSec.takeIf { it > 0 }) }.getOrNull()
+        }
+        return when (found) {
+            is dev.musicforge.data.lyrics.Lyrics.Synced -> Lrc.format(found.lines)
+            is dev.musicforge.data.lyrics.Lyrics.Plain -> found.text
+            else -> null
+        }
+    }
+
+    /**
+     * Front cover as a base64 FLAC picture block (the Vorbis-comment standard for art).
+     * Coil usually has it on disk already: downloads prefetch artwork.
+     */
+    private suspend fun cover(url: String?, budget: Int): String? {
+        if (url == null || budget < 8_000) return null
+        val request = coil3.request.ImageRequest.Builder(context)
+            .data(dev.musicforge.playback.hiResArtwork(url))
+            .size(COVER_PX)
+            .build()
+        val bitmap = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)
+            ?.let { (it.image as? coil3.BitmapImage)?.bitmap } ?: return null
+        val square = Covers.centerSquare(bitmap)
+        for (quality in intArrayOf(85, 70, 55)) {
+            val jpeg = java.io.ByteArrayOutputStream().also { square.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
+            val block = Covers.pictureBlock(jpeg, "image/jpeg", square.width, square.height)
+            val encoded = android.util.Base64.encodeToString(block, android.util.Base64.NO_WRAP)
+            if (encoded.length <= budget) return encoded
+        }
+        return null
+    }
+
+    @RequiresApi(29)
+    private fun publishLrc(name: String, text: String) {
+        val resolver = context.contentResolver
+        val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val exists = resolver.query(
+            collection, arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+            arrayOf(folder, name), null,
+        )?.use { it.moveToFirst() } ?: false
+        if (exists) return
+        val uri = resolver.insert(
+            collection,
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/lrc")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, folder)
+            },
+        ) ?: error("insert refused")
+        try {
+            resolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } ?: error("can't open $uri")
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            throw e
+        }
+    }
+
     private val folder get() = "${android.os.Environment.DIRECTORY_MUSIC}/$folderName/"
 
     @RequiresApi(29)
@@ -201,6 +275,10 @@ class MusicExport(
             resolver.delete(uri, null, null) // never leave a half-written file behind
             throw e
         }
+    }
+
+    private companion object {
+        const val COVER_PX = 500
     }
 
     /** Safe on every filesystem a phone or PC might sync to. */

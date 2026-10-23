@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.room)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Phase codename doubles as the launcher label until the app gets a real name.
@@ -64,6 +65,8 @@ room { schemaDirectory("$projectDir/schemas") }
 
 dependencies {
     implementation(project(":innertube"))
+    implementation(libs.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     implementation(libs.activity.compose)
     implementation(libs.compose.runtime)

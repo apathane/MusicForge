@@ -42,6 +42,14 @@ class MediaEngine(
 
     private val http = OkHttpDataSource.Factory(http)
 
+    /**
+     * Downloads that reuse another song's bytes (see Duplicates): song id → the key its bytes
+     * live under. Filled by Downloads from its index.
+     */
+    val storageKeys = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun storageKey(id: String): String = storageKeys[id] ?: id
+
     private fun onRefused(videoId: String, code: Int) {
         if (code !in REFUSED) return
         resolver.cached(videoId)?.let { InnerTubeXPlayer.markStreamClientFailed(videoId, it.client) }
@@ -67,6 +75,7 @@ class MediaEngine(
     fun playbackSource(): DataSource.Factory =
         CacheDataSource.Factory()
             .setCache(downloadCache)
+            .setCacheKeyFactory { spec -> storageKey(spec.key ?: spec.uri.toString()) }
             .setCacheWriteDataSinkFactory(null) // the player never writes into downloads
             .setUpstreamDataSourceFactory(
                 CacheDataSource.Factory()

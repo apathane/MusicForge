@@ -46,6 +46,12 @@ object Lrc {
         }
         return lines.sortedBy { it.timeMs }.takeIf { it.isNotEmpty() }
     }
+
+    /** `[mm:ss.xx]text` per line, the form every LRC reader understands. */
+    fun format(lines: List<Lyrics.Line>): String = lines.joinToString("\n") { line ->
+        val cs = line.timeMs / 10
+        "[%02d:%02d.%02d]%s".format(java.util.Locale.ROOT, cs / 6000, (cs / 100) % 60, cs % 100, line.text)
+    }
 }
 
 /**

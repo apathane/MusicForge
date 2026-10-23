@@ -71,7 +71,7 @@ class AppGraph(val app: Application) {
 
     val recorder by lazy { PlayRecorder(database) }
 
-    val musicExport by lazy { dev.musicforge.download.MusicExport(app, mediaEngine, database.dao(), "MusicForge") }
+    val musicExport by lazy { dev.musicforge.download.MusicExport(app, mediaEngine, database.dao(), "MusicForge", lyrics) }
 
     val downloads by lazy {
         Downloads(app, mediaEngine, database.dao(), recorder, scope) { id ->

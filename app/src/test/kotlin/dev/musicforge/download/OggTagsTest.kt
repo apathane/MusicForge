@@ -47,6 +47,31 @@ class OggTagsTest {
         assertThat(String(file.readBytes())).isEqualTo("not an ogg file")
     }
 
+    @Test fun coverSizedTagStillFitsOnePage() {
+        val file = tmp.newFile("c.ogg")
+        val head = page(seq = 0, payload = "OpusHead".toByteArray() + ByteArray(11))
+        val tags = page(seq = 1, payload = "OpusTags".toByteArray() + le32(4) + "test".toByteArray() + le32(0))
+        val audio = page(seq = 2, payload = ByteArray(300) { it.toByte() })
+        file.writeBytes(head + tags + audio)
+        val picture = "A".repeat(55_000) // what a base64 cover inside the export budget looks like
+
+        assertThat(OggTags.write(file, mapOf("TITLE" to "Roads", "METADATA_BLOCK_PICTURE" to picture))).isTrue()
+        val out = file.readBytes()
+        assertThat(out.copyOfRange(out.size - audio.size, out.size)).isEqualTo(audio)
+        val n = out[head.size + 26].toInt() and 0xff
+        assertThat(n).isAtMost(255)
+    }
+
+    @Test fun refusesTagsTooBigForOnePage() {
+        val file = tmp.newFile("big.ogg")
+        val head = page(seq = 0, payload = "OpusHead".toByteArray() + ByteArray(11))
+        val tags = page(seq = 1, payload = "OpusTags".toByteArray() + le32(4) + "test".toByteArray() + le32(0))
+        val original = head + tags
+        file.writeBytes(original)
+        assertThat(OggTags.write(file, mapOf("METADATA_BLOCK_PICTURE" to "A".repeat(70_000)))).isFalse()
+        assertThat(file.readBytes()).isEqualTo(original)
+    }
+
     private fun le32(v: Int) = byteArrayOf((v and 0xff).toByte(), (v ushr 8).toByte(), (v ushr 16).toByte(), (v ushr 24).toByte())
 
     private fun page(seq: Int, payload: ByteArray): ByteArray {

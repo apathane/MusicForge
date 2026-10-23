@@ -93,7 +93,26 @@ class YouTubeSession(
         val system = Locale.getDefault()
         YouTube.locale = YouTubeLocale(
             gl = prefs[Keys.ContentCountry]?.takeIf { it.length == 2 } ?: system.country.takeIf { it.length == 2 } ?: "US",
-            hl = prefs[Keys.ContentLanguage]?.takeIf { it.isNotBlank() && it != "system" } ?: system.toLanguageTag().ifBlank { "en" },
+            hl = youTubeLanguage(prefs[Keys.ContentLanguage]?.takeIf { it != "system" }, system),
+        )
+    }
+
+    companion object {
+        /**
+         * YouTube answers HTTP 400 ("invalid argument") to every request whose `hl` it doesn't
+         * know, and phones send tags like `en-ZA` (found on the X7b: home, search, playback all
+         * failed). Only send a code from YouTube's own list, falling back to the bare language.
+         */
+        fun youTubeLanguage(chosen: String?, system: Locale): String =
+            listOfNotNull(chosen, system.toLanguageTag(), system.language).firstOrNull { it in SUPPORTED_HL } ?: "en"
+
+        /** YouTube's interface languages (the list Metrolist ships, checked 2026-10-23). */
+        val SUPPORTED_HL = setOf(
+            "af", "az", "id", "ms", "ca", "cs", "da", "de", "et", "en-GB", "en", "es", "eu", "fil", "fr", "fr-CA",
+            "gl", "hr", "zu", "is", "it", "sw", "lt", "hu", "nl", "no", "or", "uz", "pl", "pt-PT", "pt", "ro", "sq",
+            "sk", "sl", "fi", "sv", "bo", "vi", "tr", "bg", "ky", "kk", "mk", "mn", "ru", "sr", "uk", "el", "hy",
+            "iw", "ur", "ar", "fa", "ne", "mr", "hi", "bn", "pa", "gu", "ta", "te", "kn", "ml", "si", "th", "lo",
+            "my", "ka", "am", "km", "zh-CN", "zh-TW", "zh-HK", "ja", "ko",
         )
     }
 

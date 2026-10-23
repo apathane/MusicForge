@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 rootProject.name = "MusicForge"
 include(":app")
 include(":innertube")
+include(":baselineprofile")
