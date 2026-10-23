@@ -271,8 +271,11 @@ class BackupImporterTest {
         dao.upsert(dev.musicforge.data.db.SongEntity(id = "dl1", title = "Downloaded here", isDownloaded = true, dateDownload = 5L))
         dao.upsert(dev.musicforge.data.db.ArtistEntity(id = "ar1", name = "Someone"))
         dao.upsert(dev.musicforge.data.db.SongArtistMap("dl1", "ar1", 0))
+        dao.upsert(dev.musicforge.data.db.FormatEntity("dl1", 251, "audio/webm", "opus", 130_000, 48_000, 4_321L, null, null, null))
         val staged = stage { dir -> upstreamDb("metrolist-38", dir).use { library(it) } }
         importer.import(staged, includeAccount = true, downloadedIds = setOf("dl1"))
+        // Found on the X7b: without its format row, export silently skipped the song.
+        assertThat(dao.format("dl1")?.contentLength).isEqualTo(4_321L)
         val kept = dao.song("dl1").first()!!
         assertThat(kept.song.isDownloaded).isTrue()
         assertThat(kept.artists.map { it.name }).containsExactly("Someone")

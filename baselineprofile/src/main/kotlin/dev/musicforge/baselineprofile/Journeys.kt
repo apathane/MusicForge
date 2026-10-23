@@ -2,8 +2,6 @@ package dev.musicforge.baselineprofile
 
 import androidx.benchmark.macro.MacrobenchmarkScope
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.BySelector
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.Until
 
 const val PACKAGE = "dev.musicforge.app"
@@ -12,12 +10,19 @@ const val PACKAGE = "dev.musicforge.app"
 private fun MacrobenchmarkScope.find(label: String) =
     device.wait(Until.findObject(By.text(label)), 3_000) ?: device.findObject(By.desc(label))
 
-private fun MacrobenchmarkScope.flingDown(selector: BySelector = By.scrollable(true)) {
-    val list = device.findObject(selector) ?: return
-    list.setGestureMargin(device.displayWidth / 5)
-    repeat(2) { list.fling(Direction.DOWN) }
-    device.waitForIdle()
-    list.fling(Direction.UP)
+/**
+ * Screen-coordinate swipes: Compose lists recompose while scrolling, so a held UiObject2
+ * goes stale mid-fling (StaleObjectException on the first run).
+ */
+private fun MacrobenchmarkScope.flingDown() {
+    val x = device.displayWidth / 2
+    val low = device.displayHeight * 3 / 4
+    val high = device.displayHeight / 4
+    repeat(2) {
+        device.swipe(x, low, x, high, 8)
+        device.waitForIdle()
+    }
+    device.swipe(x, high, x, low, 8)
     device.waitForIdle()
 }
 

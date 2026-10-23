@@ -316,16 +316,18 @@ class BackupImporter(
 
     /**
      * Songs we hold the bytes for must survive a restore even when the backup doesn't know
-     * them, or they'd become invisible files in the download cache. Their rows (and artist
-     * credits) are parked in temp tables while the library is replaced.
+     * them, or they'd become invisible files in the download cache. Their rows (artist credits
+     * and format) are parked in temp tables while the library is replaced.
      */
     private fun stashDownloaded(db: SupportSQLiteDatabase, ids: Set<String>) {
-        listOf("keep_ids", "keep_song", "keep_map", "keep_artist").forEach { db.execSQL("DROP TABLE IF EXISTS temp.$it") }
+        listOf("keep_ids", "keep_song", "keep_map", "keep_artist", "keep_format").forEach { db.execSQL("DROP TABLE IF EXISTS temp.$it") }
         db.execSQL("CREATE TEMP TABLE keep_ids (id TEXT PRIMARY KEY)")
         ids.forEach { db.execSQL("INSERT OR IGNORE INTO temp.keep_ids VALUES (?)", arrayOf(it)) }
         db.execSQL("CREATE TEMP TABLE keep_song AS SELECT * FROM main.song WHERE id IN (SELECT id FROM temp.keep_ids)")
         db.execSQL("CREATE TEMP TABLE keep_map AS SELECT * FROM main.song_artist_map WHERE songId IN (SELECT id FROM temp.keep_ids)")
         db.execSQL("CREATE TEMP TABLE keep_artist AS SELECT * FROM main.artist WHERE id IN (SELECT artistId FROM temp.keep_map)")
+        // The format row describes the bytes on disk (mime, length); export and mid-file reopen need it.
+        db.execSQL("CREATE TEMP TABLE keep_format AS SELECT * FROM main.format WHERE id IN (SELECT id FROM temp.keep_ids)")
     }
 
     private fun restoreStash(db: SupportSQLiteDatabase) {
@@ -333,7 +335,9 @@ class BackupImporter(
         db.execSQL("INSERT OR IGNORE INTO main.song SELECT * FROM temp.keep_song")
         db.execSQL("INSERT OR IGNORE INTO main.artist SELECT * FROM temp.keep_artist")
         db.execSQL("INSERT OR IGNORE INTO main.song_artist_map SELECT * FROM temp.keep_map")
-        listOf("keep_ids", "keep_song", "keep_map", "keep_artist").forEach { db.execSQL("DROP TABLE IF EXISTS temp.$it") }
+        // Ours wins: the backup's row may describe another rendition than the one we downloaded.
+        db.execSQL("INSERT OR REPLACE INTO main.format SELECT * FROM temp.keep_format")
+        listOf("keep_ids", "keep_song", "keep_map", "keep_artist", "keep_format").forEach { db.execSQL("DROP TABLE IF EXISTS temp.$it") }
     }
 
     /** Metrolist calls it `isEpisode`, ConvX `isPodcastEpisode`; keep both truthful. */
