@@ -42,6 +42,7 @@ import dev.musicforge.data.db.Song
 import dev.musicforge.data.db.SongEntity
 import dev.musicforge.graph
 import dev.musicforge.playback.toMediaItem
+import dev.musicforge.recommendation.HomeComposer
 import dev.musicforge.recommendation.HomeItem
 import dev.musicforge.recommendation.HomeLayout
 import dev.musicforge.recommendation.HomeRepository
@@ -106,7 +107,8 @@ fun HomeScreen(
     val nearEnd by remember {
         derivedStateOf { (list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= list.layoutInfo.totalItemsCount - 3 }
     }
-    LaunchedEffect(nearEnd, state.remote.hasMore) { if (nearEnd && state.remote.hasMore) onAction(HomeAction.LoadMore) }
+    // Keyed on the page count too: a page of repeats changes nothing else, and paging must go on.
+    LaunchedEffect(nearEnd, state.remote.hasMore, state.remote.pages) { if (nearEnd && state.remote.hasMore) onAction(HomeAction.LoadMore) }
 
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item(key = "header", contentType = "header") { ScreenHeader(greeting()) }
@@ -196,7 +198,8 @@ private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) ->
             media,
             extra = listOfNotNull(
                 "Not for me" to { onAction(HomeAction.Hide(song.id)) },
-                artist?.let { "Less of ${it.name}" to { onAction(HomeAction.LessOf(it.id)) } },
+                // Jump back in is history, not a suggestion: "less of" would change nothing there.
+                artist?.takeIf { section.id in HomeComposer.SUGGESTIONS }?.let { "Less of ${it.name}" to { onAction(HomeAction.LessOf(it.id)) } },
             ),
             why = "On Home because: ${section.reason.replaceFirstChar { it.lowercase() }}. From your own library.",
         ) { menu = false }

@@ -52,6 +52,8 @@ data class LocalSignals(
     val forgotten: List<Song> = emptyList(),
     /** Changes once a day, so the forgotten-likes shelf turns over daily but holds still within a day. */
     val daySeed: Int = 0,
+    /** No songs, likes, playlists, plays or downloads at all: a fresh install. */
+    val isLibraryEmpty: Boolean = false,
     /** Songs the listener said "not for me" to: never on Home. */
     val hidden: Set<String> = emptySet(),
     /** Artists the listener wants less of: kept off the suggestion shelves while in force. */
@@ -99,8 +101,8 @@ object HomeComposer {
         )
     }
 
-    /** Nothing personal to show yet: Home asks for intent instead of guessing. */
-    fun isColdStart(s: LocalSignals) = compose(s).isEmpty()
+    /** The shelves that suggest rather than report; "Less of <artist>" only means something here. */
+    val SUGGESTIONS = setOf("around-this-hour", "your-rotation", "liked-then-forgotten")
 
     private fun HomeSection.ids() = items.filterIsInstance<HomeItem.Track>().map { it.song.id }
 

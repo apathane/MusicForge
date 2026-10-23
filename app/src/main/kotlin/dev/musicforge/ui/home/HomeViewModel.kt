@@ -15,9 +15,13 @@ import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.SETTINGS_ROUTE
 import dev.musicforge.ui.Tab
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,6 +35,8 @@ data class RemoteFeed(
     val isLoading: Boolean = true,
     val hasMore: Boolean = false,
     val error: String? = null,
+    /** Continuation pages loaded so far. */
+    val pages: Int = 0,
 )
 
 @Stable
@@ -39,9 +45,9 @@ data class HomeState(
     val sections: List<HomeSection>? = null,
     val remote: RemoteFeed = RemoteFeed(),
     val isWelcomeDismissed: Boolean = false,
-) {
-    val isColdStart get() = sections?.isEmpty() == true
-}
+    /** Nothing in the library at all: Home asks for intent instead of guessing. */
+    val isColdStart: Boolean = false,
+)
 
 sealed interface HomeAction {
     data class PlayFrom(val sectionId: String, val index: Int) : HomeAction
@@ -70,18 +76,23 @@ class HomeViewModel(
     private val onWelcomeDismissed: () -> Unit,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState(isWelcomeDismissed = welcomeDismissed))
-    val state = _state.asStateFlow()
+
+    /**
+     * Room is read only while Home is on screen: play-time checkpoints rewrite the song table every
+     * 30 s, and recomposing Home behind another tab or a locked screen would be wasted work.
+     */
+    val state: StateFlow<HomeState> = combine(_state, repository.signals()) { s, signals ->
+        s.copy(sections = HomeComposer.compose(signals), isColdStart = signals.isLibraryEmpty)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
 
     private val _events = Channel<HomeEvent>()
     val events = _events.receiveAsFlow()
 
     private var continuation: String? = null
-    private var isPaging = false
+    private var feedJob: Job? = null
+    private var pageJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            repository.signals().collect { signals -> _state.update { it.copy(sections = HomeComposer.compose(signals)) } }
-        }
         loadRemote(null)
     }
 
@@ -105,7 +116,7 @@ class HomeViewModel(
     }
 
     private fun play(action: HomeAction.PlayFrom) {
-        val section = _state.value.sections?.firstOrNull { it.id == action.sectionId } ?: return
+        val section = state.value.sections?.firstOrNull { it.id == action.sectionId } ?: return
         val songs = section.items.filterIsInstance<HomeItem.Track>().map { it.song.toMediaItem() }
         if (songs.isNotEmpty()) player.play(songs, action.index.coerceIn(0, songs.lastIndex))
     }
@@ -116,8 +127,12 @@ class HomeViewModel(
 
     /** [chip] null = the unfiltered feed. Chips from the first load are kept while filtering. */
     private fun loadRemote(chip: HomePage.Chip?) {
-        _state.update { it.copy(remote = it.remote.copy(isLoading = true, error = null)) }
-        viewModelScope.launch {
+        // A new feed replaces the old one: its page in flight and its next-page token go with it.
+        feedJob?.cancel()
+        pageJob?.cancel()
+        continuation = null
+        _state.update { it.copy(remote = it.remote.copy(isLoading = true, hasMore = false, error = null)) }
+        feedJob = viewModelScope.launch {
             YouTube.home(params = chip?.endpoint?.params).onSuccess { page ->
                 continuation = page.continuation
                 _state.update { s ->
@@ -140,9 +155,8 @@ class HomeViewModel(
     /** The feed goes on as you scroll, like the official app's. */
     private fun loadMore() {
         val token = continuation ?: return
-        if (isPaging) return
-        isPaging = true
-        viewModelScope.launch {
+        if (pageJob?.isActive == true || _state.value.remote.isLoading) return
+        pageJob = viewModelScope.launch {
             YouTube.home(continuation = token).onSuccess { page ->
                 continuation = page.continuation
                 _state.update { s ->
@@ -151,6 +165,8 @@ class HomeViewModel(
                         remote = s.remote.copy(
                             sections = s.remote.sections + page.sections.filter { it.items.isNotEmpty() && it.title !in known },
                             hasMore = continuation != null,
+                            // A page of repeats adds nothing visible; the counter lets the screen ask again.
+                            pages = s.remote.pages + 1,
                         ),
                     )
                 }
@@ -158,7 +174,6 @@ class HomeViewModel(
                 continuation = null
                 _state.update { it.copy(remote = it.remote.copy(hasMore = false)) }
             }
-            isPaging = false
         }
     }
 

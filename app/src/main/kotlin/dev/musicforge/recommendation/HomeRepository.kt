@@ -8,18 +8,33 @@ import dev.musicforge.data.db.RecommendationFeedback
 import dev.musicforge.data.db.Song
 import dev.musicforge.data.db.SongStat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /** Reads the listener's signals from Room; Room runs these queries off the main thread. */
 class HomeRepository(private val dao: MusicDao, private val now: () -> Long = System::currentTimeMillis) {
 
+    /**
+     * The signals, rebuilt at every hour boundary: "around this hour", the day's forgotten-likes
+     * pick and the expiry of corrections all depend on the time, and Home's ViewModel lives for
+     * the whole process.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun signals(): Flow<LocalSignals> {
-        val start = now()
+    fun signals(): Flow<LocalSignals> = flow {
+        while (true) {
+            val t = now()
+            emit(t)
+            delay(HOUR_MS - t % HOUR_MS + 1_000)
+        }
+    }.flatMapLatest(::signalsAt)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun signalsAt(start: Long): Flow<LocalSignals> {
         val month = start - 30 * DAY_MS
         val week = start - 7 * DAY_MS
         val hour = java.util.Calendar.getInstance().apply { timeInMillis = start }.get(java.util.Calendar.HOUR_OF_DAY)
@@ -34,17 +49,18 @@ class HomeRepository(private val dao: MusicDao, private val now: () -> Long = Sy
             dao.listenedMs(week),
             dao.topArtists(week, 1),
             withCredits(dao.songsAtHours(hours)),
-            dao.forgottenLikes(likedBefore = start - 45 * DAY_MS, notPlayedSince = start - 30 * DAY_MS),
+            dao.forgottenLikes(likedBefore = start - 45 * DAY_MS, notPlayedSince = start - 30 * DAY_MS, seed = daySeed),
             dao.activeFeedback(start),
         ) { values ->
             val feedback = values[9] as List<RecommendationFeedback>
-            @Suppress("UNCHECKED_CAST")
+            val counts = values[3] as LibraryCounts
             LocalSignals(
                 recent = values[0] as List<Song>,
                 rotation = values[1] as List<Pair<Song, Int>>,
                 downloads = values[2] as List<Song>,
-                downloadCount = (values[3] as LibraryCounts).downloaded,
-                likedCount = (values[3] as LibraryCounts).liked,
+                downloadCount = counts.downloaded,
+                likedCount = counts.liked,
+                isLibraryEmpty = counts.songs + counts.liked + counts.playlists + counts.events + counts.downloaded == 0,
                 playlists = values[4] as List<PlaylistSummary>,
                 weekMs = values[5] as Long,
                 topArtistThisWeek = (values[6] as List<ArtistStat>).firstOrNull()?.artist?.name,
@@ -85,7 +101,8 @@ class HomeRepository(private val dao: MusicDao, private val now: () -> Long = Sy
     }
 
     private companion object {
-        const val DAY_MS = 24 * 60 * 60 * 1000L
+        const val HOUR_MS = 60 * 60 * 1000L
+        const val DAY_MS = 24 * HOUR_MS
         const val LESS_OF_DAYS = 30L
     }
 }

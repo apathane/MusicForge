@@ -83,7 +83,7 @@ class BackupImporter(
             if (worth == 0) throw InvalidBackupException("This backup is empty: no songs, playlists or history to restore")
             val warnings = mutableListOf<String>()
             val wereDownloaded = mutableListOf<String>()
-            val copied = copyTables(staged.db, info, downloadedIds, warnings, wereDownloaded)
+            val copied = copyTables(staged.db, info, downloadedIds, warnings, wereDownloaded, isOurs = staged.isOurs)
             val imported = staged.settings?.let { importSettings(it, includeAccount, warnings) } ?: 0
             Result(if (staged.isOurs) Origin.MUSICFORGE else info.origin, copied, imported, warnings, wereDownloaded)
         }
@@ -132,6 +132,12 @@ class BackupImporter(
         )
 
         /**
+         * MusicForge's own tables (the listener's Home corrections). Only a MusicForge backup carries
+         * them; restoring Metrolist or ConvX leaves them as they are.
+         */
+        val OWN_TABLES = listOf("recommendation_feedback")
+
+        /**
          * Extracts only the flat entries we know. Anything else, including paths with
          * directories (zip-slip), is ignored.
          */
@@ -178,7 +184,7 @@ class BackupImporter(
             if ("song" !in tables) throw InvalidBackupException("song.db has no song table")
             val check = it.rawQuery("PRAGMA quick_check", null).use { c -> if (c.moveToFirst()) c.getString(0) else "?" }
             if (check != "ok") throw InvalidBackupException("song.db is damaged ($check)")
-            val columns = tables.filter { t -> t in TABLE_ORDER }.associateWith { t -> columnsOf(it, t) }
+            val columns = tables.filter { t -> t in TABLE_ORDER || t in OWN_TABLES }.associateWith { t -> columnsOf(it, t) }
             val counts = columns.keys.associateWith { t ->
                 it.rawQuery("SELECT COUNT(*) FROM ${q(t)}", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
             }
@@ -237,7 +243,10 @@ class BackupImporter(
         downloadedIds: Set<String>,
         warnings: MutableList<String>,
         wereDownloaded: MutableList<String>,
+        isOurs: Boolean,
     ): Map<String, Int> {
+        // Our own tables are replaced only from our own backup, and only when it has them.
+        val tables = TABLE_ORDER + OWN_TABLES.filter { isOurs && it in info.columns }
         // No ATTACH: on Android it permanently turns WAL off for Room's connection pool and
         // throws inside a transaction. Rows are streamed from a separate connection instead.
         val backup = SQLiteDatabase.openDatabase(backupFile.path, null, SQLiteDatabase.OPEN_READONLY)
@@ -246,8 +255,8 @@ class BackupImporter(
         backup.use {
             database.runInTransaction {
                 stashDownloaded(db, downloadedIds)
-                for (table in TABLE_ORDER.asReversed()) db.execSQL("DELETE FROM main.${q(table)}")
-                for (table in TABLE_ORDER) {
+                for (table in tables.asReversed()) db.execSQL("DELETE FROM main.${q(table)}")
+                for (table in tables) {
                     val backupCols = info.columns[table] ?: continue
                     val ours = mainColumns(db, table)
                     val common = ours.filter { it.name in backupCols }

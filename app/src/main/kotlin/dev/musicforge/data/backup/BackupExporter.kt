@@ -12,7 +12,7 @@ import java.util.zip.ZipOutputStream
 
 /**
  * Writes the zip layout Metrolist and ConvX use (`song.db` + `settings.preferences_pb`) plus a
- * small manifest. The layout matches, but the database is ours (Room schema, version 1), so
+ * small manifest. The layout matches, but the database is ours (our Room schema), so
  * these restore here, not in Metrolist or ConvX.
  */
 class BackupExporter(private val context: Context, private val database: MusicDatabase) {

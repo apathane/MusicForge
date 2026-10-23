@@ -227,6 +227,27 @@ class BackupImporterTest {
         assertThat(db.dao().songEntity("keep")).isNotNull()
     }
 
+    @Test fun ownBackupBringsHomeCorrectionsAndUpstreamLeavesThem() = runBlocking<Unit> {
+        val dao = db.dao()
+        dao.insert(dev.musicforge.data.db.RecommendationFeedback(mediaId = "kept", action = "HIDE", createdAt = 1))
+
+        // A Metrolist restore: the corrections stay as they were.
+        importer.import(stage { dir -> upstreamDb("metrolist-38", dir).use { library(it) } }, includeAccount = true, downloadedIds = emptySet())
+        assertThat(dao.activeFeedback(0).first().map { it.mediaId }).containsExactly("kept")
+
+        // Our own backup carries them and replaces them.
+        val ours = stage { dir ->
+            upstreamDb("metrolist-38", dir).use {
+                library(it)
+                it.execSQL("CREATE TABLE recommendation_feedback (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, mediaId TEXT, artistId TEXT, action TEXT NOT NULL, createdAt INTEGER NOT NULL, expiresAt INTEGER)")
+                it.execSQL("INSERT INTO recommendation_feedback (mediaId, action, createdAt) VALUES ('from-backup', 'HIDE', 2)")
+            }
+            File(dir, BackupImporter.MANIFEST_FILE).writeText("{}")
+        }
+        importer.import(ours, includeAccount = true, downloadedIds = emptySet())
+        assertThat(dao.activeFeedback(0).first().map { it.mediaId }).containsExactly("from-backup")
+    }
+
     @Test fun replacesExistingLibrary() = runBlocking {
         db.dao().upsert(dev.musicforge.data.db.SongEntity(id = "local", title = "Before restore"))
         val staged = stage { dir -> upstreamDb("metrolist-38", dir).use { library(it) } }

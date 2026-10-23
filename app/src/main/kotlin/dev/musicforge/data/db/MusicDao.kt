@@ -184,16 +184,19 @@ interface MusicDao {
     )
     fun songsAtHours(hours: List<Int>, limit: Int = 40): Flow<List<SongStat>>
 
-    /** Liked before [likedBefore] and not played since [notPlayedSince]: the ones that slipped away. */
+    /**
+     * Liked before [likedBefore] (or at an unknown time) and not played since [notPlayedSince]:
+     * the ones that slipped away. [seed] picks a different sample of the whole set each day.
+     */
     @Transaction
     @Query(
         """
-        SELECT * FROM song WHERE liked AND likedDate < :likedBefore
+        SELECT * FROM song WHERE liked AND (likedDate IS NULL OR likedDate < :likedBefore)
           AND id NOT IN (SELECT songId FROM event WHERE timestamp >= :notPlayedSince)
-        ORDER BY likedDate LIMIT :limit
+        ORDER BY (rowid * 2654435761 + :seed * 40503) % 1000003 LIMIT :limit
         """,
     )
-    fun forgottenLikes(likedBefore: Long, notPlayedSince: Long, limit: Int = 60): Flow<List<Song>>
+    fun forgottenLikes(likedBefore: Long, notPlayedSince: Long, seed: Int, limit: Int = 60): Flow<List<Song>>
 
     @Query("SELECT COALESCE(SUM(playTime), 0) FROM event WHERE timestamp >= :since")
     fun listenedMs(since: Long): Flow<Long>

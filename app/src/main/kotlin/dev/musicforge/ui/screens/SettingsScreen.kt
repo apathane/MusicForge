@@ -132,7 +132,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     fun resetHome() = viewModelScope.launch {
-        dev.musicforge.recommendation.HomeRepository(graph.database.dao()).reset()
+        graph.database.dao().clearFeedback()
         android.widget.Toast.makeText(graph.app, "Home reset: every suggestion is back", android.widget.Toast.LENGTH_SHORT).show()
     }
 

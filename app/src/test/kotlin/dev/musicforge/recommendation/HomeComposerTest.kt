@@ -13,10 +13,9 @@ class HomeComposerTest {
         Song(SongEntity(id = id, title = "Song $id"), listOf(ArtistEntity(id = artist, name = "Artist $artist")))
 
     @Test
-    fun cleanInstallShowsNoSectionsSoHomeAsksForIntent() {
+    fun cleanInstallShowsNoSectionsAtAll() {
         val empty = LocalSignals()
         assertThat(HomeComposer.compose(empty)).isEmpty()
-        assertThat(HomeComposer.isColdStart(empty)).isTrue()
     }
 
     @Test
