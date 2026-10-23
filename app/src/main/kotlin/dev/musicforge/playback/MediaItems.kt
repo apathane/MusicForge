@@ -11,7 +11,8 @@ private const val EXTRA_ARTIST_IDS = "forge.artistIds"
 private const val EXTRA_ARTIST_NAMES = "forge.artistNames"
 private const val EXTRA_ALBUM_ID = "forge.albumId"
 private const val EXTRA_DURATION = "forge.durationSec"
-private const val EXTRA_FROM_RADIO = "forge.fromRadio"
+private const val EXTRA_FROM = "forge.from"
+private const val FROM_RADIO = "Radio"
 
 /** Artist credits carried with a queue item so history can be written without a lookup. */
 data class Credit(val id: String?, val name: String)
@@ -82,15 +83,19 @@ val MediaMetadata.credits: List<Credit>
 val MediaMetadata.albumId: String? get() = extras?.getString(EXTRA_ALBUM_ID)
 
 /**
- * Added by radio continuation rather than chosen, so the queue can say so. In-memory only:
- * shortcut: QueueStore saves ids, so a restored queue loses the mark; persist it when queue
- * provenance grows past this label.
+ * Where a queued song came from when it wasn't simply chosen: "Radio" for radio continuation,
+ * or the Home shelf it was started from. The player and queue say so. In-memory only:
+ * shortcut: QueueStore saves ids, so a restored queue loses it; persist it when queue
+ * provenance grows past a label.
  */
-val MediaMetadata.isFromRadio: Boolean get() = extras?.getBoolean(EXTRA_FROM_RADIO) == true
+val MediaMetadata.from: String? get() = extras?.getString(EXTRA_FROM)
+val MediaMetadata.isFromRadio: Boolean get() = from == FROM_RADIO
 
-fun MediaItem.markedFromRadio(): MediaItem = buildUpon()
-    .setMediaMetadata(mediaMetadata.buildUpon().setExtras(android.os.Bundle(mediaMetadata.extras ?: android.os.Bundle()).apply { putBoolean(EXTRA_FROM_RADIO, true) }).build())
+fun MediaItem.markedFrom(label: String): MediaItem = buildUpon()
+    .setMediaMetadata(mediaMetadata.buildUpon().setExtras(android.os.Bundle(mediaMetadata.extras ?: android.os.Bundle()).apply { putString(EXTRA_FROM, label) }).build())
     .build()
+
+fun MediaItem.markedFromRadio(): MediaItem = markedFrom(FROM_RADIO)
 val MediaMetadata.durationSec: Int? get() = extras?.getInt(EXTRA_DURATION, -1)?.takeIf { it > 0 }
 
 /**

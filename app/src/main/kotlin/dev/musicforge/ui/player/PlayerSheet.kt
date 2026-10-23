@@ -71,6 +71,8 @@ import androidx.media3.exoplayer.offline.Download
 import coil3.compose.AsyncImage
 import dev.musicforge.graph
 import dev.musicforge.playback.NowPlaying
+import dev.musicforge.playback.from
+import dev.musicforge.playback.isFromRadio
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
@@ -230,6 +232,17 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // Why this song is playing, when it wasn't simply picked: a Home shelf, or radio.
+                val from = now.metadata.from
+                if (now.error == null && from != null) {
+                    Text(
+                        if (now.metadata.isFromRadio) "Radio pick" else "From $from",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = white.copy(alpha = 0.5f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             val isLiked = liked == true
             PlayerIcon(if (isLiked) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (isLiked) "Unlike" else "Like", if (isLiked) accent else white, 26.dp) {

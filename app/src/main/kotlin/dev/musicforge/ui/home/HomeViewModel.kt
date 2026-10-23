@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.pages.HomePage
 import dev.musicforge.playback.PlayerConnection
+import dev.musicforge.playback.markedFrom
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.recommendation.HomeComposer
 import dev.musicforge.recommendation.HomeItem
@@ -117,7 +118,7 @@ class HomeViewModel(
 
     private fun play(action: HomeAction.PlayFrom) {
         val section = state.value.sections?.firstOrNull { it.id == action.sectionId } ?: return
-        val songs = section.items.filterIsInstance<HomeItem.Track>().map { it.song.toMediaItem() }
+        val songs = section.items.filterIsInstance<HomeItem.Track>().map { it.song.toMediaItem().markedFrom(section.title) }
         if (songs.isNotEmpty()) player.play(songs, action.index.coerceIn(0, songs.lastIndex))
     }
 
