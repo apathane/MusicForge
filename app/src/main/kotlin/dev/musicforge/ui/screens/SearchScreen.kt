@@ -217,7 +217,7 @@ fun SearchScreen() {
 }
 
 @Composable
-private fun SearchField(value: String, onChange: (String) -> Unit, onSubmit: () -> Unit) {
+internal fun SearchField(value: String, onChange: (String) -> Unit, onSubmit: () -> Unit, placeholder: String = "Artists, songs, lyrics") {
     Row(
         Modifier
             .padding(horizontal = 16.dp)
@@ -231,7 +231,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onSubmit: () 
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
-                Text("Artists, songs, lyrics", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             BasicTextField(
                 value = value,
