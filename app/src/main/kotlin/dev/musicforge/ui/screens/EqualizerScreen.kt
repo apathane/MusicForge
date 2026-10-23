@@ -37,6 +37,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
+import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.EqPreset
 import dev.musicforge.playback.EqSettings
 import dev.musicforge.ui.components.EmptyState
@@ -76,17 +77,9 @@ fun EqualizerScreen(onBack: () -> Unit) {
         run {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(EqPreset.entries) { p ->
-                    val on = preset == p.name
-                    Text(
-                        p.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .clickable { save(on = true, newLevels = bands.map { b -> p.gainMbAt(b.centerHz) }, presetName = p.name) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    SignalChip(p.label, preset == p.name) {
+                        save(on = true, newLevels = bands.map { b -> p.gainMbAt(b.centerHz) }, presetName = p.name)
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))

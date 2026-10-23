@@ -67,6 +67,11 @@ interface MusicDao {
     @Query("SELECT * FROM song WHERE isDownloaded ORDER BY dateDownload DESC")
     fun downloadedSongs(): Flow<List<Song>>
 
+    /** Home shows a few; the full list can be thousands of rows. */
+    @Transaction
+    @Query("SELECT * FROM song WHERE isDownloaded ORDER BY dateDownload DESC LIMIT :limit")
+    fun recentDownloads(limit: Int): Flow<List<Song>>
+
     @Transaction
     @Query("SELECT * FROM song WHERE id = :id")
     fun song(id: String): Flow<Song?>

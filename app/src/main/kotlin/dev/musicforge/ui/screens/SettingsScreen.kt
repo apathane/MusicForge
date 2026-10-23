@@ -217,7 +217,6 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow("Even out loudness", prefs?.get(Keys.AudioNormalization) ?: true) { vm.set(Keys.AudioNormalization, it) }
             ToggleRow("Skip silence", prefs?.get(Keys.SkipSilence) ?: false) { vm.set(Keys.SkipSilence, it) }
             ToggleRow("Remember queue", prefs?.get(Keys.PersistentQueue) ?: true) { vm.set(Keys.PersistentQueue, it) }
-            val context = LocalContext.current
             ActionRow("Equalizer", "Bands and presets, on any phone", onEqualizer)
         }
 

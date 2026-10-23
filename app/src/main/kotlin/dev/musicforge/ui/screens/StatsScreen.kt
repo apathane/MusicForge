@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.graph
+import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
@@ -79,17 +80,7 @@ fun StatsScreen(onBack: () -> Unit) {
         item {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(Period.entries) { p ->
-                    val on = p == period
-                    Text(
-                        p.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .clickable { period = p }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                    SignalChip(p.label, p == period) { period = p }
                 }
             }
         }

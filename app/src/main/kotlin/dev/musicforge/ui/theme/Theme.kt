@@ -46,39 +46,44 @@ private val ForgeTypography = Typography(
     labelSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.1.sp),
 )
 
+// Signal tokens (docs/PERSONALIZED-UI-SPEC.md §3): canvas, ink, muted, line. Muted text clears
+// 4.5:1 on its canvas in both themes (dark ~7.9:1, light ~5:1).
+private val Ink = Color(0xFFF4F3EF)
+private val InkLight = Color(0xFF151518)
+
 private fun darkScheme(pureBlack: Boolean) = darkColorScheme(
-    primary = Color.White,
-    onPrimary = Color.Black,
-    secondary = Color(0xFFD1D1D6),
-    onSecondary = Color.Black,
-    background = if (pureBlack) Color.Black else Color(0xFF050506),
-    onBackground = Color.White,
-    surface = if (pureBlack) Color.Black else Color(0xFF0D0D0F),
-    onSurface = Color.White,
-    surfaceVariant = Color(0xFF1C1C1E),
-    onSurfaceVariant = Color(0xFF8E8E93),
-    surfaceContainer = Color(0xFF151517),
-    surfaceContainerHigh = Color(0xFF1C1C1E),
-    outline = Color(0xFF2C2C2E),
-    outlineVariant = Color(0xFF1F1F22),
+    primary = Ink,
+    onPrimary = InkLight,
+    secondary = Color(0xFFD1D0CC),
+    onSecondary = InkLight,
+    background = if (pureBlack) Color.Black else Color(0xFF09090B),
+    onBackground = Ink,
+    surface = if (pureBlack) Color.Black else Color(0xFF0F0F12),
+    onSurface = Ink,
+    surfaceVariant = Color(0xFF1C1C20),
+    onSurfaceVariant = Color(0xFFA2A2AA),
+    surfaceContainer = Color(0xFF141417),
+    surfaceContainerHigh = Color(0xFF1C1C20),
+    outline = Color(0xFF2A2A2F),
+    outlineVariant = Color(0xFF1F1F23),
     error = Color(0xFFFF453A),
 )
 
 private val LightScheme = lightColorScheme(
-    primary = Color.Black,
-    onPrimary = Color.White,
-    secondary = Color(0xFF3A3A3C),
-    onSecondary = Color.White,
-    background = Color.White,
-    onBackground = Color.Black,
-    surface = Color(0xFFF7F7F9),
-    onSurface = Color.Black,
-    surfaceVariant = Color(0xFFF2F2F7),
-    onSurfaceVariant = Color(0xFF6E6E73),
-    surfaceContainer = Color(0xFFF2F2F7),
-    surfaceContainerHigh = Color(0xFFE9E9EE),
-    outline = Color(0xFFE5E5EA),
-    outlineVariant = Color(0xFFEFEFF4),
+    primary = InkLight,
+    onPrimary = Ink,
+    secondary = Color(0xFF3A3A3E),
+    onSecondary = Ink,
+    background = Ink,
+    onBackground = InkLight,
+    surface = Color(0xFFFAF9F6),
+    onSurface = InkLight,
+    surfaceVariant = Color(0xFFE9E8E3),
+    onSurfaceVariant = Color(0xFF68686F),
+    surfaceContainer = Color(0xFFEDECE7),
+    surfaceContainerHigh = Color(0xFFE4E3DE),
+    outline = Color(0xFFD8D7D2),
+    outlineVariant = Color(0xFFE4E3DE),
     error = Color(0xFFFF3B30),
 )
 

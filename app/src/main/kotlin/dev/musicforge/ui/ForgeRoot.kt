@@ -62,7 +62,7 @@ import dev.musicforge.ui.screens.DownloadsScreen
 import dev.musicforge.ui.screens.LibraryAlbumsScreen
 import dev.musicforge.ui.screens.LoginScreen
 import dev.musicforge.ui.screens.LibraryArtistsScreen
-import dev.musicforge.ui.screens.HomeScreen
+import dev.musicforge.ui.home.HomeRoot
 import dev.musicforge.ui.screens.LibraryScreen
 import dev.musicforge.ui.screens.SearchScreen
 import dev.musicforge.ui.screens.SettingsScreen
@@ -110,7 +110,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
         Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
             NavHost(nav, startDestination = Tab.Home.route, modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }) {
-                composable(Tab.Home.route) { HomeScreen() }
+                composable(Tab.Home.route) { HomeRoot() }
                 composable(Tab.Search.route) { SearchScreen() }
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
                 composable(Tab.Downloads.route) { DownloadsScreen() }

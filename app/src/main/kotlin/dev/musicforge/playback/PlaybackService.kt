@@ -167,7 +167,6 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    /** Items from controllers carry metadata but no playable URI; give them ours. */
     /** Runs [block] on our scope and hands the result to Media3 as a future. */
     private fun <T> future(block: suspend () -> T): ListenableFuture<T> {
         val f = SettableFuture.create<T>()

@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         }
         graph.player.connect()
         handlePlayFromSearch(intent)
-        // The media notification needs this on Android 13+ (the X7b runs 13).
+        // The media notification needs this on Android 13+ (the X7b runs 14).
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {

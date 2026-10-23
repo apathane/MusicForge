@@ -48,6 +48,7 @@ import dev.musicforge.ui.openItem
 import dev.musicforge.AppGraph
 import dev.musicforge.data.db.SearchHistory
 import dev.musicforge.graph
+import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.components.EmptyState
@@ -152,7 +153,7 @@ fun SearchScreen() {
                 Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SearchKind.entries.forEach { k -> Chip(k.label, k == kind) { vm.select(k) } }
+                SearchKind.entries.forEach { k -> SignalChip(k.label, k == kind) { vm.select(k) } }
             }
         }
         when (val r = results) {
@@ -244,18 +245,4 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onSubmit: () 
             )
         }
     }
-}
-
-@Composable
-private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Text(
-        label,
-        style = MaterialTheme.typography.labelLarge,
-        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier
-            .clip(RoundedCornerShape(percent = 50))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    )
 }

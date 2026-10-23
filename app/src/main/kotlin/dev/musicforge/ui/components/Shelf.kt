@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,8 +34,10 @@ fun Shelf(title: String, items: List<YTItem>, onClick: (YTItem) -> Unit) {
             modifier = Modifier.padding(horizontal = 20.dp),
         )
         Spacer(Modifier.height(10.dp))
+        // YouTube sometimes lists an item twice in one shelf; keys must be unique, so the repeat goes.
+        val unique = androidx.compose.runtime.remember(items) { items.distinctBy { it.id } }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            itemsIndexed(items, key = { i, it -> "$i:${it.id}" }) { _, item -> Card(item, onClick) }
+            items(unique, key = { it.id }) { item -> Card(item, onClick) }
         }
     }
 }
