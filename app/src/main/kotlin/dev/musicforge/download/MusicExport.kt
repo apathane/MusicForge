@@ -107,7 +107,8 @@ class MusicExport(
                         song.song.albumName?.let { put("ALBUM", it) }
                         song.song.year?.let { put("DATE", it.toString()) }
                         // Namida, Poweramp, foobar2000 and others read LRC from this tag.
-                        lrc?.let { put("LYRICS", it) }
+                        // Lyrics share the one tag page; a very long text would push everything out.
+                        lrc?.takeIf { it.toByteArray().size <= MAX_LYRICS_BYTES }?.let { put("LYRICS", it) }
                     }
                     // The cover must fit the one tag page with everything else (~64 KB).
                     val budget = 60_000 - tags.entries.sumOf { it.key.length + it.value.toByteArray().size + 5 }
@@ -134,7 +135,8 @@ class MusicExport(
     private fun copyFromCache(id: String, length: Long, target: java.io.File) {
         // Cache-only source: no upstream, so a missing byte is an error, never a network fetch.
         val source = CacheDataSource.Factory().setCache(engine.downloadCache).createDataSource()
-        source.open(DataSpec.Builder().setUri("cache://$id".toUri()).setKey(id).setLength(length).build())
+        // Read to the end of what the cache holds rather than trusting a stored length.
+        source.open(DataSpec.Builder().setUri("cache://$id".toUri()).setKey(id).build())
         try {
             target.outputStream().use { out ->
                 val buf = ByteArray(64 * 1024)
@@ -147,6 +149,7 @@ class MusicExport(
         } finally {
             source.close()
         }
+        if (length > 0 && target.length() != length) Timber.w("export of %s: cache held %d bytes, format says %d", id, target.length(), length)
     }
 
     @RequiresApi(29)
@@ -279,6 +282,7 @@ class MusicExport(
 
     private companion object {
         const val COVER_PX = 500
+        const val MAX_LYRICS_BYTES = 24_000
     }
 
     /** Safe on every filesystem a phone or PC might sync to. */
