@@ -37,6 +37,9 @@ class MainActivity : ComponentActivity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         setContent {
+            // The root composable paints the whole screen; the window's own background under it
+            // was an extra full-screen fill on every frame.
+            androidx.compose.runtime.SideEffect { window.setBackgroundDrawable(null) }
             val current by look.collectAsStateWithLifecycle(initialValue = Look())
             val ambience by graph.ambience.ambience.collectAsStateWithLifecycle()
             // The splash is drawn before any of our code runs, from a theme chosen now for next time.

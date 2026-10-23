@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -81,11 +80,14 @@ fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
 fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier, fallbackLetter: String? = null) {
     val px = with(LocalDensity.current) { size.roundToPx() }
     val context = LocalContext.current
+    val placeholder = MaterialTheme.colorScheme.surfaceVariant
     Box(
         modifier
             .size(size)
             .clip(RoundedCornerShape(corner))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            // Only paint the grey tile when there is no image: under a loaded cover it was one more
+            // full-card fill per frame (overdraw on the X7b's Adreno 610).
+            .then(if (url == null) Modifier.background(placeholder) else Modifier),
     ) {
         if (url == null && fallbackLetter != null) {
             Text(
@@ -97,20 +99,30 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
         }
         if (url != null) {
             // YouTube video thumbnails are 4:3 with the 16:9 picture letterboxed inside; zoom past
-            // the baked-in black bars (360/270) so they read as square covers like album art.
+            // the baked-in black bars (360/270) so they read as square covers like album art. The
+            // zoom is part of the image's scaling, not a separate layer.
             val letterboxed = "i.ytimg.com" in url
+            val tile = remember(placeholder) { androidx.compose.ui.graphics.painter.ColorPainter(placeholder) }
             AsyncImage(
                 // Right-sized file; fade only for big artwork (a fade draws both images: GPU time on the X7b).
                 model = remember(url, px) {
                     ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, px)).size(px).crossfade(px > 600).build()
                 },
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(size).then(
-                    if (letterboxed) Modifier.graphicsLayer { scaleX = 4f / 3f; scaleY = 4f / 3f } else Modifier,
-                ),
+                placeholder = tile,
+                error = tile,
+                contentScale = if (letterboxed) CropPastLetterbox else ContentScale.Crop,
+                modifier = Modifier.size(size),
             )
         }
+    }
+}
+
+/** Crop, then zoom 4/3 so a letterboxed 16:9 picture inside a 4:3 thumbnail fills the square. */
+private object CropPastLetterbox : ContentScale {
+    override fun computeScaleFactor(srcSize: androidx.compose.ui.geometry.Size, dstSize: androidx.compose.ui.geometry.Size): androidx.compose.ui.layout.ScaleFactor {
+        val s = maxOf(dstSize.width / srcSize.width, dstSize.height / srcSize.height) * 4f / 3f
+        return androidx.compose.ui.layout.ScaleFactor(s, s)
     }
 }
 
