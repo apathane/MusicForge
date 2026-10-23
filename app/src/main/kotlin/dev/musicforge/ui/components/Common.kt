@@ -19,7 +19,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,6 +83,7 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
     val px = with(LocalDensity.current) { size.roundToPx() }
     val context = LocalContext.current
     val placeholder = MaterialTheme.colorScheme.surfaceVariant
+    var failed by remember(url) { androidx.compose.runtime.mutableStateOf(false) }
     Box(
         modifier
             .size(size)
@@ -111,9 +114,19 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
                 contentDescription = null,
                 placeholder = tile,
                 error = tile,
+                // A cover that fails to load would otherwise be a blank tile; the letter says whose it is.
+                onError = if (fallbackLetter != null) ({ failed = true }) else null,
                 contentScale = if (letterboxed) CropPastLetterbox else ContentScale.Crop,
                 modifier = Modifier.size(size),
             )
+            if (failed && fallbackLetter != null) {
+                Text(
+                    fallbackLetter.take(1).uppercase(),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
         }
     }
 }

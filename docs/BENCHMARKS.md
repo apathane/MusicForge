@@ -53,3 +53,15 @@ The emulator was restarted with `-gpu host` (Mesa Iris Xe through the emulator's
 Reading: the UI thread is clean (≤ 3 slow frames in every run); the tail improved (p99 32 → 22 ms). The remaining "janky" frames are all *issue draw commands* on the render thread while two full-screen layers animate, and neither the shadow nor the backdrop explains them. This is likely the emulator's GL-translation overhead per call. **It needs a check on the real Honor X7b** (`adb shell dumpsys gfxinfo dev.musicforge.app` after opening/closing the player a few times).
 
 Cold start (release, first launch after install, no baseline profile): 2.7–3.6 s on the emulator. Next: a baseline profile.
+
+## 2026-10-23 night: Aria Home on the GPU emulator (release, R8)
+
+Fresh AVD `x7b` (API 33, 1080×2412) with `-gpu host` on the reinstalled laptop (Iris Xe, Mesa 26.2.5 through the emulator's GLES translator), the user's restored Metrolist library (8,446 songs, 209 playlists, 256 plays). `dumpsys gfxinfo` after warming images once.
+
+| Scenario | Frames | Janky | p99 | Slow UI thread |
+|---|---|---|---|---|
+| Long flings top → bottom → top ×2 (crosses into new shelves and triggers YouTube paging) | 920 | 8.3 % | 97 ms | 32 |
+| Local sections only (Jump back in → playlists), 20 short swipes | 836 | 3.0 % | 29 ms | 1 |
+| YouTube feed only, 10 short swipes | 461 | 1.5 % | 27 ms | 0 |
+
+Reading: in steady scrolling the UI thread is clean on both halves of Home; the slow UI frames in the long-fling run come from shelves composing for the first time and continuation pages arriving mid-fling. Emulator GPU numbers are directional only; the X7b numbers are still to be taken.
