@@ -100,9 +100,9 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
             // the baked-in black bars (360/270) so they read as square covers like album art.
             val letterboxed = "i.ytimg.com" in url
             AsyncImage(
-                // Small thumbnails: right-sized file, no fade (a fade per row costs frames while scrolling).
+                // Right-sized file; fade only for big artwork (a fade draws both images: GPU time on the X7b).
                 model = remember(url, px) {
-                    ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, px)).size(px).crossfade(px > 300).build()
+                    ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, px)).size(px).crossfade(px > 600).build()
                 },
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
