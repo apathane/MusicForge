@@ -1,6 +1,9 @@
 package dev.musicforge.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.datastore.preferences.core.edit
+import dev.musicforge.data.prefs.Keys
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +71,32 @@ fun TasteScreen(onBack: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
+        }
+        item {
+            val prefs by graph.settings.data.collectAsStateWithLifecycle(null)
+            val paused = prefs?.get(Keys.SuggestionsPaused) == true
+            Row(
+                Modifier.fillMaxWidth().clickable { scope.launch { graph.settings.edit { it[Keys.SuggestionsPaused] = !paused } } }
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Pause suggestions", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Home keeps what you played, downloaded and saved, and stops guessing from it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                androidx.compose.material3.Switch(
+                    paused,
+                    { on -> scope.launch { graph.settings.edit { it[Keys.SuggestionsPaused] = on } } },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+            }
         }
         item { SectionHeader("When you listen", "Plays by hour of the day, all time. Around this hour reads this.") }
         item { HourChart(hours) }

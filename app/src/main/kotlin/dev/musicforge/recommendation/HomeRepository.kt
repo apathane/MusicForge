@@ -17,7 +17,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /** Reads the listener's signals from Room; Room runs these queries off the main thread. */
-class HomeRepository(private val dao: MusicDao, private val now: () -> Long = System::currentTimeMillis) {
+class HomeRepository(
+    private val dao: MusicDao,
+    private val paused: Flow<Boolean> = flowOf(false),
+    private val now: () -> Long = System::currentTimeMillis,
+) {
 
     /**
      * The signals, rebuilt at every hour boundary: "around this hour", the day's forgotten-likes
@@ -31,7 +35,7 @@ class HomeRepository(private val dao: MusicDao, private val now: () -> Long = Sy
             emit(t)
             delay(HOUR_MS - t % HOUR_MS + 1_000)
         }
-    }.flatMapLatest(::signalsAt)
+    }.flatMapLatest(::signalsAt).combine(paused) { signals, isPaused -> signals.copy(isPaused = isPaused) }
 
     @Suppress("UNCHECKED_CAST")
     private fun signalsAt(start: Long): Flow<LocalSignals> {

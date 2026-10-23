@@ -45,6 +45,8 @@ object Keys {
     val PureBlack = bool("pureBlack")
     val GlassTier = str("forge.glassTier") // SOLID / ARTWORK / LIVE
     val ExportToMusic = bool("forge.exportToMusic")
+    /** Home shows only what you did, not what it guesses from it. */
+    val SuggestionsPaused = bool("forge.suggestionsPaused")
     /** Same name as Metrolist and ConvX, so a restore carries it across. */
     val AutoDownloadOnLike = bool("autoDownloadOnLike")
     val EqEnabled = bool("forge.eqEnabled")

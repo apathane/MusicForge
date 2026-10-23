@@ -58,6 +58,8 @@ data class LocalSignals(
     val hidden: Set<String> = emptySet(),
     /** Artists the listener wants less of: kept off the suggestion shelves while in force. */
     val lessOf: Set<String> = emptySet(),
+    /** The listener paused suggestions: only the factual shelves remain. */
+    val isPaused: Boolean = false,
 )
 
 /**
@@ -75,9 +77,9 @@ object HomeComposer {
         val shown = HashSet<String>()
         return listOfNotNull(
             jumpBackIn(s)?.also { shown += it.ids() },
-            aroundThisHour(s, shown)?.also { shown += it.ids() },
-            rotation(s, shown)?.also { shown += it.ids() },
-            forgotten(s, shown),
+            aroundThisHour(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+            rotation(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+            forgotten(s, shown)?.takeUnless { s.isPaused },
             downloads(s),
             library(s),
             stats(s),

@@ -116,6 +116,18 @@ class HomeComposerTest {
     }
 
     @Test
+    fun pausedSuggestionsLeaveOnlyWhatYouDid() {
+        val s = LocalSignals(
+            recent = listOf(song("r")),
+            aroundNow = (1..5).map { song("n$it") to 3 },
+            rotation = (1..5).map { song("t$it") to 3 },
+            forgotten = (1..5).map { song("f$it") },
+            isPaused = true,
+        )
+        assertThat(HomeComposer.compose(s).map { it.id }).containsExactly("jump-back-in")
+    }
+
+    @Test
     fun hourLabels() {
         assertThat(listOf(0, 9, 12, 13, 23).map(HomeComposer::hourLabel)).containsExactly("midnight", "9 am", "noon", "1 pm", "11 pm").inOrder()
     }
