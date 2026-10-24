@@ -52,6 +52,14 @@ import dev.musicforge.data.db.SearchHistory
 import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.toMediaItem
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import dev.musicforge.ui.CollectionKind
+import dev.musicforge.ui.Routes
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
@@ -126,6 +134,17 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
         }
     }
 
+    fun forget(q: String) = viewModelScope.launch { graph.database.dao().deleteSearch(q) }
+    fun forgetAll() = viewModelScope.launch { graph.database.dao().clearSearchHistory() }
+
+    /** A pasted song link plays that song; radio carries on from it. */
+    fun playVideo(id: String) = viewModelScope.launch {
+        _results.value = Results.Loading
+        val song = YouTube.queue(listOf(id)).getOrNull()?.firstOrNull()
+        if (song == null) _results.value = Results.Failed("Couldn't open that link")
+        else { _results.value = Results.Idle; graph.player.play(listOf(song.toMediaItem())) }
+    }
+
     fun select(k: SearchKind) {
         kind.value = k
         if (_results.value !is Results.Idle) submit()
@@ -144,14 +163,34 @@ fun SearchScreen() {
     val focus = LocalFocusManager.current
     val player = context.graph.player
     val nav = LocalNavController.current
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    val fieldFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Opening Search with nothing typed means you are about to type.
+    LaunchedEffect(Unit) { if (vm.query.value.isEmpty()) runCatching { fieldFocus.requestFocus() } }
+    // Scrolling the results means reading them: put the keyboard away.
+    LaunchedEffect(list) {
+        androidx.compose.runtime.snapshotFlow { list.isScrollInProgress }.collect { if (it) focus.clearFocus() }
+    }
+    val submit: (String) -> Unit = { text ->
+        focus.clearFocus()
+        when (val link = dev.musicforge.ui.YouTubeLink.parse(text)) {
+            null -> vm.submit(text)
+            is dev.musicforge.ui.YouTubeLink.Song -> vm.playVideo(link.videoId)
+            is dev.musicforge.ui.YouTubeLink.Playlist -> nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, link.playlistId))
+            is dev.musicforge.ui.YouTubeLink.Album -> nav.navigate(Routes.collection(CollectionKind.ALBUM, link.browseId))
+            is dev.musicforge.ui.YouTubeLink.Artist -> nav.navigate(Routes.artist(link.channelId))
+        }
+    }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
+    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item { ScreenHeader("Search") }
         item {
             SearchField(
                 value = query,
                 onChange = vm::edit,
-                onSubmit = { vm.submit(); focus.clearFocus() },
+                onSubmit = { submit(query) },
+                focusRequester = fieldFocus,
+                placeholder = "Songs, artists, or paste a link",
             )
         }
         item {
@@ -164,16 +203,32 @@ fun SearchScreen() {
         }
         when (val r = results) {
             SearchViewModel.Results.Idle -> {
-                val lines = if (query.isBlank()) history else suggestions
+                val recent = query.isBlank()
+                val lines = if (recent) history else suggestions
+                if (recent && lines.isNotEmpty()) item(key = "recent") {
+                    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Recent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                        Text(
+                            "Clear",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear recent searches") { vm.forgetAll() }
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                        )
+                    }
+                }
                 items(lines, key = { "s:$it" }) { line ->
-                    Text(
-                        line,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { vm.submit(line); focus.clearFocus() }
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                    )
+                    Row(
+                        Modifier.fillMaxWidth().animateItem().clickable { submit(line) }.padding(start = 20.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(line, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
+                        if (recent) {
+                            IconText("✕", "Remove $line from recent searches") { vm.forget(line) }
+                        } else {
+                            // Fill the field and keep typing, as Metrolist and BitChord do.
+                            IconText("↖", "Edit $line") { vm.edit(line) }
+                        }
+                    }
                 }
             }
             SearchViewModel.Results.Loading -> item {
@@ -223,7 +278,23 @@ fun SearchScreen() {
 }
 
 @Composable
-internal fun SearchField(value: String, onChange: (String) -> Unit, onSubmit: () -> Unit, placeholder: String = "Artists, songs, lyrics") {
+private fun IconText(glyph: String, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { contentDescription = label })
+    }
+}
+
+@Composable
+internal fun SearchField(
+    value: String,
+    onChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    placeholder: String = "Artists, songs, lyrics",
+    focusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+) {
     Row(
         Modifier
             .padding(horizontal = 16.dp)
@@ -247,8 +318,22 @@ internal fun SearchField(value: String, onChange: (String) -> Unit, onSubmit: ()
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
             )
+        }
+        if (value.isNotEmpty()) {
+            // A 28 dp disc inside a 44 dp target: small to look at, easy to hit.
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear search") { onChange("") },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✕", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { contentDescription = "Clear search" })
+                }
+            }
         }
     }
 }

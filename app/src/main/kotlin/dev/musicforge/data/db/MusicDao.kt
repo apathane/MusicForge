@@ -235,6 +235,9 @@ interface MusicDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSearch(entry: SearchHistory)
 
+    @Query("DELETE FROM search_history WHERE query = :query") suspend fun deleteSearch(query: String)
+    @Query("DELETE FROM search_history") suspend fun clearSearchHistory()
+
     @Upsert suspend fun upsert(song: SongEntity)
     @Upsert suspend fun upsert(artist: ArtistEntity)
     @Upsert suspend fun upsert(album: AlbumEntity)
