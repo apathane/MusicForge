@@ -191,6 +191,11 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                         else -> last?.let { "Last synced " + android.text.format.DateUtils.getRelativeTimeSpanString(it) } ?: "Likes, playlists, albums and artists"
                     },
                 ) { vm.syncNow() }
+                ToggleRow(
+                    "Pause search history",
+                    prefs?.get(Keys.PauseSearchHistory) ?: false,
+                    subtitle = "Search without your account, so searches stay out of your YouTube history",
+                ) { vm.set(Keys.PauseSearchHistory, it) }
                 ActionRow("Switch account", "Sign in with a different Google account", onSignIn)
                 ActionRow("Sign out", "Keeps your library on this phone", vm::signOut)
             }

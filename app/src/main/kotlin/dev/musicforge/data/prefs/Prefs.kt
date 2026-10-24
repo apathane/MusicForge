@@ -40,6 +40,7 @@ object Keys {
     val LastAccountSync = longPreferencesKey("forge.lastAccountSync")
     /** Metrolist's key: browse requests (Home, artists, charts) carry the account. Default on. */
     val UseLoginForBrowse = bool("useLoginForBrowse")
+    val PauseSearchHistory = bool("pauseSearchHistory")
 
     // Content
     val ContentLanguage = str("contentLanguage")
@@ -89,6 +90,7 @@ object Keys {
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
         ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike, Autoplay, UseLoginForBrowse,
+        PauseSearchHistory,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,

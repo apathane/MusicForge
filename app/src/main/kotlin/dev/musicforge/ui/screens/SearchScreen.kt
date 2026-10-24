@@ -1,5 +1,7 @@
 package dev.musicforge.ui.screens
 
+import kotlinx.coroutines.flow.first
+import dev.musicforge.data.prefs.Keys
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -109,7 +111,10 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
             _results.value = Results.Loading
             graph.database.dao().insertSearch(SearchHistory(query = q))
             val local = if (kind.value == SearchKind.Songs) graph.database.dao().searchLibrary(q) else emptyList()
-            _results.value = YouTube.search(q, kind.value.filter).fold(
+            // Signed in, search goes out as you (personal ranking, and it lands in your YouTube
+            // search history) unless history is paused, as Metrolist does.
+            val asYou = YouTube.cookie != null && graph.settings.data.first()[Keys.PauseSearchHistory] != true
+            _results.value = YouTube.search(q, kind.value.filter, recordSearchHistory = asYou).fold(
                 onSuccess = { r -> Results.Items(r.items, local) },
                 onFailure = {
                     // Offline: your own music still answers.
