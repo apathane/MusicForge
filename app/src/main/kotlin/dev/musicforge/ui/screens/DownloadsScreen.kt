@@ -64,7 +64,7 @@ fun DownloadsScreen() {
     val list = androidx.compose.foundation.lazy.rememberLazyListState()
     dev.musicforge.ui.ScrollToTopOnReselect(list)
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item { ScreenHeader("Downloads") }
+        item { ScreenHeader("Downloads") { dev.musicforge.ui.SettingsAction() } }
         pending?.let { p -> item(key = "redownload") { BringBackCard(p) } }
         if (active.isEmpty() && done.isEmpty()) {
             item { EmptyState("Nothing downloaded yet", "Long-press any song and choose Download. Downloads play offline and pick up where they left off if the phone kills the app.") }

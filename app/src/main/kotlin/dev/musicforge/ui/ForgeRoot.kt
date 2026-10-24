@@ -218,6 +218,16 @@ private val tabRoutes = Tab.entries.map { it.route }.toSet()
 
 const val SCROLL_TO_TOP = "scrollToTop"
 
+/**
+ * Settings from the top of every tab (ConvX puts the account button on each tab; ours was only
+ * on Library, so it seemed to have gone missing).
+ */
+@Composable
+fun SettingsAction() {
+    val nav = LocalNavController.current
+    dev.musicforge.ui.components.IconAction(dev.musicforge.ui.components.ForgeIcons.Settings, "Settings") { nav.navigate(SETTINGS_ROUTE) }
+}
+
 /** Scrolls [list] to the top when this screen's tab is tapped again. */
 @Composable
 fun ScrollToTopOnReselect(list: androidx.compose.foundation.lazy.LazyListState) {

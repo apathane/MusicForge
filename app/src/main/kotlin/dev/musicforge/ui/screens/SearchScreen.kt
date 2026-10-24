@@ -184,7 +184,7 @@ fun SearchScreen() {
     }
 
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item { ScreenHeader("Search") }
+        item { ScreenHeader("Search") { dev.musicforge.ui.SettingsAction() } }
         item {
             SearchField(
                 value = query,

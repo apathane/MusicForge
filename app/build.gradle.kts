@@ -7,7 +7,9 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-// Phase codename doubles as the launcher label until the app gets a real name.
+// Phase codename doubles as the launcher label until the app gets a real name. The version moves
+// with the phase: phase 13 Rondo is 0.13.0-rondo, code 1300 (patch builds within a phase: +1).
+val phase = 13
 val codename = "Rondo"
 
 android {
@@ -18,8 +20,8 @@ android {
         applicationId = "dev.musicforge.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-${codename.lowercase()}"
+        versionCode = phase * 100
+        versionName = "0.$phase.0-${codename.lowercase()}"
         resValue("string", "app_name", codename)
         buildConfigField("String", "CODENAME", "\"$codename\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

@@ -132,7 +132,7 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize(),
     ) {
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item(key = "header", contentType = "header") { ScreenHeader(greeting()) }
+        item(key = "header", contentType = "header") { ScreenHeader(greeting()) { dev.musicforge.ui.SettingsAction() } }
         if (state.isColdStart && !state.isWelcomeDismissed) {
             item(key = "welcome", contentType = "welcome") { WelcomeCard(onAction) }
         }
