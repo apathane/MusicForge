@@ -304,3 +304,15 @@ data class RecommendationFeedback(
 ) {
     enum class Action { HIDE, LESS_OF_ARTIST }
 }
+
+/**
+ * A play registered on the YouTube Music account (another device), from the last successful history
+ * sync. MusicForge's own table: not in BackupImporter.TABLE_ORDER, so restores neither copy nor
+ * wipe it. Replaced wholesale each successful sync.
+ */
+@Entity(tableName = "remote_history", primaryKeys = ["songId"])
+data class RemoteHistoryEntity(
+    val songId: String,
+    val position: Int,
+    val syncedAt: Long,
+)

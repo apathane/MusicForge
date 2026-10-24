@@ -38,9 +38,13 @@ object Keys {
     val AccountChannelHandle = str("accountChannelHandle")
     /** When the YouTube Music library was last mirrored into this phone (epoch ms). Not imported. */
     val LastAccountSync = longPreferencesKey("forge.lastAccountSync")
+    /** When the YouTube Music history was last mirrored into this phone (epoch ms). Not imported. */
+    val LastHistorySync = longPreferencesKey("forge.lastHistorySync")
     /** Metrolist's key: browse requests (Home, artists, charts) carry the account. Default on. */
     val UseLoginForBrowse = bool("useLoginForBrowse")
     val PauseSearchHistory = bool("pauseSearchHistory")
+    /** Metrolist's key: plays here stay out of your YouTube Music history. */
+    val PauseListenHistory = bool("pauseListenHistory")
 
     // Content
     val ContentLanguage = str("contentLanguage")
@@ -90,7 +94,7 @@ object Keys {
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
         ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike, Autoplay, UseLoginForBrowse,
-        PauseSearchHistory,
+        PauseSearchHistory, PauseListenHistory,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,

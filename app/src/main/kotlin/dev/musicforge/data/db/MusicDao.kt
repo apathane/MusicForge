@@ -47,6 +47,12 @@ data class HourCount(val hour: Int, val plays: Int)
 
 data class PlaylistPlays(val plays: Int, val lastPlayed: Long?)
 
+/** One played song: the song and when it last went down (the event's timestamp). */
+data class Played(
+    @Embedded val song: SongEntity,
+    val lastPlayed: Long,
+)
+
 /** An artist the listener asked to hear less of, and until when. */
 data class LessOfArtist(
     @Embedded val artist: ArtistEntity,
@@ -405,4 +411,26 @@ interface MusicDao {
 
     @Query("UPDATE song SET totalPlayTime = totalPlayTime + :ms WHERE id = :id")
     suspend fun addPlayTime(id: String, ms: Long)
+
+    // ---- history that syncs (YouTube Music plays from other devices) ----
+
+    /** Played songs with when they last went down here, newest first, one row per song. */
+    @Transaction
+    @Query(
+        """
+        SELECT song.*, MAX(event.timestamp) AS lastPlayed FROM event JOIN song ON song.id = event.songId
+        GROUP BY event.songId ORDER BY lastPlayed DESC LIMIT :limit
+        """,
+    )
+    fun playedSongs(limit: Int = 16): Flow<List<Played>>
+
+    /** The YouTube Music account's plays from other devices, newest first, from the last successful sync. */
+    @Query("SELECT * FROM remote_history ORDER BY position")
+    fun remoteHistory(): Flow<List<RemoteHistoryEntity>>
+
+    @Query("DELETE FROM remote_history")
+    suspend fun clearRemoteHistory()
+
+    @Insert
+    suspend fun insert(history: RemoteHistoryEntity)
 }

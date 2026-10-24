@@ -198,6 +198,11 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                     prefs?.get(Keys.PauseSearchHistory) ?: false,
                     subtitle = "Search without your account, so searches stay out of your YouTube history",
                 ) { vm.set(Keys.PauseSearchHistory, it) }
+                ToggleRow(
+                    "Pause listen history",
+                    prefs?.get(Keys.PauseListenHistory) ?: false,
+                    subtitle = "Plays here won't be added to your YouTube Music history",
+                ) { vm.set(Keys.PauseListenHistory, it) }
                 ActionRow("Switch account", "Sign in with a different Google account", onSignIn)
                 ActionRow("Sign out", "Keeps your library on this phone", vm::signOut)
             }

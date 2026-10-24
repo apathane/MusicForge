@@ -36,6 +36,8 @@ data class HomeSection(
 /** What the library knows about the listener, read from Room. */
 data class LocalSignals(
     val recent: List<Song> = emptyList(),
+    /** "Recently played" or "Played on another device" when the newest item is remote-only. */
+    val recentReason: String = "Recently played",
     /** Most played in the last 30 days, with play counts, most first. */
     val rotation: List<Pair<Song, Int>> = emptyList(),
     val downloads: List<Song> = emptyList(),
@@ -109,7 +111,7 @@ object HomeComposer {
     private fun HomeSection.ids() = items.filterIsInstance<HomeItem.Track>().map { it.song.id }
 
     private fun jumpBackIn(s: LocalSignals) = s.recent.take(SHELF).takeIf { it.isNotEmpty() }?.let { songs ->
-        HomeSection("jump-back-in", "Jump back in", "Recently played", HomeLayout.SHELF, songs.map { HomeItem.Track(it) })
+        HomeSection("jump-back-in", "Jump back in", s.recentReason, HomeLayout.SHELF, songs.map { HomeItem.Track(it) })
     }
 
     /**
