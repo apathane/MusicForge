@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -81,6 +82,8 @@ fun HomeRoot() {
             graph.player,
             welcomeDismissed = once.getBoolean("welcomeDismissed", false),
             onWelcomeDismissed = { once.edit().putBoolean("welcomeDismissed", true).apply() },
+            // Does nothing when signed out (AccountSync checks the cookie).
+            refreshAccount = { graph.scope.launch { graph.accountSync.sync() } },
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -119,6 +122,14 @@ fun HomeScreen(
     // Keyed on the page count too: a page of repeats changes nothing else, and paging must go on.
     LaunchedEffect(nearEnd, state.remote.hasMore, state.remote.pages) { if (nearEnd && state.remote.hasMore) onAction(HomeAction.LoadMore) }
 
+    // The indicator spins only for a pull, not for the first load (that has its skeleton).
+    var pulled by remember { androidx.compose.runtime.mutableStateOf(false) }
+    LaunchedEffect(state.remote.isLoading) { if (!state.remote.isLoading) pulled = false }
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = pulled && state.remote.isLoading,
+        onRefresh = { pulled = true; onAction(HomeAction.Refresh) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item(key = "header", contentType = "header") { ScreenHeader(greeting()) }
         if (state.isColdStart && !state.isWelcomeDismissed) {
@@ -128,6 +139,7 @@ fun HomeScreen(
             item(key = section.id, contentType = section.layout) { Section(section, onAction) }
         }
         remoteFeed(state, signedIn, onAction, onRemoteItem)
+    }
     }
 }
 
@@ -264,9 +276,12 @@ private fun Hero(song: Song, reason: String, onPlay: () -> Unit) {
         Box(
             Modifier.fillMaxSize().background(
                 androidx.compose.ui.graphics.Brush.verticalGradient(
+                    // Dark from where the text starts: covers with their own lettering (album art often
+                    // has it) otherwise fought the title.
                     0f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.05f),
-                    0.45f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),
-                    1f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.85f),
+                    0.3f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.25f),
+                    0.55f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.62f),
+                    1f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.9f),
                 ),
             ),
         )
@@ -357,9 +372,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
     }
     when {
         remote.isLoading -> item(key = "remote-loading", contentType = "loading") {
-            Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.onBackground, strokeWidth = 2.dp)
-            }
+            dev.musicforge.ui.components.SkeletonRows()
         }
         // With nothing of your own to fall back on, the failure gets the whole screen and a way out.
         remote.error != null && (state.isColdStart || state.sections == null) -> item(key = "remote-error", contentType = "error") {

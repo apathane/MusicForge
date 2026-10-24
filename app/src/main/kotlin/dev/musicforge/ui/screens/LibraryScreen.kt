@@ -106,6 +106,13 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
     val nav = LocalNavController.current
     val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists + it.downloaded + it.events == 0 } ?: false
 
+    // Signed in, pulling the library down syncs it with your account now.
+    val sync by context.graph.accountSync.status.collectAsStateWithLifecycle()
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = sync is dev.musicforge.data.AccountSync.Status.Running,
+        onRefresh = { if (signedIn) context.graph.scope.launch { context.graph.accountSync.sync() } },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item {
             ScreenHeader("Library") { IconAction(ForgeIcons.Settings, "Settings", onOpenSettings) }
@@ -188,6 +195,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
                 }
             }
         }
+    }
     }
 }
 

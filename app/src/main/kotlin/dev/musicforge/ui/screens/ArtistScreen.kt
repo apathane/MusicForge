@@ -73,9 +73,7 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
         item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
         when (val s = state) {
             ArtistViewModel.State.Loading -> item {
-                Box(Modifier.fillMaxWidth().padding(64.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onBackground, strokeWidth = 2.dp)
-                }
+                dev.musicforge.ui.components.SkeletonRows()
             }
             is ArtistViewModel.State.Failed -> item { EmptyState("Couldn't load", s.message) }
             is ArtistViewModel.State.Ready -> {

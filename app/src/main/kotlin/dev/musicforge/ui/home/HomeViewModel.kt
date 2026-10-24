@@ -61,6 +61,8 @@ sealed interface HomeAction {
     data class SelectChip(val chip: HomePage.Chip?) : HomeAction
     data object LoadMore : HomeAction
     data object Retry : HomeAction
+    /** Pull to refresh: the feed again, with the chip you are on, and the account library. */
+    data object Refresh : HomeAction
     /** "Not for me" on a suggestion. */
     data class Hide(val songId: String) : HomeAction
     /** "Less of this artist" for a while. */
@@ -76,6 +78,7 @@ class HomeViewModel(
     private val player: PlayerConnection,
     welcomeDismissed: Boolean,
     private val onWelcomeDismissed: () -> Unit,
+    private val refreshAccount: () -> Unit = {},
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState(isWelcomeDismissed = welcomeDismissed))
 
@@ -113,6 +116,10 @@ class HomeViewModel(
             is HomeAction.SelectChip -> loadRemote(action.chip)
             HomeAction.LoadMore -> loadMore()
             HomeAction.Retry -> loadRemote(null)
+            HomeAction.Refresh -> {
+                refreshAccount()
+                loadRemote(_state.value.remote.chips.firstOrNull { it.title == _state.value.remote.selected })
+            }
             is HomeAction.Hide -> viewModelScope.launch { repository.hide(action.songId) }
             is HomeAction.LessOf -> viewModelScope.launch { repository.lessOf(action.artistId) }
         }

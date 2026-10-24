@@ -250,9 +250,7 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
         }) }
         when {
             ui.loading -> item {
-                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onBackground, strokeWidth = 2.dp)
-                }
+                dev.musicforge.ui.components.SkeletonRows()
             }
             ui.error != null -> item { EmptyState("Couldn't load", ui.error!!) }
             ui.tracks.isEmpty() -> item { EmptyState("Nothing here yet", "Songs you add will show up here.") }

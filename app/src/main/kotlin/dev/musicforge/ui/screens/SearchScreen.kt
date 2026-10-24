@@ -232,9 +232,7 @@ fun SearchScreen() {
                 }
             }
             SearchViewModel.Results.Loading -> item {
-                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onBackground, strokeWidth = 2.dp)
-                }
+                dev.musicforge.ui.components.SkeletonRows()
             }
             is SearchViewModel.Results.Failed -> item { EmptyState("Couldn't search", r.message) }
             is SearchViewModel.Results.Items -> {
