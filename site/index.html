@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MusicForge — YouTube Music, forged for offline</title>
+<meta name="description" content="A YouTube Music player for Android that downloads at full speed, works with no signal, and keeps Home to the music you actually play. Free, GPL-3.0, APK from GitHub.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23000'/%3E%3Cpath d='M11 22V10l11 6-11 6z' fill='%23f5f5f5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="top-inner wrap">
+    <a class="mark" href="#top">MusicForge<span class="mark-dot" aria-hidden="true"></span></a>
+    <nav class="top-nav" aria-label="Sections">
+      <a href="#why">Why</a>
+      <a href="#features">Features</a>
+      <a href="#numbers">Numbers</a>
+      <a href="#screens">Screenshots</a>
+      <a href="#broke">Things that broke</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-sm" href="https://github.com/apathane/MusicForge/releases/latest">Download APK</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span>Android · 0.14 Sonata</p>
+        <h1>MusicForge</h1>
+        <p class="pitch">YouTube Music, forged for offline.</p>
+        <p class="lede">A YouTube Music player for Android. Downloads run at full speed, playback works with no signal, and Home is built from what you actually play rather than what a server guessed.</p>
+        <div class="cta">
+          <a class="btn" href="https://github.com/apathane/MusicForge/releases/latest">Download APK</a>
+          <a class="btn ghost" href="https://github.com/apathane/MusicForge">Read the source</a>
+        </div>
+        <p class="meta">
+          <span>5.4 MB</span><span>Android 8.0 and up</span><span>GPL-3.0</span>
+        </p>
+      </div>
+
+      <figure class="hero-art">
+        <div class="phone">
+          <img src="img/player.jpg" width="400" height="893" alt="The MusicForge player: full-bleed cover art above the track “antidote” by usedcvnt, with scrubbing, transport controls and a lyrics button." fetchpriority="high">
+        </div>
+        <figcaption>The player, on the Honor X7b this was built for.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="band" id="why">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">Why this exists</p>
+        <h2>I wanted three things.</h2>
+      </header>
+      <p class="intro">I wanted something that downloads fast, works offline, and doesn’t fill Home with stuff I never asked for. So this got built.</p>
+
+      <ol class="reasons">
+        <li>
+          <p class="num">01</p>
+          <h3>Downloads shouldn’t crawl.</h3>
+          <p>Google throttles any download bigger than about 10 MB to roughly 30 kB/s. MusicForge asks for 4 MB at a time, so a long mix comes in at 3 to 5 MB/s on home Wi-Fi instead of at playback speed.</p>
+        </li>
+        <li>
+          <p class="num">02</p>
+          <h3>Home should be about you.</h3>
+          <p>Shelves are composed from what you played last, what you play around this hour, what’s on repeat and what you liked and forgot. Each one says why it’s there. Long-press anything for “not for me”.</p>
+        </li>
+        <li>
+          <p class="num">03</p>
+          <h3>Offline means offline.</h3>
+          <p>Downloaded songs start in about 0.3 s with no signal at all, and search still finds your own music. Downloads survive the app being killed, which on some phones happens for sport.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="band" id="features">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">What it does</p>
+        <h2>Six things it does well.</h2>
+      </header>
+
+      <ul class="features">
+        <li class="feature">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>
+          <h3>A Home that’s yours</h3>
+          <p>Recently played, around this hour, on repeat, liked then forgotten. Every shelf says why it’s there, and items carry where they came from, including the YouTube feed, which is labelled as such.</p>
+        </li>
+        <li class="feature">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
+          <h3>Fast downloads</h3>
+          <p>Bounded 4 MB ranges, up to three downloads at once, and a rule that a mid-file re-resolve must return the same file length, so it fails rather than splicing two different renditions together.</p>
+        </li>
+        <li class="feature">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg>
+          <h3>Sign-in sync</h3>
+          <p>Sign in with Google and your liked songs, playlists, albums and artists come across and stay in sync. Search runs as you too, unless you turn that off in settings.</p>
+        </li>
+        <li class="feature">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><path d="M6.4 17.6L17.6 6.4"/></svg>
+          <h3>Offline first</h3>
+          <p>The player reads your downloads before it touches the network. Downloads and playback survive the process dying, and at startup the app repairs its database from the download index.</p>
+        </li>
+        <li class="feature">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+          <h3>Liquid glass</h3>
+          <p>The blurred backdrop sits on the nav pill and the mini player, and nowhere else. A Snapdragon 680 has a frame budget to keep, so the backdrop is recorded once and sampled by those two surfaces. It never sits behind a scrolling list.</p>
+        </li>
+        <li class="feature">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7a1 1 0 0 1 1-1h5l2 2h7a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M12 17v-5m0 0l-2.5 2.5M12 12l2.5 2.5"/></svg>
+          <h3>Export to Music</h3>
+          <p>Copies finished downloads to <code>Music/MusicForge</code> as normal tagged Ogg files, with the cover and lyrics written in. Another player, your PC, or a USB stick can all read them.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band" id="numbers">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">Numbers</p>
+        <h2>Measured on a budget phone.</h2>
+      </header>
+      <p class="intro">An Honor X7b with a Snapdragon 680, a release build. If it holds up there, it’ll hold up on yours.</p>
+
+      <dl class="numbers">
+        <div class="num-cell">
+          <dt class="big">0.5<span class="unit">s</span></dt>
+          <dd>Cold start</dd>
+        </div>
+        <div class="num-cell">
+          <dt class="big">1.3<span class="unit">s</span></dt>
+          <dd>Tap to sound, streaming</dd>
+        </div>
+        <div class="num-cell">
+          <dt class="big">0.16<span class="unit">%</span></dt>
+          <dd>Late frames while scrolling 6,000+ songs</dd>
+        </div>
+        <div class="num-cell">
+          <dt class="big">5.4<span class="unit">MB</span></dt>
+          <dd>The APK</dd>
+        </div>
+      </dl>
+      <p class="note">The 4 MB chunk size came from a separate test on a 70 MB stream: 4 MB ranges did 6.27 MB/s, while 12 MB ranges and up dropped to 0.03 MB/s.</p>
+    </div>
+  </section>
+
+  <section class="band" id="screens">
+    <div class="wrap">
+      <div class="rail-head">
+        <header class="section-head">
+          <p class="eyebrow">Screenshots</p>
+          <h2>What it looks like.</h2>
+        </header>
+        <div class="rail-buttons">
+          <button class="icon-btn" type="button" data-step="-1" aria-label="Previous screenshot">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          <button class="icon-btn" type="button" data-step="1" aria-label="Next screenshot">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="rail" data-rail role="group" aria-label="Screenshots, scroll sideways for more" tabindex="0">
+        <figure class="slide">
+          <img src="img/player.jpg" width="400" height="893" loading="lazy" alt="Player screen: full-bleed cover art of two drawn figures, the track “antidote” by usedcvnt, a scrubbing bar, and previous, pause and next buttons.">
+          <figcaption>The player. Full-bleed cover, scrubber, transport.</figcaption>
+        </figure>
+        <figure class="slide">
+          <img src="img/home.jpg" width="400" height="893" loading="lazy" alt="Home screen headed “Good morning”, with a hero card for “Teardrop” by Massive Attack, shelves called “Before that”, “Your rotation” and “Liked”, and the glass nav bar.">
+          <figcaption>Home, composed from your own plays.</figcaption>
+        </figure>
+        <figure class="slide">
+          <img src="img/queue.jpg" width="400" height="893" loading="lazy" alt="Up next list with a dozen tracks, each with swipe and drag handles, and an Undo button at the top.">
+          <figcaption>Queue. Swipe a song out; Undo is right there.</figcaption>
+        </figure>
+        <figure class="slide">
+          <img src="img/artist.jpg" width="400" height="893" loading="lazy" alt="Artist page for Rick Astley with a round photo, monthly audience figure, Play, Shuffle and Follow buttons, and a list of top songs above the mini player.">
+          <figcaption>Artist pages, with the mini player above the nav.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="broke">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">Things that broke</p>
+        <h2>Everything here cost a day.</h2>
+      </header>
+      <p class="intro">One phone, one developer, a lot of logs. These are the ones worth reading about.</p>
+
+      <div class="broke">
+        <article>
+          <h3>YouTube returns 400 for languages it doesn’t know.</h3>
+          <p>My phone is set to <code>en-ZA</code>. On the emulator, which is <code>en-US</code>, everything worked. On the phone, nothing did: no home, no search, no playback, no downloads. Only the <code>hl</code> values on YouTube’s own list get sent now.</p>
+        </article>
+        <article>
+          <h3>Requests over ~10 MB crawl.</h3>
+          <p>A 70 MB stream downloads at 0.03 MB/s in one request. That is dial-up with extra steps. Split into 4 MB ranges, the same stream does 5 to 6 MB/s. The measurements are in <code>docs/BENCHMARKS.md</code>.</p>
+        </article>
+        <article>
+          <h3>Old libraries have dead pictures.</h3>
+          <p>About 3% of the artist and playlist pictures in a restored library just 404 now, because the links rotted upstream. The app looks the picture up again when it fails and saves the new link.</p>
+        </article>
+        <article>
+          <h3>Every cover on Home was painted four times a frame.</h3>
+          <p>That’s overdraw, and on an Adreno 610 it cost more than any animation ever did. The window background goes after <code>setContent</code>, artwork is decoded at slot size, and the player’s scrim is baked once per track.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="wrap">
+      <header class="section-head">
+        <p class="eyebrow">FAQ</p>
+        <h2>The usual questions.</h2>
+      </header>
+
+      <div class="faq">
+        <details>
+          <summary>Do I need a Google account?</summary>
+          <p>No. It browses and plays signed out. Signing in is what brings your liked songs, playlists, albums and artists across and keeps them in sync; you can pause search history separately if you’d rather search anonymously.</p>
+        </details>
+        <details>
+          <summary>Which phones does it run on?</summary>
+          <p>Android 8.0 and up. It’s built and tested on an Honor X7b, so anything with more headroom than a Snapdragon 680 should be fine. On Honor, Huawei and Xiaomi phones, let it run in the background when it asks, or the system will kill playback.</p>
+        </details>
+        <details>
+          <summary>Can I bring my library from Metrolist or ConvX?</summary>
+          <p>Yes. Point it at one of their backups and it restores the library, sign-in included, then offers to re-download the songs you had. Settings come across by their original key names, which is why your preferences survive too.</p>
+        </details>
+        <details>
+          <summary>Where do downloads go?</summary>
+          <p>Downloads live in the app’s own offline storage, where the player can find them instantly. Export copies them to <code>Music/MusicForge</code> on shared storage as tagged Ogg files with covers and lyrics, so other apps can see them. WebM gets remuxed, because MediaStore refuses <code>audio/webm</code> in Music.</p>
+        </details>
+        <details>
+          <summary>Is it on the Play Store?</summary>
+          <p>No. The APK is on <a href="https://github.com/apathane/MusicForge/releases/latest">GitHub Releases</a>, and it installs under its own package name, next to whatever you use now. Sideloading is a setting away on most phones.</p>
+        </details>
+        <details>
+          <summary>Why does the launcher icon say “Sonata”?</summary>
+          <p>Each development phase gets a codename, and the launcher label is the codename until the app gets a real name. This one is Sonata, 0.14. The package id has stayed <code>dev.musicforge.app</code> the whole time, so your data survives the renames.</p>
+        </details>
+        <details>
+          <summary>What isn’t done yet?</summary>
+          <p>Crossfade, multi-select, and the player still drops a frame or two when it opens. Those are written down rather than quietly forgotten.</p>
+        </details>
+        <details>
+          <summary>What does it cost?</summary>
+          <p>Nothing. It’s GPL-3.0 and the source is on GitHub. There are no ads, and nobody’s account to register for.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <p class="foot-title">MusicForge<span class="mark-dot" aria-hidden="true"></span></p>
+        <p class="foot-line">A YouTube Music player for Android, GPL-3.0. Built on one cheap phone by one person; the code is mostly Claude’s, the opinions and the testing are mine.</p>
+        <p class="foot-links">
+          <a href="https://github.com/apathane/MusicForge">Source</a>
+          <a href="https://github.com/apathane/MusicForge/releases/latest">Releases</a>
+          <a href="https://github.com/apathane/MusicForge/blob/main/LICENSE">Licence</a>
+        </p>
+      </div>
+
+      <div>
+        <h2 class="foot-head">Credits</h2>
+        <ul class="credits">
+          <li><a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a> — the YouTube Music API module, the download design, account sync</li>
+          <li><a href="https://github.com/MetrolistGroup/innertubex">InnerTubeX</a> — stream extraction</li>
+          <li><a href="https://github.com/cosmictaserdev-creator/Convx">ConvX</a> — screens and features, and the backup format</li>
+          <li><a href="https://github.com/Kyant0/backdrop">Kyant0/backdrop</a> — the liquid glass, Apache-2.0</li>
+          <li><a href="https://github.com/kushagrasinghx/BitChord">BitChord</a> — the chunked transfers and the black-and-white look</li>
+          <li><a href="https://rsms.me/inter/">Inter</a> — the font</li>
+          <li><a href="https://lrclib.net">LRCLIB</a> — lyrics</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="foot-head">Sections</h2>
+        <ul class="credits">
+          <li><a href="#why">Why this exists</a></li>
+          <li><a href="#features">What it does</a></li>
+          <li><a href="#numbers">Numbers</a></li>
+          <li><a href="#screens">Screenshots</a></li>
+          <li><a href="#broke">Things that broke</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot-bottom">
+      <p>GPL-3.0. No analytics, no cookies, no tracking on this page.</p>
+      <p>Not affiliated with Google or YouTube.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js" defer></script>
+</body>
+</html>
