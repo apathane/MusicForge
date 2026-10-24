@@ -205,7 +205,8 @@ fun SearchScreen() {
         when (val r = results) {
             SearchViewModel.Results.Idle -> {
                 val recent = query.isBlank()
-                val lines = if (recent) history else suggestions
+                // Distinct: the same search made twice is two history rows, and a repeated key crashes the list.
+                val lines = (if (recent) history else suggestions).distinct()
                 if (recent && lines.isNotEmpty()) item(key = "recent") {
                     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Recent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))

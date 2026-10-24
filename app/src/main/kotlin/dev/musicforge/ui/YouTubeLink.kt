@@ -25,6 +25,7 @@ sealed interface YouTubeLink {
             val segments = path.split('/').filter { it.isNotEmpty() }
             return when {
                 host == "youtu.be" -> segments.firstOrNull()?.let(::Song)
+                segments.firstOrNull() == "playlist" && query["list"] != null -> Playlist(query.getValue("list"))
                 // A song in a playlist link plays the song: that is what was being shared.
                 query["v"] != null -> Song(query.getValue("v"))
                 segments.firstOrNull() == "shorts" -> segments.getOrNull(1)?.let(::Song)

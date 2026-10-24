@@ -161,8 +161,13 @@ fun QueuePane() {
     val rows = remember { androidx.compose.runtime.mutableStateListOf<Pair<Long, androidx.media3.common.MediaItem>>() }
     var nextKey by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     val reorder = rememberReorderableLazyListState(list) { from, to ->
-        rows.add(to.index - 1, rows.removeAt(from.index - 1)) // index 0 is the title row
-        connection.move(from.index - 1, to.index - 1)
+        // Index 0 is the title row; it is not reorderable, but never trust an index across it.
+        val f = from.index - 1
+        val t = (to.index - 1).coerceIn(0, rows.size - 1)
+        if (f in rows.indices) {
+            rows.add(t, rows.removeAt(f))
+            connection.move(f, t)
+        }
     }
     LaunchedEffect(queue) {
         if (!reorder.isAnyItemDragging) {

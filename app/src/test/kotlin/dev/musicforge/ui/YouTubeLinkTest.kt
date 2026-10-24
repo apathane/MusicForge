@@ -13,6 +13,7 @@ class YouTubeLinkTest {
 
     @Test fun pageLinks() {
         assertThat(YouTubeLink.parse("https://music.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG")).isEqualTo(YouTubeLink.Playlist("PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG"))
+        assertThat(YouTubeLink.parse("https://www.youtube.com/playlist?list=PL123&v=dQw4w9WgXcQ")).isEqualTo(YouTubeLink.Playlist("PL123"))
         assertThat(YouTubeLink.parse("https://music.youtube.com/browse/MPREb_abc")).isEqualTo(YouTubeLink.Album("MPREb_abc"))
         assertThat(YouTubeLink.parse("https://music.youtube.com/channel/UCabc/")).isEqualTo(YouTubeLink.Artist("UCabc"))
     }
