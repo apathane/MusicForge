@@ -1,11 +1,13 @@
 package dev.musicforge.ui.player
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,12 +37,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,63 +55,79 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.data.lyrics.Lyrics
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.playback.NowPlaying
+import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.playback.durationSec
+import dev.musicforge.playback.from
 import dev.musicforge.playback.isFromRadio
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
+import dev.musicforge.ui.components.TrackActionsSheet
+import dev.musicforge.ui.theme.LocalArtworkColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
-/**
- * Synced lyrics: the current line is bright and large, the rest recede; the list follows
- * the music unless you're reading ahead, and a tap on any line jumps there.
+/** Synced lyrics: the current line is bright and large, the rest recede; the list follows
+ *  the music unless you're reading ahead, and a tap on any line jumps there.
  */
 @Composable
-fun LyricsPane(now: NowPlaying, position: State<Long>, accent: Color, onSeek: (Long) -> Unit) {
+fun LyricsPane(now: NowPlaying, position: State<Long>, accent: Color, onSeek: (Long) -> Unit, onMore: () -> Unit = {}) {
     val graph = LocalContext.current.graph
     val meta = now.metadata
-    val lyrics by produceState<Lyrics?>(null, now.mediaId) {
-        value = graph.lyrics.lyrics(
-            now.mediaId,
-            meta.title?.toString().orEmpty(),
-            meta.artist?.toString().orEmpty().substringBefore(","),
-            meta.albumTitle?.toString(),
-            meta.durationSec ?: (now.durationMs / 1000).toInt().takeIf { it > 0 },
-        )
-    }
+    val connection = graph.player
+    val currentId = now.mediaId
+    val liked by remember(currentId) { graph.database.dao().isLiked(currentId) }.collectAsStateWithLifecycle(null)
     val white = Color.White
-    when (val l = lyrics) {
-        null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(Modifier.size(28.dp), color = white, strokeWidth = 2.dp)
+    Column(Modifier.fillMaxSize()) {
+        MiniPlayerHeader(now, liked == true, onMore, onLike = {
+            connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
+        })
+        Spacer(Modifier.height(8.dp))
+        val lyrics by produceState<Lyrics?>(null, now.mediaId) {
+            value = graph.lyrics.lyrics(
+                now.mediaId,
+                meta.title?.toString().orEmpty(),
+                meta.artist?.toString().orEmpty().substringBefore(","),
+                meta.albumTitle?.toString(),
+                meta.durationSec ?: (now.durationMs / 1000).toInt().takeIf { it > 0 },
+            )
         }
-        Lyrics.None -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No lyrics for this one.\nJust listen.", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        when (val l = lyrics) {
+            null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(28.dp), color = white, strokeWidth = 2.dp)
+            }
+            Lyrics.None -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Lyrics not found", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+            is Lyrics.Plain -> Text(
+                l.text,
+                color = white.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.titleMedium.copy(lineHeight = 30.sp),
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
+            )
+            is Lyrics.Synced -> SyncedLyrics(l.lines, position, onSeek)
         }
-        is Lyrics.Plain -> Text(
-            l.text,
-            color = white.copy(alpha = 0.85f),
-            style = MaterialTheme.typography.titleMedium.copy(lineHeight = 30.sp),
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
-        )
-        is Lyrics.Synced -> SyncedLyrics(l.lines, position, onSeek)
     }
 }
 
 @Composable
 private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek: (Long) -> Unit) {
     val list = rememberLazyListState()
-    // Recomposes only when the line changes, not on every position tick.
     val current by remember(lines) {
         derivedStateOf {
-            val p = position.value + 250 // lead slightly: a line should light up as it's sung
+            val p = position.value + 250
             lines.indexOfLast { it.timeMs <= p }
         }
     }
     val touchedAt = remember { mutableLongStateOf(0L) }
     LaunchedEffect(current) {
-        // Don't yank the list away while someone is reading ahead.
         if (current >= 0 && android.os.SystemClock.uptimeMillis() - touchedAt.longValue > 3_000) {
             list.animateScrollToItem(current, scrollOffset = -list.layoutInfo.viewportSize.height / 3)
         }
@@ -144,24 +163,35 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
     }
 }
 
-/** Radio's picks say so; what you chose shows just its artist. */
 private fun queueSubtitle(meta: androidx.media3.common.MediaMetadata): String {
     val artist = meta.artist?.toString().orEmpty()
-    return if (!meta.isFromRadio) artist else if (artist.isEmpty()) "Radio pick" else "Radio pick · $artist"
+    val duration = meta.durationSec
+    val base = if (!meta.isFromRadio) artist else if (artist.isEmpty()) "Radio pick" else "Radio pick · $artist"
+    return if (duration != null && duration > 0) "$base · ${clock(duration * 1000L)}" else base
 }
 
-/** The queue: tap to jump, drag the handle to reorder, ✕ to remove. */
+/** The queue: tap to jump, drag the handle to reorder, swipe to remove. */
 @Composable
-fun QueuePane() {
-    val connection = LocalContext.current.graph.player
+fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit = {}) {
+    val graph = LocalContext.current.graph
     val queue by connection.queue.collectAsStateWithLifecycle()
     val current by connection.currentIndex.collectAsStateWithLifecycle()
-    val list = rememberLazyListState(initialFirstVisibleItemIndex = current.coerceAtLeast(0))
-    // A local mirror with stable keys, so a drag isn't disturbed by the player republishing.
+    val white = Color.White
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+
+    val currentId = now.mediaId
+    val liked by remember(currentId) { graph.database.dao().isLiked(currentId) }.collectAsStateWithLifecycle(null)
+
+    val prefs by graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val locked = prefs?.get(Keys.QueueLocked) == true
+    val autoplay = prefs?.get(Keys.Autoplay) == true
+
+    val nextKey = remember { mutableLongStateOf(0L) }
     val rows = remember { androidx.compose.runtime.mutableStateListOf<Pair<Long, androidx.media3.common.MediaItem>>() }
-    var nextKey by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val list = rememberLazyListState(initialFirstVisibleItemIndex = current.coerceAtLeast(0))
     val reorder = rememberReorderableLazyListState(list) { from, to ->
-        // Index 0 is the title row; it is not reorderable, but never trust an index across it.
+        if (locked) return@rememberReorderableLazyListState
         val f = from.index - 1
         val t = (to.index - 1).coerceIn(0, rows.size - 1)
         if (f in rows.indices) {
@@ -172,86 +202,224 @@ fun QueuePane() {
     LaunchedEffect(queue) {
         if (!reorder.isAnyItemDragging) {
             rows.clear()
-            queue.forEach { rows.add(nextKey++ to it) }
+            queue.forEach { rows.add(nextKey.longValue++ to it) }
         }
     }
-    val white = Color.White
-    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
-    // The last row swiped away, offered back for a few seconds.
-    var removed by remember { androidx.compose.runtime.mutableStateOf<Pair<Int, androidx.media3.common.MediaItem>?>(null) }
-    LaunchedEffect(removed) { if (removed != null) { kotlinx.coroutines.delay(6_000); removed = null } }
-    LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
-        item(key = "title") {
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Up next", style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.weight(1f))
-                androidx.compose.animation.AnimatedVisibility(removed != null) {
+
+    var removed by remember { mutableStateOf<Pair<Int, androidx.media3.common.MediaItem>?>(null) }
+    var cleared by remember { mutableStateOf<List<Pair<Int, androidx.media3.common.MediaItem>>?>(null) }
+    LaunchedEffect(removed) { if (removed != null) { delay(6_000); removed = null } }
+    LaunchedEffect(cleared) { if (cleared != null) { delay(6_000); cleared = null } }
+
+    var rowMenu by remember { mutableStateOf<androidx.media3.common.MediaItem?>(null) }
+    // Explicit flags pulled once per queue load; cheap PK lookups.
+    val explicitFlags = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
+    LaunchedEffect(queue) {
+        explicitFlags.clear()
+        queue.forEach { item -> explicitFlags[item.mediaId] = (graph.database.dao().songEntity(item.mediaId)?.explicit == true) }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        MiniPlayerHeader(now, liked == true, onMore, onLike = {
+            connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
+        })
+        Spacer(Modifier.height(6.dp))
+        // Pill toggles: shuffle, repeat, autoplay. No crossfade pill.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TogglePill(
+                label = "Shuffle",
+                icon = ForgeIcons.Shuffle,
+                on = now.shuffle,
+                onClick = { connection.toggleShuffle() },
+                modifier = Modifier.weight(1f),
+            )
+            TogglePill(
+                label = "Repeat",
+                icon = if (now.repeatMode == androidx.media3.common.Player.REPEAT_MODE_ONE) ForgeIcons.RepeatOne else ForgeIcons.Repeat,
+                on = now.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF,
+                onClick = { connection.cycleRepeat() },
+                modifier = Modifier.weight(1f),
+            )
+            TogglePill(
+                label = "Autoplay",
+                icon = null,
+                on = autoplay,
+                onClick = { scope.launch { graph.settings.edit { it[Keys.Autoplay] = !autoplay } } },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        // "Playing Next" header with source, Clear and lock.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Playing Next", style = MaterialTheme.typography.titleMedium, color = white, maxLines = 1)
+                val nextItem = queue.getOrNull(current + 1)
+                val source = nextItem?.mediaMetadata?.from ?: now.metadata.from
+                if (source != null) {
                     Text(
-                        "Undo",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = white,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.16f))
-                            .clickable(onClickLabel = "Put the removed song back") { removed?.let { (at, item) -> connection.insertAt(at, item) }; removed = null }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        if (source == "Radio" || now.metadata.isFromRadio) "From Radio" else "From $source",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = white.copy(alpha = 0.5f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
+            AnimatedVisibility(removed != null || cleared != null) {
+                Text(
+                    "Undo",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = white,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.16f))
+                        .clickable(onClickLabel = "Put the removed songs back") {
+                            removed?.let { (at, item) -> connection.insertAt(at, item) }
+                            cleared?.sortedByDescending { it.first }?.forEach { (at, item) -> connection.insertAt(at, item) }
+                            removed = null
+                            cleared = null
+                        }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+            Text(
+                "Clear",
+                style = MaterialTheme.typography.labelLarge,
+                color = white.copy(alpha = 0.8f),
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear the songs after this one") {
+                    val qNow = connection.queue.value
+                    val idx = connection.currentIndex.value
+                    val upcoming = qNow.drop(idx + 1).mapIndexed { i, item -> (idx + 1 + i) to item }
+                    if (upcoming.isNotEmpty()) {
+                        cleared = upcoming
+                        upcoming.sortedByDescending { it.first }.forEach { connection.removeAt(it.first) }
+                    }
+                }.padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+            Box(
+                Modifier.size(40.dp).clip(RoundedCornerShape(50))
+                    .clickable(onClickLabel = if (locked) "Unlock queue" else "Lock queue") {
+                        scope.launch { graph.settings.edit { it[Keys.QueueLocked] = !locked } }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (locked) PlayerIcons.LockClosed else PlayerIcons.LockOpen,
+                    contentDescription = if (locked) "Unlock queue" else "Lock queue",
+                    tint = if (locked) white else white.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
-        itemsIndexed(rows, key = { _, row -> row.first }) { i, (key, item) ->
-            ReorderableItem(reorder, key = key) { dragging ->
-                val playing = i == current
-                // Swipe a row away (either way) to remove it; the playing song stays.
-                val dismiss = androidx.compose.material3.rememberSwipeToDismissBoxState()
-                LaunchedEffect(dismiss.currentValue) {
-                    if (dismiss.currentValue != androidx.compose.material3.SwipeToDismissBoxValue.Settled) {
-                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        removed = i to item
-                        connection.removeAt(i)
-                    }
-                }
-                androidx.compose.material3.SwipeToDismissBox(
-                    state = dismiss,
-                    gesturesEnabled = !playing,
-                    backgroundContent = {},
-                ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            when {
-                                dragging -> white.copy(alpha = 0.20f)
-                                playing -> white.copy(alpha = 0.12f)
-                                else -> Color.Transparent
-                            },
-                        )
-                        .background(if (dragging || playing) Color.Transparent else Color.Black.copy(alpha = 0.001f))
-                        .clickable { connection.skipTo(i) }
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Artwork(item.mediaMetadata.artworkUri?.toString(), 42.dp, corner = 6.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(item.mediaMetadata.title?.toString().orEmpty(), color = white, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(queueSubtitle(item.mediaMetadata), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    if (!playing) {
-                        Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable { connection.removeAt(i) }, contentAlignment = Alignment.Center) {
-                            Text("✕", color = white.copy(alpha = 0.5f), modifier = Modifier.semantics { contentDescription = "Remove from queue" })
+        Spacer(Modifier.height(4.dp))
+        LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
+            itemsIndexed(rows, key = { _, row -> row.first }) { i, (key, item) ->
+                ReorderableItem(reorder, key = key) { dragging ->
+                    val playing = i == current
+                    val dismiss = androidx.compose.material3.rememberSwipeToDismissBoxState()
+                    LaunchedEffect(dismiss.currentValue) {
+                        if (dismiss.currentValue != androidx.compose.material3.SwipeToDismissBoxValue.Settled) {
+                            if (playing || locked) return@LaunchedEffect
+                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            removed = i to item
+                            connection.removeAt(i)
                         }
                     }
-                    Box(
-                        Modifier.size(36.dp).draggableHandle(
-                            onDragStarted = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
-                        ),
-                        contentAlignment = Alignment.Center,
+                    androidx.compose.material3.SwipeToDismissBox(
+                        state = dismiss,
+                        gesturesEnabled = !playing && !locked,
+                        backgroundContent = {},
                     ) {
-                        Text("≡", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { contentDescription = "Drag to reorder" })
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                when {
+                                    dragging -> white.copy(alpha = 0.20f)
+                                    playing -> white.copy(alpha = 0.12f)
+                                    else -> Color.Transparent
+                                },
+                            )
+                            .clickable { connection.skipTo(i) }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Artwork(item.mediaMetadata.artworkUri?.toString(), 42.dp, corner = 6.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(item.mediaMetadata.title?.toString().orEmpty(), color = white, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (explicitFlags[item.mediaId] == true) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("E", color = white.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Text(queueSubtitle(item.mediaMetadata), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable { rowMenu = item }, contentAlignment = Alignment.Center) {
+                            Text("⋯", color = white.copy(alpha = 0.5f), modifier = Modifier.semantics { contentDescription = "More options" })
+                        }
+                        if (!locked) {
+                            Box(
+                                Modifier.size(36.dp).draggableHandle(
+                                    onDragStarted = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
+                                ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("≡", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { contentDescription = "Drag to reorder" })
+                            }
+                        }
                     }
-                }
+                    }
                 }
             }
         }
+    }
+
+    if (rowMenu != null) {
+        TrackActionsSheet(rowMenu!!) { rowMenu = null }
+    }
+}
+
+@Composable
+private fun MiniPlayerHeader(now: NowPlaying, liked: Boolean, onMore: () -> Unit, onLike: () -> Unit) {
+    val white = Color.White
+    val context = LocalContext.current
+    val graph = context.graph
+    val connection = graph.player
+    val accent = LocalArtworkColors.current.accent.takeIf { it != Color.Unspecified } ?: Color.White
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Artwork(now.metadata.artworkUri?.toString(), 40.dp, corner = 6.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(now.metadata.title?.toString().orEmpty(), color = white, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(now.metadata.artist?.toString().orEmpty(), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = if (liked) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
+            Icon(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) accent else white, modifier = Modifier.size(20.dp))
+        }
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "More options", onClick = onMore), contentAlignment = Alignment.Center) {
+            Icon(ForgeIcons.More, contentDescription = "More options", tint = white, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun TogglePill(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val white = Color.White
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (on) white else white.copy(alpha = 0.12f))
+            .clickable(onClickLabel = if (on) "$label on" else "$label off", onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = if (on) Color.Black else white, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (on) Color.Black else white)
     }
 }
 
