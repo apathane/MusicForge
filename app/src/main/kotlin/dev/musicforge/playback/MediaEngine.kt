@@ -52,7 +52,7 @@ class MediaEngine(
 
     private fun onRefused(videoId: String, code: Int) {
         if (code !in REFUSED) return
-        resolver.cached(videoId)?.let { InnerTubeXPlayer.markStreamClientFailed(videoId, it.client) }
+        resolver.cached(videoId)?.let { InnerTubeXPlayer.markStreamClientFailed(dev.musicforge.download.Upgrades.base(videoId), it.client) }
         resolver.invalidate(videoId)
         Timber.w("stream for %s refused with %d; client retired, URL invalidated", videoId, code)
     }

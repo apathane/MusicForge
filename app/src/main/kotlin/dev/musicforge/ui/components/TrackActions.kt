@@ -82,6 +82,7 @@ fun TrackActionsSheet(
     val download by remember(item.mediaId) { graph.downloads.state(item.mediaId) }.collectAsStateWithLifecycle(null)
     val liked by remember(item.mediaId) { graph.database.dao().isLiked(item.mediaId) }.collectAsStateWithLifecycle(null)
     var picking by remember { mutableStateOf(false) }
+    val bitrate by androidx.compose.runtime.produceState<Int?>(null, item.mediaId) { value = graph.database.dao().format(item.mediaId)?.bitrate }
     val meta = item.mediaMetadata
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
@@ -115,8 +116,12 @@ fun TrackActionsSheet(
             Action(ForgeIcons.PlaylistAdd, "Add to playlist") { picking = true }
             extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
             when (download?.state) {
-                Download.STATE_COMPLETED -> Action(ForgeIcons.Download, "Remove download") {
-                    graph.downloads.remove(item.mediaId); onDismiss()
+                Download.STATE_COMPLETED -> {
+                    // Downloaded at one of YouTube's low-quality formats (on mobile data, say).
+                    if (dev.musicforge.download.Upgrades.isLow(bitrate) && download?.request?.customCacheKey.let { it == null || it == item.mediaId }) {
+                        Action(ForgeIcons.Download, "Re-download in high quality") { graph.downloads.upgrade(item.mediaId); onDismiss() }
+                    }
+                    Action(ForgeIcons.Download, "Remove download") { graph.downloads.remove(item.mediaId); onDismiss() }
                 }
                 Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING -> Action(ForgeIcons.Download, "Cancel download") {
                     graph.downloads.remove(item.mediaId); onDismiss()

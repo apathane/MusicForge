@@ -293,6 +293,9 @@ interface MusicDao {
     @Query("SELECT id FROM song WHERE isDownloaded")
     suspend fun downloadedIds(): List<String>
 
+    @Query("SELECT song.id FROM song JOIN format ON format.id = song.id WHERE song.isDownloaded AND format.bitrate > 0 AND format.bitrate < :below")
+    suspend fun lowBitrateDownloads(below: Int): List<String>
+
     @Query("UPDATE song SET isDownloaded = :downloaded, dateDownload = :at WHERE id = :id")
     suspend fun setDownloaded(id: String, downloaded: Boolean, at: Long?)
 

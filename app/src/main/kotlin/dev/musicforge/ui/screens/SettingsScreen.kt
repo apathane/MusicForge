@@ -132,6 +132,12 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.widget.Toast.makeText(graph.app, "Saved $ok of ${ids.size} to Music/MusicForge", android.widget.Toast.LENGTH_LONG).show()
     }
 
+    fun upgradeLowQuality() = viewModelScope.launch {
+        val ids = graph.downloads.lowQuality()
+        ids.forEach(graph.downloads::upgrade)
+        android.widget.Toast.makeText(graph.app, "Upgrading ${ids.size} downloads; the current copies play until each is done", android.widget.Toast.LENGTH_LONG).show()
+    }
+
     fun resetHome() = viewModelScope.launch {
         graph.database.dao().clearFeedback()
         android.widget.Toast.makeText(graph.app, "Home reset: every suggestion is back", android.widget.Toast.LENGTH_SHORT).show()
@@ -257,6 +263,12 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         Group {
             val context = LocalContext.current
             ToggleRow("Download songs you like", prefs?.get(Keys.AutoDownloadOnLike) ?: false) { vm.set(Keys.AutoDownloadOnLike, it) }
+            val low by androidx.compose.runtime.produceState(0) { value = context.graph.downloads.lowQuality().size }
+            if (low > 0) {
+                ActionRow("Upgrade low-quality downloads", "$low ${if (low == 1) "song was" else "songs were"} downloaded at a low bitrate; fetch them again in high quality") {
+                    vm.upgradeLowQuality()
+                }
+            }
             val exporter = context.graph.musicExport
             if (exporter.supported) {
                 ToggleRow("Also save to Music folder", prefs?.get(Keys.ExportToMusic) ?: false) { vm.set(Keys.ExportToMusic, it) }

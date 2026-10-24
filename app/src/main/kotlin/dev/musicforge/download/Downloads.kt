@@ -84,8 +84,18 @@ class Downloads(
                 val id = download.request.id
                 download.request.sharedKey()?.let { engine.storageKeys[id] = it }
                 scope.launch {
+                    // An upgrade copy never touches the song's own row or flag.
+                    if (Upgrades.isUpgrade(id)) {
+                        when (download.state) {
+                            Download.STATE_COMPLETED -> finishUpgrade(Upgrades.base(id))
+                            Download.STATE_FAILED -> remove(id)
+                        }
+                        return@launch
+                    }
                     when (download.state) {
                         Download.STATE_COMPLETED -> {
+                            // Re-pointed at its upgrade: the old bytes go, unless a duplicate shares them.
+                            if (download.request.sharedKey() == Upgrades.key(id)) dropOldCopy(id)
                             dao.setDownloaded(id, true, System.currentTimeMillis())
                             // The bytes live in the download cache now; don't keep a second copy.
                             runCatching { engine.playerCache.removeResource(id) }
@@ -126,7 +136,7 @@ class Downloads(
      * stored with each request, and fixes flags that drifted in either direction.
      */
     private suspend fun reconcile(downloads: Collection<Download>) {
-        val done = downloads.filter { it.state == Download.STATE_COMPLETED }
+        val done = downloads.filter { it.state == Download.STATE_COMPLETED && !Upgrades.isUpgrade(it.request.id) }
         var repaired = 0
         for (d in done) {
             val id = d.request.id
@@ -158,7 +168,8 @@ class Downloads(
     fun state(id: String): Flow<Download?> = states.map { it[id] }
 
     /** Ids whose bytes are complete on disk; used by backup restore to keep their flags. */
-    fun completedIds(): Set<String> = states.value.filterValues { it.state == Download.STATE_COMPLETED }.keys
+    fun completedIds(): Set<String> =
+        states.value.filterValues { it.state == Download.STATE_COMPLETED && !Upgrades.isUpgrade(it.request.id) }.keys
 
     fun download(items: List<MediaItem>) {
         items.forEach { item ->
@@ -197,6 +208,50 @@ class Downloads(
     }
 
     fun remove(id: String) = DownloadService.sendRemoveDownload(context, ForgeDownloadService::class.java, id, false)
+
+    /**
+     * Fetches a best-quality copy of a downloaded song beside the current one. Only for a song
+     * whose bytes are its own: an alias of a duplicate follows its owner.
+     */
+    fun upgrade(songId: String) {
+        val current = states.value[songId] ?: return
+        if (current.state != Download.STATE_COMPLETED || current.request.sharedKey() != null) return
+        val key = Upgrades.key(songId)
+        val request = DownloadRequest.Builder(key, key.toUri()).setCustomCacheKey(key).setData(current.request.data).build()
+        DownloadService.sendAddDownload(context, ForgeDownloadService::class.java, request, false)
+    }
+
+    /** Songs downloaded at one of YouTube's low-quality formats, worth upgrading. */
+    suspend fun lowQuality(): List<String> = dao.lowBitrateDownloads(Upgrades.LOW_BITRATE)
+        .filter { states.value[it]?.request?.sharedKey() == null }
+
+    /**
+     * The upgrade finished: keep it only if it is better. Keeping it re-points the song's own
+     * download at the new key (Media3 merges a re-added request; the bytes are already there, so
+     * it completes at once) and copies the format row, which loudness and export read.
+     */
+    private suspend fun finishUpgrade(songId: String) {
+        val key = Upgrades.key(songId)
+        val better = dao.format(key)
+        val current = dao.format(songId)
+        val own = states.value[songId]
+        if (better == null || own == null || !Upgrades.isBetter(better.bitrate, current?.bitrate)) {
+            Timber.i("upgrade of %s not better (%s -> %s); dropped", songId, current?.bitrate, better?.bitrate)
+            remove(key)
+            return
+        }
+        dao.upsert(better.copy(id = songId))
+        val repointed = DownloadRequest.Builder(songId, songId.toUri()).setCustomCacheKey(key).setData(own.request.data).build()
+        DownloadService.sendAddDownload(context, ForgeDownloadService::class.java, repointed, false)
+        // The upgrade's own entry goes; its bytes stay because the song now stores under them.
+        remove(key)
+        Timber.i("upgraded %s: %d -> %d bps", songId, current?.bitrate ?: 0, better.bitrate)
+    }
+
+    private fun dropOldCopy(songId: String) {
+        val stillShared = states.value.values.any { it.request.id != songId && (it.request.customCacheKey ?: it.request.id) == songId }
+        if (!stillShared) runCatching { engine.downloadCache.removeResource(songId) }
+    }
 
     /** Re-queues every failed download; Media3 restarts a failed one when its request is added again. */
     fun retryFailed() {

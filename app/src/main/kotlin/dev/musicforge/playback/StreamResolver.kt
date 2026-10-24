@@ -73,10 +73,14 @@ class StreamResolver(
         cached(videoId)?.let { if (expectLength == null || it.contentLength == expectLength) return it }
         val generation = synchronized(entries) { generations[videoId] ?: 0L }
 
-        val quality = AudioQuality.parse(settings.data.first()[Keys.AudioQuality])
-        val song = dao.songEntity(videoId)
+        // A quality upgrade ("<id>#hq") resolves the same video at the best quality; its URL,
+        // generation and format row stay under its own key until it is swapped in.
+        val video = dev.musicforge.download.Upgrades.base(videoId)
+        val quality = if (dev.musicforge.download.Upgrades.isUpgrade(videoId)) AudioQuality.HIGH
+        else AudioQuality.parse(settings.data.first()[Keys.AudioQuality])
+        val song = dao.songEntity(video)
         val data = InnerTubeXPlayer.playerResponseForPlayback(
-            videoId = videoId,
+            videoId = video,
             audioQuality = quality,
             connectivityManager = connectivity,
             contentHints = ContentHints(isExplicit = song?.explicit, isUploaded = song?.isUploaded),
