@@ -145,7 +145,7 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
 /** Radio's picks say so; what you chose shows just its artist. */
 private fun queueSubtitle(meta: androidx.media3.common.MediaMetadata): String {
     val artist = meta.artist?.toString().orEmpty()
-    return if (meta.isFromRadio) "Radio pick · $artist" else artist
+    return if (!meta.isFromRadio) artist else if (artist.isEmpty()) "Radio pick" else "Radio pick · $artist"
 }
 
 /** The queue: tap to jump, drag the handle to reorder, ✕ to remove. */
