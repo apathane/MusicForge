@@ -58,12 +58,29 @@ fun DownloadsScreen() {
     val player = graph.player
 
     val pending by graph.redownloads.pending.collectAsStateWithLifecycle()
+    val failed by remember { graph.downloads.states.map { s -> s.values.count { it.state == Download.STATE_FAILED } }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(0)
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { ScreenHeader("Downloads") }
         pending?.let { p -> item(key = "redownload") { BringBackCard(p) } }
         if (active.isEmpty() && done.isEmpty()) {
             item { EmptyState("Nothing downloaded yet", "Long-press any song and choose Download. Downloads play offline and pick up where they left off if the phone kills the app.") }
+        }
+        if (failed > 0) {
+            item(key = "failed") {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (failed == 1) "1 download failed" else "$failed downloads failed",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    PillButton("Retry", onClick = { graph.downloads.retryFailed() })
+                }
+            }
         }
         if (active.isNotEmpty()) {
             item { SectionTitle("In progress") }

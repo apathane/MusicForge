@@ -71,7 +71,7 @@ class Downloads(
         index,
         SharedKeyDownloaderFactory(
             DefaultDownloaderFactory(
-                CacheDataSource.Factory().setCache(engine.downloadCache).setUpstreamDataSourceFactory(engine.upstream(forDownload = true)),
+                CacheDataSource.Factory().setCache(engine.downloadCache).setUpstreamDataSourceFactory(engine.downloadUpstream()),
                 Executors.newFixedThreadPool(3),
             ),
             index,
@@ -93,6 +93,8 @@ class Downloads(
                         }
                         Download.STATE_FAILED -> {
                             Timber.w(finalException, "download %s failed", id)
+                            // An expired or refused URL would fail the retry too (Metrolist does the same).
+                            engine.forgetStream(id)
                             dao.setDownloaded(id, false, null)
                         }
                         else -> Unit
@@ -195,6 +197,13 @@ class Downloads(
     }
 
     fun remove(id: String) = DownloadService.sendRemoveDownload(context, ForgeDownloadService::class.java, id, false)
+
+    /** Re-queues every failed download; Media3 restarts a failed one when its request is added again. */
+    fun retryFailed() {
+        states.value.values.filter { it.state == Download.STATE_FAILED }.forEach {
+            DownloadService.sendAddDownload(context, ForgeDownloadService::class.java, it.request, false)
+        }
+    }
 
     /** Artwork goes into Coil's disk cache so offline lists still have covers. */
     private fun prefetchArtwork(item: MediaItem) {

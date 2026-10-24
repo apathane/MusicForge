@@ -60,6 +60,23 @@ class MediaEngine(
     fun upstream(forDownload: Boolean): DataSource.Factory =
         ResolvingDataSource.Factory(ChunkedDataSource.Factory(http, ::onRefused)) { spec -> resolve(spec, forDownload) }
 
+    /**
+     * Where a download's bytes come from: the player cache first (a song just streamed or read
+     * ahead is copied, not fetched again; Metrolist and ConvX do the same), then the network for
+     * whatever is missing. Resolving runs only on a miss, and a mid-file reopen must match the
+     * stored length (see [resolve]), so cached and fetched bytes can't come from two renditions.
+     */
+    fun downloadUpstream(): DataSource.Factory =
+        CacheDataSource.Factory()
+            .setCache(playerCache)
+            .setCacheKeyFactory { spec -> spec.key ?: spec.uri.toString() }
+            .setCacheWriteDataSinkFactory(null)
+            .setUpstreamDataSourceFactory(upstream(forDownload = true))
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+    /** Drops a stream URL so the next attempt resolves a fresh one (a failed download's retry). */
+    fun forgetStream(videoId: String) = resolver.invalidate(videoId)
+
     private fun resolve(spec: DataSpec, forDownload: Boolean): DataSpec {
         val videoId = spec.key ?: error("no cache key on $spec")
         // Mid-file reopen after a refusal: the new rendition must match what's already cached.
