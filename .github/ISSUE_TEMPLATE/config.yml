@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question / Discuss
+    url: https://github.com/apathane/MusicForge/discussions
+    about: General questions, setup help, feature discussion — not a bug or feature request
+  - name: FAQ
+    url: https://github.com/apathane/MusicForge/discussions/categories/faq
+    about: Common questions about building, signing in, downloads, backups

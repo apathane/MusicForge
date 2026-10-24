@@ -1,0 +1,73 @@
+name: Feature request
+description: Suggest an idea
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Keep it concrete — "add X" is more useful than "it would be cool if".
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the friction or gap. "I want to..." or "It's annoying that..."
+      placeholder: |
+        When I'm driving, I can't skip tracks without unlocking the phone.
+        The mini player swipe-to-skip helps, but Android Auto doesn't expose it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+      description: What should the app do? Be specific about UI, settings, behavior.
+      placeholder: |
+        Add "Next / Previous" actions to the MediaSession so they appear in Android Auto
+        and the notification. Map them to the existing PlayerConnection.skipNext/Previous.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to solve it, or why they don't work
+      placeholder: |
+        Voice commands work but need "Hey Google". Media buttons on headsets work
+        but not all cars have them.
+
+  - type: input
+    id: device
+    attributes:
+      label: Device (if relevant)
+      description: Model and SoC
+      placeholder: Honor X7b, Snapdragon 680
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version (if relevant)
+      placeholder: 14
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / codename
+      placeholder: Rondo 0.13.0
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: This doesn't need a paid API key, tracker, or ad SDK
+          required: true
+        - label: This doesn't break backup compatibility with Metrolist/ConvX
+          required: true
+        - label: I've checked the README and docs/ — this isn't already there
+          required: true
+        - label: I've searched existing issues and this isn't a duplicate
+          required: true
