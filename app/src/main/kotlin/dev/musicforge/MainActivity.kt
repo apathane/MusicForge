@@ -65,6 +65,12 @@ class MainActivity : ComponentActivity() {
         handlePlayFromSearch(intent)
     }
 
+    /** Refresh the YouTube Music history mirror when the app returns to the foreground. */
+    override fun onStart() {
+        super.onStart()
+        graph.scope.launch { runCatching { graph.accountSync.syncHistoryIfStale() } }
+    }
+
     /** Voice: "play X on MusicForge". Your own songs first, then YouTube Music. */
     private fun handlePlayFromSearch(intent: android.content.Intent?) {
         if (intent?.action != android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) return

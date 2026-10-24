@@ -63,6 +63,10 @@ class PlaybackService : MediaLibraryService() {
     private var transitionAt = 0L
     private var consecutiveErrors = 0
     private var lastErrorAt = 0L
+    // YouTube Music history (push): a nonce and the account cookie captured on item start, so a
+    // play is registered against the account that was listening — not a later one.
+    private var playStartNonce: String? = null
+    private var playStartCookie: String? = null
 
     private val readAhead by lazy { ReadAhead(this, graph.mediaEngine, graph.downloads, scope) }
     private val queueStore by lazy { QueueStore(this, graph.database.dao()) }
@@ -345,6 +349,10 @@ class PlaybackService : MediaLibraryService() {
             currentItem = mediaItem
             watchLiked(mediaItem?.mediaId)
             mediaItem?.let { graph.scope.launch { runCatching { graph.listenBrainz.playingNow(it) } } }
+            // Capture a fresh nonce and the cookie for YouTube Music history push; registerPlayback
+            // is called later from checkpoint() once the play has counted.
+            playStartNonce = com.metrolist.innertubex.extraction.generateClientPlaybackNonce()
+            playStartCookie = YouTube.cookie
             mediaItem?.let { readAhead.cancel(it.mediaId) }
             updateReadAhead()
             if (mediaItem != null) {
@@ -430,6 +438,25 @@ class PlaybackService : MediaLibraryService() {
             scrobbled = true
             val started = startedAtSec
             graph.scope.launch { runCatching { graph.listenBrainz.scrobble(item, started) } }
+        }
+        // YouTube Music history push: register the play against the account that was listening.
+        if (countNow) {
+            val nonce = playStartNonce
+            val cookie = playStartCookie
+            if (nonce != null && cookie != null) {
+                graph.scope.launch {
+                    val pauseHistory = graph.settings.data.first().get(Keys.PauseListenHistory) ?: false
+                    if (cookie == YouTube.cookie && !pauseHistory) {
+                        runCatching {
+                            YouTube.registerPlayback(
+                                videoId = item.mediaId,
+                                clientPlaybackNonce = nonce,
+                                isHistoryEnabled = { true },
+                            )
+                        }.onFailure { Timber.w(it, "registerPlayback failed for %s", item.mediaId) }
+                    }
+                }
+            }
         }
         if (delta <= 0 && !countNow) return
         graph.scope.launch {

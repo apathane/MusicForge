@@ -65,6 +65,27 @@ class AccountSync(
         if (System.currentTimeMillis() - last >= maxAgeMs) sync()
     }
 
+    /** Mirrors the account's YouTube Music history fresh enough to be useful on the Home shelf. */
+    suspend fun syncHistoryIfStale(maxAgeMs: Long = 6 * 60 * 60 * 1000L) {
+        if (YouTube.cookie == null) return
+        val last = settings.data.first()[Keys.LastHistorySync] ?: 0L
+        if (System.currentTimeMillis() - last < maxAgeMs) return
+        syncHistory()
+    }
+
+    private suspend fun syncHistory() = withContext(Dispatchers.IO) {
+        if (YouTube.cookie == null) return@withContext
+        if (!lock.tryLock()) return@withContext
+        try {
+            step("History") { history() }
+            settings.edit { it[Keys.LastHistorySync] = System.currentTimeMillis() }
+        } catch (e: Exception) {
+            Timber.w(e, "history sync failed")
+        } finally {
+            lock.unlock()
+        }
+    }
+
     suspend fun sync() = withContext(Dispatchers.IO) {
         if (YouTube.cookie == null) return@withContext
         if (!lock.tryLock()) return@withContext // one at a time; a second request rides on the first
@@ -216,6 +237,21 @@ class AccountSync(
         }
         if (remoteIds.isNotEmpty()) writeSnapshot(PLAYLISTS, remoteIds)
         return remote.size
+    }
+
+    private suspend fun history(): Int? {
+        val page = YouTube.musicHistory().getOrNull() ?: return null
+        val songs = page.sections?.flatMap { it.songs } ?: emptyList()
+        if (songs.isEmpty()) return 0
+        val now = System.currentTimeMillis()
+        db.withTransaction {
+            dao.clearRemoteHistory()
+            songs.forEachIndexed { i, song ->
+                recorder.ensureSong(song.toMediaItem())
+                dao.insert(dev.musicforge.data.db.RemoteHistoryEntity(songId = song.id, position = i, syncedAt = now))
+            }
+        }
+        return songs.size
     }
 
     private suspend fun playlistSongs(browseId: String, playlistId: String) {

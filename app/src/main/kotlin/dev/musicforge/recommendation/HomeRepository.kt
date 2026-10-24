@@ -5,6 +5,7 @@ import dev.musicforge.data.db.LibraryCounts
 import dev.musicforge.data.db.MusicDao
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.data.db.RecommendationFeedback
+import dev.musicforge.data.db.RemoteHistoryEntity
 import dev.musicforge.data.db.Song
 import dev.musicforge.data.db.SongStat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,6 +16,30 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+
+/** One play, local or remote: the song id and when it went down. */
+data class RecentPlay(
+    val songId: String,
+    /** Epoch ms of the play: the event timestamp for local, the sync time for remote. */
+    val playedAt: Long,
+    /** True when this came from the YouTube Music account, not a play here. */
+    val fromRemote: Boolean,
+)
+
+/**
+ * Merge local plays and remote YouTube Music plays into one newest-first list. A remote play,
+ * dated at sync time, is overridden by a newer local play of the same song. Dedupes by song id
+ * and keeps [limit] entries. Local wins ties: a play here at the same instant a remote sync
+ * landed is the one we show.
+ */
+fun mergeRecent(local: List<RecentPlay>, remote: List<RecentPlay>, limit: Int = 16): List<RecentPlay> {
+    val bySong = LinkedHashMap<String, RecentPlay>()
+    for (entry in local + remote) {
+        val existing = bySong[entry.songId]
+        if (existing == null || entry.playedAt > existing.playedAt) bySong[entry.songId] = entry
+    }
+    return bySong.values.sortedByDescending { it.playedAt }.take(limit)
+}
 
 /** Reads the listener's signals from Room; Room runs these queries off the main thread. */
 class HomeRepository(
@@ -37,6 +62,26 @@ class HomeRepository(
         }
     }.flatMapLatest(::signalsAt).combine(paused) { signals, isPaused -> signals.copy(isPaused = isPaused) }
 
+    /** Latest 16 plays, merging local events with remote (another device) history. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun recentFlow(): Flow<Pair<List<Song>, Boolean>> =
+        combine(dao.playedSongs(16), dao.remoteHistory()) { local, remote ->
+            val merged = mergeRecent(
+                local.map { RecentPlay(it.song.id, it.lastPlayed, fromRemote = false) },
+                remote.map { RecentPlay(it.songId, it.syncedAt, fromRemote = true) },
+            )
+            merged.map { it.songId } to (merged.firstOrNull()?.fromRemote == true)
+        }.flatMapLatest { (ids, remoteOnly) ->
+            if (ids.isEmpty()) {
+                flowOf(emptyList<Song>() to remoteOnly)
+            } else {
+                dao.songs(ids).map { songs ->
+                    val order = ids.withIndex().associate { it.value to it.index }
+                    songs.sortedBy { order[it.id] ?: Int.MAX_VALUE } to remoteOnly
+                }
+            }
+        }
+
     @Suppress("UNCHECKED_CAST")
     private fun signalsAt(start: Long): Flow<LocalSignals> {
         val month = start - 30 * DAY_MS
@@ -45,7 +90,7 @@ class HomeRepository(
         val hours = (hour - 1..hour + 1).map { it.mod(24) }
         val daySeed = ((start + java.util.TimeZone.getDefault().getOffset(start)) / DAY_MS).toInt()
         return combine(
-            dao.historySongs(16),
+            recentFlow(),
             withCredits(dao.topSongs(month, 40)),
             dao.recentDownloads(5),
             dao.counts(),
@@ -56,10 +101,12 @@ class HomeRepository(
             dao.forgottenLikes(likedBefore = start - 45 * DAY_MS, notPlayedSince = start - 30 * DAY_MS, seed = daySeed),
             dao.activeFeedback(start),
         ) { values ->
+            val (recent, remoteOnly) = values[0] as Pair<List<Song>, Boolean>
             val feedback = values[9] as List<RecommendationFeedback>
             val counts = values[3] as LibraryCounts
             LocalSignals(
-                recent = values[0] as List<Song>,
+                recent = recent,
+                recentReason = if (remoteOnly) "Played on another device" else "Recently played",
                 rotation = values[1] as List<Pair<Song, Int>>,
                 downloads = values[2] as List<Song>,
                 downloadCount = counts.downloaded,

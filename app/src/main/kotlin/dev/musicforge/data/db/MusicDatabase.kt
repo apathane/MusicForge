@@ -13,12 +13,13 @@ import androidx.room.RoomDatabase
         SearchHistory::class, FormatEntity::class, LyricsEntity::class, Event::class,
         RelatedSongMap::class, SetVideoIdEntity::class, PlayCountEntity::class,
         RecognitionHistory::class, SpeedDialItem::class, PodcastEntity::class, SongAnalysis::class,
-        RecommendationFeedback::class,
+        RecommendationFeedback::class, RemoteHistoryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     // 2: recommendation_feedback (a new table only; upstream tables untouched).
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    // 3: remote_history (YouTube Music plays from other devices; replaced wholesale each sync).
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun dao(): MusicDao
