@@ -1,6 +1,19 @@
 package dev.musicforge.ui.player
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,14 +57,25 @@ fun MiniPlayer(
     val position: State<Long> = remember(connection) { connection.position() }.collectAsStateWithLifecycle(0L)
     val track = MaterialTheme.colorScheme.onBackground
     val shape = RoundedCornerShape(16.dp)
+    val swipe = rememberSkipSwipe(now, connection)
     Column(
         modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
             .glass(shape)
-            .clickable(onClick = onOpen),
+            .clickable(onClick = onOpen)
+            .then(swipe.gesture),
     ) {
-        Row(Modifier.padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The glass stays put; only its contents follow the finger, as on ConvX and Metrolist.
+        Row(
+            Modifier
+                .graphicsLayer {
+                    translationX = swipe.offset()
+                    alpha = 1f - (kotlin.math.abs(swipe.offset()) / size.width).coerceIn(0f, 0.6f)
+                }
+                .padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Artwork(now.metadata.artworkUri?.toString(), 44.dp, corner = 8.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -89,6 +113,55 @@ fun MiniPlayer(
         )
     }
 }
+
+private class SkipSwipe(val gesture: Modifier, val offset: () -> Float)
+
+/**
+ * Swipe the mini player sideways to skip: left for next, right for previous. A flick is enough
+ * (velocity), or a drag past a quarter of the width. Released short of that, it springs back.
+ */
+@Composable
+private fun rememberSkipSwipe(now: NowPlaying, connection: PlayerConnection): SkipSwipe {
+    val offset = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
+    val latest by rememberUpdatedState(now)
+    val gesture = Modifier.pointerInput(connection) {
+        val tracker = VelocityTracker()
+        detectHorizontalDragGestures(
+            onDragStart = { tracker.resetTracking() },
+            onDragCancel = { scope.launch { offset.animateTo(0f, SettleSpring) } },
+            onHorizontalDrag = { change, dx ->
+                tracker.addPosition(change.uptimeMillis, change.position)
+                // Resist toward a side there is nothing to skip to.
+                val blocked = (dx < 0 && !latest.hasNext) || (dx > 0 && !latest.hasPrevious)
+                scope.launch { offset.snapTo(offset.value + if (blocked) dx * 0.25f else dx) }
+            },
+            onDragEnd = {
+                val v = tracker.calculateVelocity().x
+                val width = size.width.toFloat()
+                val goNext = latest.hasNext && (offset.value < -width / 4 || v < -FlingVelocity)
+                val goPrev = latest.hasPrevious && (offset.value > width / 4 || v > FlingVelocity)
+                scope.launch {
+                    if (goNext || goPrev) {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (goNext) connection.next() else connection.previous()
+                        // Leave off the side it was thrown to and come back in from the other.
+                        offset.animateTo(if (goNext) -width else width, tween(140))
+                        offset.snapTo(if (goNext) width * 0.4f else -width * 0.4f)
+                    }
+                    offset.animateTo(0f, SettleSpring)
+                }
+            },
+        )
+    }
+    return remember(gesture) { SkipSwipe(gesture) { offset.value } }
+}
+
+private val SettleSpring = spring<Float>(dampingRatio = 0.85f, stiffness = 500f)
+
+/** Pixels per second that count as a flick. */
+private const val FlingVelocity = 1200f
 
 @Composable
 private fun ControlButton(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
