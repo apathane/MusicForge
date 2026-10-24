@@ -25,13 +25,16 @@ class ArtRepair(private val dao: MusicDao, private val scope: CoroutineScope) {
         scope.launch {
             gate.withPermit {
                 dao.songIdsWithThumb(url).forEach { id -> song(id)?.let { dao.setSongThumb(id, it) } }
+                var missed = false
                 dao.albumIdsWithThumb(url).forEach { id ->
-                    YouTube.album(id, withSongs = false).getOrNull()?.album?.thumbnail?.let { dao.setAlbumThumb(id, it) }
+                    YouTube.album(id, withSongs = false).getOrNull()?.album?.thumbnail?.let { dao.setAlbumThumb(id, it) } ?: run { missed = true }
                 }
-                dao.artistIdsWithThumb(url).forEach { id -> artist(id)?.let { dao.setArtistThumb(id, it) } }
+                dao.artistIdsWithThumb(url).forEach { id -> artist(id)?.let { dao.setArtistThumb(id, it) } ?: run { missed = true } }
                 dao.playlistBrowseIdsWithThumb(url).forEach { browseId ->
-                    YouTube.playlist(browseId.removePrefix("VL")).getOrNull()?.playlist?.thumbnail?.let { dao.setPlaylistThumb(browseId, it) }
+                    YouTube.playlist(browseId.removePrefix("VL")).getOrNull()?.playlist?.thumbnail?.let { dao.setPlaylistThumb(browseId, it) } ?: run { missed = true }
                 }
+                // A lookup that failed (flaky network, a 5xx) may be tried again the next time it shows.
+                if (missed) tried.remove(url)
             }
         }
     }
@@ -39,7 +42,7 @@ class ArtRepair(private val dao: MusicDao, private val scope: CoroutineScope) {
     /** An artist row has no picture yet. */
     fun missingArtist(id: String) {
         if (!tried.add(id)) return
-        scope.launch { gate.withPermit { artist(id)?.let { dao.setArtistThumb(id, it) } } }
+        scope.launch { gate.withPermit { artist(id)?.let { dao.setArtistThumb(id, it) } ?: tried.remove(id) } }
     }
 
     private suspend fun artist(id: String) = YouTube.artist(id).getOrNull()?.artist?.thumbnail

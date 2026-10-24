@@ -115,7 +115,8 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
             // search history) unless history is paused, as Metrolist does.
             val asYou = YouTube.cookie != null && graph.settings.data.first()[Keys.PauseSearchHistory] != true
             _results.value = YouTube.search(q, kind.value.filter, recordSearchHistory = asYou).fold(
-                onSuccess = { r -> Results.Items(r.items, local) },
+                // YouTube sometimes repeats an item; a repeated lazy-list key would crash the screen.
+                onSuccess = { r -> Results.Items(r.items.distinctBy { "${it::class.simpleName}:${it.id}" }, local) },
                 onFailure = {
                     // Offline: your own music still answers.
                     if (local.isNotEmpty()) Results.Items(emptyList(), local, offline = "Offline: showing songs you have")
@@ -192,7 +193,7 @@ fun SearchScreen() {
                     if (r.items.isNotEmpty()) item { dev.musicforge.ui.components.SectionTitle("YouTube Music") }
                 }
                 if (r.items.isEmpty() && r.local.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
-                items(r.items, key = { it.id }) { result ->
+                items(r.items, key = { "${it::class.simpleName}:${it.id}" }) { result ->
                     when (result) {
                         is SongItem -> {
                             val item = androidx.compose.runtime.remember(result.id) { result.toMediaItem() }
