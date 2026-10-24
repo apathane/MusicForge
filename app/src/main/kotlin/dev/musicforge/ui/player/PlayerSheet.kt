@@ -259,7 +259,7 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PlayerIcon(ForgeIcons.Shuffle, "Shuffle", if (now.shuffle) accent else white.copy(alpha = 0.55f), 24.dp) { connection.toggleShuffle() }
+            PlayerIcon(ForgeIcons.Shuffle, if (now.shuffle) "Shuffle on" else "Shuffle off", if (now.shuffle) accent else white.copy(alpha = 0.55f), 24.dp) { connection.toggleShuffle() }
             PlayerIcon(ForgeIcons.Previous, "Previous", white, 40.dp) { connection.previous() }
             Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
                 if (now.isBuffering && !now.isPlaying) {
@@ -272,7 +272,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             }
             PlayerIcon(ForgeIcons.Next, "Next", if (now.hasNext) white else white.copy(alpha = 0.3f), 40.dp) { connection.next() }
             val repeatIcon = if (now.repeatMode == Player.REPEAT_MODE_ONE) ForgeIcons.RepeatOne else ForgeIcons.Repeat
-            PlayerIcon(repeatIcon, "Repeat", if (now.repeatMode != Player.REPEAT_MODE_OFF) accent else white.copy(alpha = 0.55f), 24.dp) {
+            val repeatLabel = when (now.repeatMode) { Player.REPEAT_MODE_ONE -> "Repeat one"; Player.REPEAT_MODE_ALL -> "Repeat all"; else -> "Repeat off" }
+            PlayerIcon(repeatIcon, repeatLabel, if (now.repeatMode != Player.REPEAT_MODE_OFF) accent else white.copy(alpha = 0.55f), 24.dp) {
                 connection.cycleRepeat()
             }
         }
@@ -346,7 +347,7 @@ private fun BigArtwork(now: NowPlaying) {
 @Composable
 private fun PlayerIcon(icon: ImageVector, label: String, tint: Color, size: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
     Box(
-        Modifier.size(size + 20.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = label, onClick = onClick),
+        Modifier.size(maxOf(size + 20.dp, 48.dp)).clip(RoundedCornerShape(50)).clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(size))
@@ -357,7 +358,7 @@ private fun PlayerIcon(icon: ImageVector, label: String, tint: Color, size: andr
 private fun PaneButton(icon: ImageVector, label: String, active: Boolean, white: Color, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(if (active) white.copy(alpha = 0.18f) else Color.Transparent)
             .clickable(onClickLabel = label, onClick = onClick),

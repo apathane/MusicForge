@@ -46,6 +46,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -199,11 +201,11 @@ fun QueuePane() {
                     }
                     if (!playing) {
                         Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable { connection.removeAt(i) }, contentAlignment = Alignment.Center) {
-                            Text("✕", color = white.copy(alpha = 0.5f))
+                            Text("✕", color = white.copy(alpha = 0.5f), modifier = Modifier.semantics { contentDescription = "Remove from queue" })
                         }
                     }
                     Box(Modifier.size(36.dp).draggableHandle(), contentAlignment = Alignment.Center) {
-                        Text("≡", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleLarge)
+                        Text("≡", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { contentDescription = "Drag to reorder" })
                     }
                 }
             }

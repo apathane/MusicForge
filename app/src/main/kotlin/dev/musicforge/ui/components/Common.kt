@@ -65,7 +65,7 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(percent = 50))
             .clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -163,7 +163,7 @@ fun TrackRow(
             }
             Spacer(Modifier.width(8.dp))
         } else {
-            Artwork(artworkUrl, 48.dp, corner = 6.dp)
+            Artwork(artworkUrl, 48.dp, corner = 6.dp, fallbackLetter = title)
             Spacer(Modifier.width(14.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {

@@ -45,7 +45,7 @@ fun Scrubber(
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(28.dp)
+                .height(48.dp)
                 .pointerInput(durationMs) {
                     detectTapGestures { o -> if (durationMs > 0) onSeek((o.x / size.width * durationMs).toLong()) }
                 }

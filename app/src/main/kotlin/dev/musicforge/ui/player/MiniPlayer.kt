@@ -65,7 +65,7 @@ fun MiniPlayer(
                 )
             }
             if (now.isBuffering && !now.isPlaying) {
-                Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(Modifier.size(20.dp), color = track, strokeWidth = 2.dp)
                 }
             } else {
@@ -94,7 +94,7 @@ fun MiniPlayer(
 private fun ControlButton(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(percent = 50))
             .clickable(enabled = enabled, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
