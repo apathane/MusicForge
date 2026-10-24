@@ -247,6 +247,16 @@ interface MusicDao {
     @Query("SELECT * FROM artist WHERE id = :id")
     suspend fun artist(id: String): ArtistEntity?
 
+    // ArtRepair: which rows carry a picture link that stopped loading, and the fresh link.
+    @Query("SELECT id FROM song WHERE thumbnailUrl = :url") suspend fun songIdsWithThumb(url: String): List<String>
+    @Query("SELECT id FROM album WHERE thumbnailUrl = :url") suspend fun albumIdsWithThumb(url: String): List<String>
+    @Query("SELECT id FROM artist WHERE thumbnailUrl = :url") suspend fun artistIdsWithThumb(url: String): List<String>
+    @Query("SELECT browseId FROM playlist WHERE thumbnailUrl = :url AND browseId IS NOT NULL") suspend fun playlistBrowseIdsWithThumb(url: String): List<String>
+    @Query("UPDATE song SET thumbnailUrl = :url WHERE id = :id") suspend fun setSongThumb(id: String, url: String)
+    @Query("UPDATE album SET thumbnailUrl = :url WHERE id = :id") suspend fun setAlbumThumb(id: String, url: String)
+    @Query("UPDATE artist SET thumbnailUrl = :url WHERE id = :id") suspend fun setArtistThumb(id: String, url: String)
+    @Query("UPDATE playlist SET thumbnailUrl = :url WHERE browseId = :browseId") suspend fun setPlaylistThumb(browseId: String, url: String)
+
     @Query("SELECT * FROM lyrics WHERE id = :id")
     suspend fun lyrics(id: String): LyricsEntity?
 

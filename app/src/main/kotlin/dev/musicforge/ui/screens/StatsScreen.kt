@@ -111,6 +111,10 @@ fun StatsScreen(onBack: () -> Unit) {
                             Modifier.width(104.dp).clickable(enabled = !a.artist.id.startsWith("name:")) { nav.navigate(Routes.artist(a.artist.channelId ?: a.artist.id)) },
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
+                            if (a.artist.thumbnailUrl == null) {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                androidx.compose.runtime.LaunchedEffect(a.artist.id) { context.graph.artRepair.missingArtist(a.artist.id) }
+                            }
                             Artwork(a.artist.thumbnailUrl, 96.dp, corner = 48.dp, fallbackLetter = a.artist.name)
                             Spacer(Modifier.height(8.dp))
                             Text("${i + 1}. ${a.artist.name}", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

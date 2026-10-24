@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.musicforge.graph
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -114,8 +115,14 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
                 contentDescription = null,
                 placeholder = tile,
                 error = tile,
-                // A cover that fails to load would otherwise be a blank tile; the letter says whose it is.
-                onError = if (fallbackLetter != null) ({ failed = true }) else null,
+                onError = { e ->
+                    // A cover that fails to load would otherwise be a blank tile; the letter says whose it is.
+                    failed = true
+                    // The server refused this link (stale avatar, retired cover): fetch a fresh one.
+                    // Offline failures carry no HTTP code and are left alone.
+                    val code = (e.result.throwable as? coil3.network.HttpException)?.response?.code
+                    if (code == 403 || code == 404 || code == 410) context.graph.artRepair.failed(url)
+                },
                 contentScale = if (letterboxed) CropPastLetterbox else ContentScale.Crop,
                 modifier = Modifier.size(size),
             )

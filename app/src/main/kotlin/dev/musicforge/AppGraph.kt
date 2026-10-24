@@ -89,6 +89,7 @@ class AppGraph(val app: Application) {
 
     val player by lazy { PlayerConnection(app) }
 
+    val artRepair by lazy { dev.musicforge.data.ArtRepair(database.dao(), scope) }
     val accountSync by lazy { dev.musicforge.data.AccountSync(app, database, recorder, settings) }
 
     val listenBrainz by lazy { dev.musicforge.data.ListenBrainz(app, settings, http) }
