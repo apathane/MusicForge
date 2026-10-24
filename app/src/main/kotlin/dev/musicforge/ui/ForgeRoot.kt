@@ -1,5 +1,10 @@
 package dev.musicforge.ui
 
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -122,6 +127,18 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             NavHost(
                 nav,
                 startDestination = Tab.Home.route,
+                // Pages push in from the side a little; tabs, which aren't a hierarchy, only crossfade.
+                // Navigation's default is a 700 ms fade, slow enough to feel like lag.
+                enterTransition = {
+                    if (targetState.destination.route in tabRoutes) fadeIn(tween(160))
+                    else fadeIn(tween(220)) + slideInHorizontally(tween(260, easing = EaseOutCubic)) { it / 10 }
+                },
+                exitTransition = { fadeOut(tween(140)) },
+                popEnterTransition = { fadeIn(tween(200)) },
+                popExitTransition = {
+                    if (initialState.destination.route in tabRoutes) fadeOut(tween(140))
+                    else fadeOut(tween(180)) + slideOutHorizontally(tween(220, easing = EaseOutCubic)) { it / 10 }
+                },
                 modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }
                     .then(if (live != null) Modifier.layerBackdrop(live) else Modifier),
             ) {
@@ -171,6 +188,11 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                     NavPill(
                         current = Tab.entries.firstOrNull { it.route == route } ?: lastTab,
                         onSelect = { tab ->
+                            // Tapping the tab you are on goes back to its top (every upstream app does).
+                            if (route == tab.route) {
+                                nav.currentBackStackEntry?.savedStateHandle?.set(SCROLL_TO_TOP, System.nanoTime())
+                                return@NavPill
+                            }
                             nav.navigate(tab.route) {
                                 popUpTo(nav.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
@@ -189,6 +211,19 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             )
             now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
+    }
+}
+
+private val tabRoutes = Tab.entries.map { it.route }.toSet()
+
+const val SCROLL_TO_TOP = "scrollToTop"
+
+/** Scrolls [list] to the top when this screen's tab is tapped again. */
+@Composable
+fun ScrollToTopOnReselect(list: androidx.compose.foundation.lazy.LazyListState) {
+    val entry = androidx.lifecycle.compose.LocalLifecycleOwner.current as? androidx.navigation.NavBackStackEntry ?: return
+    androidx.compose.runtime.LaunchedEffect(entry) {
+        entry.savedStateHandle.getStateFlow(SCROLL_TO_TOP, 0L).collect { if (it != 0L) list.animateScrollToItem(0) }
     }
 }
 

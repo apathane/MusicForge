@@ -61,7 +61,9 @@ fun DownloadsScreen() {
     val failed by remember { graph.downloads.states.map { s -> s.values.count { it.state == Download.STATE_FAILED } }.distinctUntilChanged() }
         .collectAsStateWithLifecycle(0)
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    dev.musicforge.ui.ScrollToTopOnReselect(list)
+    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item { ScreenHeader("Downloads") }
         pending?.let { p -> item(key = "redownload") { BringBackCard(p) } }
         if (active.isEmpty() && done.isEmpty()) {

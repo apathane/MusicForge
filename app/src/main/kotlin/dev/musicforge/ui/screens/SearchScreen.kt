@@ -164,6 +164,7 @@ fun SearchScreen() {
     val player = context.graph.player
     val nav = LocalNavController.current
     val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    dev.musicforge.ui.ScrollToTopOnReselect(list)
     val fieldFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     // Opening Search with nothing typed means you are about to type.
     LaunchedEffect(Unit) { if (vm.query.value.isEmpty()) runCatching { fieldFocus.requestFocus() } }

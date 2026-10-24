@@ -113,7 +113,9 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
         onRefresh = { if (signedIn) context.graph.scope.launch { context.graph.accountSync.sync() } },
         modifier = Modifier.fillMaxSize(),
     ) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    dev.musicforge.ui.ScrollToTopOnReselect(list)
+    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item {
             ScreenHeader("Library") { IconAction(ForgeIcons.Settings, "Settings", onOpenSettings) }
         }

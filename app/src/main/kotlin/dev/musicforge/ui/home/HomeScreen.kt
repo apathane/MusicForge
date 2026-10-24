@@ -116,6 +116,7 @@ fun HomeScreen(
     onRemoteItem: (com.metrolist.innertube.models.YTItem, List<com.metrolist.innertube.models.YTItem>) -> Unit = { _, _ -> },
 ) {
     val list = rememberLazyListState()
+    dev.musicforge.ui.ScrollToTopOnReselect(list)
     val nearEnd by remember {
         derivedStateOf { (list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) >= list.layoutInfo.totalItemsCount - 3 }
     }
