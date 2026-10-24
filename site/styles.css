@@ -1,0 +1,693 @@
+/* MusicForge site.
+   Black canvas, ink type, no brand colour. The one hue here is #63b9a6: the teal
+   lifted out of the cover in img/player.jpg and lightened until it passes 4.5:1
+   on black. The app works the same way, colour comes from the artwork. */
+
+:root {
+  --canvas: #000;
+  --ink: #f5f5f5;
+  --muted: #a9a9a9;
+  --line: #242424;
+  --raise: #0b0b0b;
+  --accent: #63b9a6;
+  --gutter: clamp(20px, 5vw, 40px);
+  --max: 1120px;
+  --ease: cubic-bezier(.2, .6, .2, 1);
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  background: var(--canvas);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img { max-width: 100%; height: auto; }
+
+section[id], [id="top"] { scroll-margin-top: 84px; }
+
+a { color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--accent); }
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .88em;
+  color: var(--ink);
+  background: #141414;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .1em .35em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 20;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip:focus { top: 12px; }
+
+.wrap {
+  width: 100%;
+  max-width: var(--max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Header ---------------------------------------------------------------- */
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, .78);
+  border-bottom: 1px solid var(--line);
+}
+
+@supports (backdrop-filter: blur(8px)) {
+  .top { background: rgba(0, 0, 0, .6); backdrop-filter: blur(12px) saturate(120%); }
+}
+
+.top-inner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 66px;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  text-decoration: none;
+  color: var(--ink);
+  flex: 0 0 auto;
+}
+
+.mark-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin-inline-start: auto;
+  font-size: 14.5px;
+}
+
+.top-nav a { display: inline-block; padding-block: 8px; color: var(--muted); text-decoration: none; }
+.top-nav a:hover { color: var(--ink); }
+
+/* Buttons --------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #000;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:hover { background: #fff; border-color: #fff; }
+
+.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: #333;
+}
+.btn.ghost:hover { background: rgba(255, 255, 255, .06); border-color: #5a5a5a; }
+
+.btn-sm {
+  min-height: 38px;
+  padding: 0 18px;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+
+/* Hero ------------------------------------------------------------------ */
+
+.hero {
+  padding-block: clamp(44px, 7vw, 88px) clamp(56px, 9vw, 104px);
+  /* The glow behind the phone is wider than the phone. Keep it from adding
+     a horizontal scrollbar on a 360 px screen. */
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 72px);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+
+h1 {
+  margin: 14px 0 0;
+  font-size: clamp(2.9rem, 11.5vw, 6.4rem);
+  font-weight: 800;
+  letter-spacing: -.05em;
+  line-height: .92;
+}
+
+.pitch {
+  margin: 10px 0 20px;
+  font-size: clamp(1.25rem, 2.7vw, 1.8rem);
+  font-weight: 600;
+  letter-spacing: -.028em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.lede {
+  max-width: 47ch;
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: 17px;
+  text-wrap: pretty;
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 10px;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.meta span + span::before {
+  content: "·";
+  margin-right: 10px;
+  color: #8a8a8a;
+}
+
+.hero-art {
+  position: relative;
+  justify-self: center;
+  margin: 0;
+  width: fit-content;
+}
+
+/* The whisper of colour behind the phone. It is the cover's teal, not a brand. */
+.hero-art::before {
+  content: "";
+  position: absolute;
+  inset: -12% -16% -4%;
+  z-index: 0;
+  background: radial-gradient(58% 52% at 50% 34%, rgba(99, 185, 166, .18), rgba(0, 0, 0, 0) 72%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.phone {
+  position: relative;
+  z-index: 1;
+  width: min(300px, 76vw);
+  padding: 9px;
+  border-radius: 38px;
+  background: linear-gradient(160deg, #191919, #080808 62%);
+  border: 1px solid #2c2c2c;
+  box-shadow:
+    0 30px 60px -22px rgba(0, 0, 0, .95),
+    inset 0 0 0 1px rgba(255, 255, 255, .035);
+}
+
+.phone img {
+  display: block;
+  width: 100%;
+  border-radius: 30px;
+  border: 1px solid #191919;
+  background: #0b0b0b;
+}
+
+.hero-art figcaption {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Sections -------------------------------------------------------------- */
+
+.band {
+  padding-block: clamp(56px, 8vw, 92px);
+  border-top: 1px solid var(--line);
+}
+
+.section-head h2 {
+  margin: 12px 0 0;
+  font-size: clamp(1.9rem, 4.4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -.042em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 62ch;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 17.5px;
+  text-wrap: pretty;
+}
+
+/* Why ------------------------------------------------------------------- */
+
+.reasons {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(22px, 4vw, 38px);
+  margin: clamp(32px, 5vw, 48px) 0 0;
+  padding: 0;
+}
+
+.reasons li { border-top: 1px solid var(--line); padding-top: 18px; }
+
+.reasons .num {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  color: var(--accent);
+}
+
+.reasons h3 {
+  margin: 10px 0 8px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -.022em;
+  line-height: 1.3;
+}
+
+.reasons p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+/* Features -------------------------------------------------------------- */
+
+.features {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin: clamp(32px, 5vw, 48px) 0 0;
+  padding: 0;
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--raise);
+}
+
+.feature svg { color: var(--muted); margin-bottom: 2px; }
+
+.feature h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.018em;
+}
+
+.feature p { margin: 0; color: var(--muted); font-size: 15px; }
+
+/* Numbers --------------------------------------------------------------- */
+
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px;
+  margin: clamp(32px, 5vw, 48px) 0 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.num-cell {
+  padding: clamp(20px, 3vw, 30px);
+  background: var(--canvas);
+}
+
+.big {
+  display: block;
+  margin: 0;
+  font-size: clamp(1.9rem, 4.4vw, 2.7rem);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.big .unit {
+  margin-left: .06em;
+  font-size: .52em;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--muted);
+}
+
+.num-cell dd {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 24ch;
+}
+
+.note {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 78ch;
+}
+
+/* Screenshots ----------------------------------------------------------- */
+
+.rail-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.rail-buttons { display: flex; gap: 8px; flex: 0 0 auto; }
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #5a5a5a;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn:hover { border-color: #7a7a7a; background: rgba(255, 255, 255, .05); }
+
+.rail {
+  display: flex;
+  gap: 16px;
+  margin-top: 26px;
+  padding-bottom: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rail::-webkit-scrollbar { display: none; }
+
+.slide {
+  flex: 0 0 auto;
+  width: clamp(212px, 58vw, 280px);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+.slide img {
+  display: block;
+  width: 100%;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: var(--raise);
+}
+
+.slide figcaption {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Things that broke ----------------------------------------------------- */
+
+.broke {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(26px, 4vw, 40px) clamp(26px, 5vw, 56px);
+  margin-top: clamp(30px, 4vw, 40px);
+}
+
+.broke article { border-top: 1px solid var(--line); padding-top: 20px; }
+
+.broke h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.022em;
+  line-height: 1.35;
+}
+
+.broke p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+/* FAQ ------------------------------------------------------------------- */
+
+.faq {
+  margin-top: clamp(26px, 4vw, 38px);
+  border-top: 1px solid var(--line);
+}
+
+.faq details { border-bottom: 1px solid var(--line); }
+
+.faq summary {
+  position: relative;
+  padding: 20px 44px 20px 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -.012em;
+  list-style: none;
+  cursor: pointer;
+}
+
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary:hover { color: #fff; }
+
+.faq summary::after {
+  content: "+";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.faq details[open] summary::after { content: "\2212"; }
+
+.faq details p {
+  margin: 0 0 22px;
+  max-width: 72ch;
+  color: var(--muted);
+  font-size: 15.5px;
+}
+
+/* Footer ---------------------------------------------------------------- */
+
+.site-foot {
+  border-top: 1px solid var(--line);
+  padding-block: clamp(44px, 6vw, 64px) 36px;
+}
+
+.foot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, .8fr);
+  gap: clamp(28px, 5vw, 48px);
+}
+
+.foot-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+.foot-line {
+  max-width: 42ch;
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.foot-links { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: 14px; }
+
+.foot-links a {
+  display: inline-block;
+  padding-block: 4px;
+}
+
+.foot-head {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.credits {
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.credits a {
+  color: var(--ink);
+  display: inline-block;
+  padding-block: 5px;
+  text-decoration-color: #6a6a6a;
+}
+.credits a:hover { text-decoration-color: var(--accent); }
+
+.foot-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 20px;
+  margin-top: clamp(32px, 5vw, 48px);
+  padding-top: 22px;
+  border-top: 1px solid #171717;
+  font-size: 12.5px;
+  color: #9b9b9b;
+}
+
+.foot-bottom p { margin: 0; }
+
+/* Motion: only when the reader hasn't asked for less -------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+
+  .rail { scroll-behavior: smooth; }
+
+  .btn,
+  .icon-btn,
+  .top-nav a,
+  .credits a,
+  .skip {
+    transition: background-color .18s var(--ease), border-color .18s var(--ease),
+                color .18s var(--ease), transform .18s var(--ease);
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail { scroll-behavior: auto; }
+}
+
+/* Small screens --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .hero-copy { max-width: 40rem; }
+  .hero-art { margin-top: 8px; }
+  .top-nav { display: none; }
+  .top-inner { justify-content: space-between; gap: 16px; }
+  .top-inner .btn { margin-inline-start: auto; }
+}
+
+@media (max-width: 620px) {
+  body { font-size: 16.5px; }
+  .rail-head { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .rail-buttons { order: 2; }
+  .foot-grid { grid-template-columns: minmax(0, 1fr); }
+  .hero { padding-top: clamp(32px, 8vw, 44px); }
+  .meta { font-size: 13px; }
+}
+
+@media (max-width: 380px) {
+  .btn { padding: 0 20px; }
+  .cta { gap: 10px; }
+  .big { font-size: 1.8rem; }
+}
