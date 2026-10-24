@@ -1,5 +1,8 @@
 package dev.musicforge.ui.player
 
+import dev.musicforge.playback.credits
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.basicMarquee
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
@@ -218,19 +221,42 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
         // Title row
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
+                val title = now.metadata.title?.toString().orEmpty()
+                val artist = now.metadata.artist?.toString().orEmpty()
+                val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+                val nav = dev.musicforge.ui.LocalNavController.current
+                // A long title scrolls once, after a pause, instead of being cut off for good.
+                // Long-press copies "title – artist" (Metrolist).
                 Text(
-                    now.metadata.title?.toString().orEmpty(),
+                    title,
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.W700),
                     color = white,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .combinedClickable(
+                            interactionSource = null,
+                            indication = null,
+                            onClick = {},
+                            onLongClickLabel = "Copy title and artist",
+                            onLongClick = {
+                                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(listOf(title, artist).filter { it.isNotEmpty() }.joinToString(" – ")))
+                            },
+                        )
+                        .basicMarquee(iterations = 1, initialDelayMillis = 2_000),
                 )
+                // Tapping the artist opens them, as everywhere else in the app.
+                val artistId = now.metadata.credits.firstOrNull { it.id != null }?.id
                 Text(
-                    now.error ?: now.metadata.artist?.toString().orEmpty(),
+                    now.error ?: artist,
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (now.error != null) Color(0xFFFF6B6B) else white.copy(alpha = 0.65f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = if (now.error == null && artistId != null) {
+                        Modifier.clickable(onClickLabel = "Open $artist") { onClose(); nav.navigate(dev.musicforge.ui.Routes.artist(artistId)) }
+                    } else Modifier,
                 )
                 // Why this song is playing, when it wasn't simply picked: a Home shelf, or radio.
                 val from = now.metadata.from
