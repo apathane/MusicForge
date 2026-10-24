@@ -8,9 +8,9 @@ plugins {
 }
 
 // Phase codename doubles as the launcher label until the app gets a real name. The version moves
-// with the phase: phase 13 Rondo is 0.13.0-rondo, code 1300 (patch builds within a phase: +1).
-val phase = 13
-val codename = "Rondo"
+// with the phase: phase 14 Sonata is 0.14.0-sonata, code 1400 (patch builds within a phase: +1).
+val phase = 14
+val codename = "Sonata"
 
 android {
     namespace = "dev.musicforge"
