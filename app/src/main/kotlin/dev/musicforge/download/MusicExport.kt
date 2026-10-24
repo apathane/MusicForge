@@ -81,24 +81,29 @@ class MusicExport(
     private suspend fun exportQ(id: String): Boolean {
         val song = dao.song(id).firstOrNull() ?: return false
         val key = engine.storageKey(id)
-        val format = dao.format(key) ?: dao.format(id) ?: return false
+        // Some downloads have no format row (restored libraries, older builds): the export used to
+        // skip them without a word ("Saved 3 of 4"). The bytes know what they are, so ask them.
+        val format = dao.format(key) ?: dao.format(id)
         val artist = song.artistLine.ifBlank { "Unknown artist" }
-        val ext = when {
-            "webm" in format.mimeType -> "ogg"
-            "mp4" in format.mimeType || "m4a" in format.mimeType -> "m4a"
-            else -> return false
-        }
-        val name = fileName("$artist - ${song.song.title}") + ".$ext"
-        if (alreadyExported(name)) return true
+        val base = fileName("$artist - ${song.song.title}")
+        format?.mimeType?.let { known -> extensionFor(known)?.let { if (alreadyExported("$base.$it")) return true } }
         val raw = java.io.File(context.cacheDir, "export-$id.raw")
         val remuxed = java.io.File(context.cacheDir, "export-$id.ogg")
         try {
-            copyFromCache(key, format.contentLength, raw)
+            copyFromCache(key, format?.contentLength ?: -1, raw)
+            val mimeType = format?.mimeType ?: sniffAudioMime(raw.inputStream().use { ByteArray(12).let { b -> b.copyOf(it.read(b).coerceAtLeast(0)) } })
+            val ext = mimeType?.let(::extensionFor)
+            if (ext == null) {
+                Timber.w("export of %s: can't tell what %s is", id, mimeType ?: "these bytes")
+                return false
+            }
+            val name = "$base.$ext"
+            if (format == null && alreadyExported(name)) return true
             // MediaStore won't take audio/webm in Music/ (".webm" is treated as video), so WebM/Opus
             // is remuxed into Ogg/Opus: same audio packets, no re-encode, playable everywhere.
             val lrc = lyricsText(id, song.song.title, artist, song.song.albumName, song.song.duration)
             val (file, mime, _) = when {
-                "webm" in format.mimeType -> {
+                "webm" in mimeType -> {
                     remuxToOgg(raw, remuxed)
                     // Tags inside the file: the media scanner (and any other player) reads these.
                     val tags = buildMap {
@@ -118,8 +123,7 @@ class MusicExport(
                     }
                     Triple(remuxed, "audio/ogg", "ogg")
                 }
-                "mp4" in format.mimeType || "m4a" in format.mimeType -> Triple(raw, "audio/mp4", "m4a")
-                else -> return false
+                else -> Triple(raw, "audio/mp4", "m4a")
             }
             val ok = publish(file, mime, name, song.song.title, artist, song.song.albumName)
             // A sidecar .lrc too, for players that only look next to the file.
@@ -286,5 +290,21 @@ class MusicExport(
     }
 
     /** Safe on every filesystem a phone or PC might sync to. */
+    private fun extensionFor(mime: String) = when {
+        "webm" in mime -> "ogg"
+        "mp4" in mime || "m4a" in mime -> "m4a"
+        else -> null
+    }
+
     private fun fileName(s: String) = s.replace(Regex("""[\\/:*?"<>|\u0000-\u001f]"""), "_").trim().take(150)
+}
+
+/**
+ * What a file is, from its first bytes: WebM/Matroska starts with the EBML magic 1A 45 DF A3,
+ * MP4/M4A has "ftyp" at offset 4. Anything else gets null and stays where it is.
+ */
+internal fun sniffAudioMime(head: ByteArray): String? = when {
+    head.size >= 4 && head[0] == 0x1A.toByte() && head[1] == 0x45.toByte() && head[2] == 0xDF.toByte() && head[3] == 0xA3.toByte() -> "audio/webm"
+    head.size >= 8 && String(head, 4, 4, Charsets.US_ASCII) == "ftyp" -> "audio/mp4"
+    else -> null
 }

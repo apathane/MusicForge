@@ -130,6 +130,8 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun exportAll() = viewModelScope.launch {
         val ids = graph.database.dao().downloadedIds()
+        // It runs a while (lyrics and covers are fetched per song); say so instead of looking dead.
+        android.widget.Toast.makeText(graph.app, "Saving ${ids.size} songs to Music/MusicForge…", android.widget.Toast.LENGTH_SHORT).show()
         var ok = 0
         ids.forEach { if (graph.musicExport.export(it)) ok++ }
         android.widget.Toast.makeText(graph.app, "Saved $ok of ${ids.size} to Music/MusicForge", android.widget.Toast.LENGTH_LONG).show()
