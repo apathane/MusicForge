@@ -1,6 +1,7 @@
 package dev.musicforge.ui.screens
 
 import androidx.compose.foundation.clickable
+import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -111,7 +112,10 @@ private fun Modifier.bleed(x: androidx.compose.ui.unit.Dp) = layout { measurable
 
 @Composable
 private fun GridCell(art: String?, title: String, subtitle: String, round: Boolean, side: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
-    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    val press = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    androidx.compose.foundation.layout.Column(
+        Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick),
+    ) {
         Artwork(art, side, corner = if (round) side / 2 else 10.dp, fallbackLetter = title)
         Spacer(Modifier.height(8.dp))
         Text(

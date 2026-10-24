@@ -207,9 +207,10 @@ private val CardSize = 148.dp
 private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) -> Unit, onClick: () -> Unit) {
     var menu by remember { androidx.compose.runtime.mutableStateOf(false) }
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Column(
         Modifier.width(CardSize).pressScale(press)
-            .combinedClickable(interactionSource = press, indication = null, onClick = onClick, onLongClick = { menu = true }, onLongClickLabel = "More options"),
+            .combinedClickable(interactionSource = press, indication = null, onClick = onClick, onLongClick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "More options"),
     ) {
         Artwork(song.song.thumbnailUrl, CardSize, corner = Signal.radiusRow)
         Spacer(Modifier.height(6.dp))

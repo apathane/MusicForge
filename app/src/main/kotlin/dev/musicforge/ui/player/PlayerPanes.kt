@@ -171,13 +171,43 @@ fun QueuePane() {
         }
     }
     val white = Color.White
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    // The last row swiped away, offered back for a few seconds.
+    var removed by remember { androidx.compose.runtime.mutableStateOf<Pair<Int, androidx.media3.common.MediaItem>?>(null) }
+    LaunchedEffect(removed) { if (removed != null) { kotlinx.coroutines.delay(6_000); removed = null } }
     LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
         item(key = "title") {
-            Text("Up next", style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.padding(vertical = 8.dp))
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Up next", style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.weight(1f))
+                androidx.compose.animation.AnimatedVisibility(removed != null) {
+                    Text(
+                        "Undo",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = white,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.16f))
+                            .clickable(onClickLabel = "Put the removed song back") { removed?.let { (at, item) -> connection.insertAt(at, item) }; removed = null }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
+            }
         }
         itemsIndexed(rows, key = { _, row -> row.first }) { i, (key, item) ->
             ReorderableItem(reorder, key = key) { dragging ->
                 val playing = i == current
+                // Swipe a row away (either way) to remove it; the playing song stays.
+                val dismiss = androidx.compose.material3.rememberSwipeToDismissBoxState()
+                LaunchedEffect(dismiss.currentValue) {
+                    if (dismiss.currentValue != androidx.compose.material3.SwipeToDismissBoxValue.Settled) {
+                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        removed = i to item
+                        connection.removeAt(i)
+                    }
+                }
+                androidx.compose.material3.SwipeToDismissBox(
+                    state = dismiss,
+                    gesturesEnabled = !playing,
+                    backgroundContent = {},
+                ) {
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -189,6 +219,7 @@ fun QueuePane() {
                                 else -> Color.Transparent
                             },
                         )
+                        .background(if (dragging || playing) Color.Transparent else Color.Black.copy(alpha = 0.001f))
                         .clickable { connection.skipTo(i) }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -204,9 +235,15 @@ fun QueuePane() {
                             Text("✕", color = white.copy(alpha = 0.5f), modifier = Modifier.semantics { contentDescription = "Remove from queue" })
                         }
                     }
-                    Box(Modifier.size(36.dp).draggableHandle(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.size(36.dp).draggableHandle(
+                            onDragStarted = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
+                        ),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text("≡", color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { contentDescription = "Drag to reorder" })
                     }
+                }
                 }
             }
         }

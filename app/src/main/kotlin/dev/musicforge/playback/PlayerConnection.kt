@@ -166,6 +166,7 @@ class PlayerConnection(private val context: Context) {
 
     fun skipTo(index: Int) = withController { it.seekToDefaultPosition(index); it.play() }
     fun removeAt(index: Int) = withController { it.removeMediaItem(index) }
+    fun insertAt(index: Int, item: MediaItem) = withController { it.addMediaItem(index.coerceAtMost(it.mediaItemCount), item) }
     fun move(from: Int, to: Int) = withController { it.moveMediaItem(from, to) }
     fun toggleShuffle() = withController { it.shuffleModeEnabled = !it.shuffleModeEnabled }
     fun cycleRepeat() = withController {

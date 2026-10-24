@@ -157,10 +157,16 @@ fun TrackRow(
     /** Album track lists show the track number instead of repeating the same cover. */
     number: Int? = null,
 ) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Row(
         Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = "More options")
+            .combinedClickable(
+                onClick = onClick,
+                // The tick says the menu came from the long press, not a slipped tap.
+                onLongClick = onLongClick?.let { { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); it() } },
+                onLongClickLabel = "More options",
+            )
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
