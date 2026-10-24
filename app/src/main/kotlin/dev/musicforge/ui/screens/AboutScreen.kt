@@ -26,6 +26,7 @@ private val credits = listOf(
     "ConvX" to "The glass-and-Cupertino interface language, lyrics/queue/sleep feature set, download export ideas and the restore format. GPL-3.0.",
     "BitChord" to "The monochrome style, bounded-range transfers that beat googlevideo throttling, read-ahead, and the same-length re-resolve rule. GPL-3.0.",
     "InnerTubeX" to "YouTube stream extraction (cipher, n-param, PoToken) by MetrolistGroup. GPL-3.0.",
+    "Kyant0/backdrop" to "The liquid glass renderer (lens refraction, blur, specular rim), vendored from v2.0.0 by way of ConvX. Apache-2.0, Copyright 2025 Kyant0.",
     "LRCLIB" to "Open, community-made synced lyrics (lrclib.net).",
     "Inter" to "Typeface by Rasmus Andersson and the Inter Project Authors. SIL Open Font License 1.1.",
     "Material Icons" to "Icon path data by Google. Apache License 2.0.",

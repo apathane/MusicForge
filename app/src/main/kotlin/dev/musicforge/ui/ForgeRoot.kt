@@ -50,6 +50,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.GlassStyle
+import dev.musicforge.ui.backdrop.backdrops.layerBackdrop
 import dev.musicforge.ui.components.GlassTier
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.components.LocalGlassStyle
@@ -85,10 +86,19 @@ val LocalNavController = staticCompositionLocalOf<NavHostController> { error("no
 fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
     val nav = rememberNavController()
     val windowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.coerceAtLeast(1)
+    // Liquid needs RenderEffect (API 31); below that it falls back to the artwork slice.
+    val liquid = glassTier == GlassTier.LIQUID && dev.musicforge.ui.backdrop.isRenderEffectSupported()
+    val canvas = MaterialTheme.colorScheme.background
+    // The root Box paints the canvas, not the screens, so the recording paints it too:
+    // otherwise the glass would refract a transparent hole wherever a screen draws nothing.
+    val live = if (liquid) {
+        dev.musicforge.ui.backdrop.backdrops.rememberLayerBackdrop(onDraw = remember(canvas) { { drawRect(canvas); drawContent() } })
+    } else null
     val glass = GlassStyle(
         tier = glassTier,
         backdrop = ambience.backdrop.takeIf { glassTier != GlassTier.SOLID },
         backdropScale = (ambience.backdrop?.width ?: 54).toFloat() / windowWidth,
+        live = live,
     )
     val connection = LocalContext.current.graph.player
     val now by connection.nowPlaying.collectAsStateWithLifecycle()
@@ -109,7 +119,12 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
         // Under a fully open player the screen behind is never seen: don't paint it at all.
         Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
-            NavHost(nav, startDestination = Tab.Home.route, modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }) {
+            NavHost(
+                nav,
+                startDestination = Tab.Home.route,
+                modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }
+                    .then(if (live != null) Modifier.layerBackdrop(live) else Modifier),
+            ) {
                 composable(Tab.Home.route) { HomeRoot() }
                 composable(Tab.Search.route) { SearchScreen() }
                 composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }

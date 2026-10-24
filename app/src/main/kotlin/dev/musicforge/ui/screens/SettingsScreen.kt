@@ -306,11 +306,15 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             val dark = prefs?.get(Keys.DarkMode) ?: DarkMode.AUTO.name
             ChoiceRow("Theme", listOf("AUTO" to "Auto", "ON" to "Dark", "OFF" to "Light"), dark) { vm.set(Keys.DarkMode, it) }
             ToggleRow("Pure black", prefs?.get(Keys.PureBlack) ?: false, subtitle = "Dark theme on true black, surfaces included") { vm.set(Keys.PureBlack, it) }
-            val glass = prefs?.get(Keys.GlassTier) ?: GlassTier.ARTWORK.name
+            val glass = prefs?.get(Keys.GlassTier) ?: GlassTier.Default.name
             ChoiceRow(
                 "Glass",
-                // LIVE (RenderEffect backdrop) isn't built yet; no dead options in settings.
-                listOf(GlassTier.SOLID.name to "Solid", GlassTier.ARTWORK.name to "Artwork"),
+                // Liquid needs RenderEffect; on Android 11 and older it isn't offered at all.
+                listOfNotNull(
+                    GlassTier.SOLID.name to "Solid",
+                    GlassTier.ARTWORK.name to "Artwork",
+                    (GlassTier.LIQUID.name to "Liquid").takeIf { dev.musicforge.ui.backdrop.isRenderEffectSupported() },
+                ),
                 glass,
             ) { vm.set(Keys.GlassTier, it) }
         }

@@ -22,6 +22,14 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import dev.musicforge.ui.backdrop.backdrops.LayerBackdrop
+import dev.musicforge.ui.backdrop.drawBackdrop
+import dev.musicforge.ui.backdrop.effects.blur
+import dev.musicforge.ui.backdrop.effects.colorControls
+import dev.musicforge.ui.backdrop.effects.lens
+import dev.musicforge.ui.backdrop.highlight.Highlight
+import dev.musicforge.ui.backdrop.highlight.HighlightStyle
+import dev.musicforge.ui.backdrop.shadow.Shadow
 import kotlin.math.roundToInt
 
 /**
@@ -35,8 +43,18 @@ enum class GlassTier {
     /** A slice of one pre-blurred artwork image, aligned to the window. One bitmap draw. */
     ARTWORK,
 
-    /** Live RenderEffect blur of the content behind (API 31+). Opt-in. */
-    LIVE,
+    /**
+     * Liquid glass (API 31+): the screen behind is blurred, saturated and, from API 33, bent
+     * at the edges by a lens shader, with a specular rim. The content is recorded once into a
+     * layer the glass samples, so nothing is drawn twice. Only the nav pill and mini player use
+     * it: two small surfaces, never a scrolling area.
+     */
+    LIQUID;
+
+    companion object {
+        /** Liquid where the platform can draw it, the artwork slice elsewhere. */
+        val Default get() = if (dev.musicforge.ui.backdrop.isRenderEffectSupported()) LIQUID else ARTWORK
+    }
 }
 
 /**
@@ -48,6 +66,8 @@ data class GlassStyle(
     val tier: GlassTier = GlassTier.SOLID,
     val backdrop: ImageBitmap? = null,
     val backdropScale: Float = 1f / 8f,
+    /** The recorded screen content, set only for [GlassTier.LIQUID]. */
+    val live: LayerBackdrop? = null,
 )
 
 val LocalGlassStyle = staticCompositionLocalOf { GlassStyle() }
@@ -65,6 +85,7 @@ fun Modifier.glass(shape: Shape, tint: Color = Color.Unspecified): Modifier {
     val fill = if (tint != Color.Unspecified) tint else if (dark) scheme.surfaceContainerHigh else scheme.surface
     val rim = if (dark) Color.White else Color.Black
     val backdrop = style.backdrop.takeIf { style.tier != GlassTier.SOLID }
+    style.live?.let { return liquid(it, shape, fill, rim, dark) }
     val holder = remember { OriginHolder() }
 
     val positioned = if (backdrop != null) {
@@ -100,3 +121,44 @@ fun Modifier.glass(shape: Shape, tint: Color = Color.Unspecified): Modifier {
             shape = shape,
         )
 }
+
+/**
+ * Lens from ConvX's nav-bar spec (0.60/0.69 of 48 dp). Its 3 dp blur left text behind the pill
+ * sharp enough to fight the tab labels, so this blurs at 7 dp. Sampled at half resolution: the
+ * blur hides the lost detail and the Adreno 610 does a quarter of the work.
+ */
+@Composable
+private fun Modifier.liquid(backdrop: LayerBackdrop, shape: Shape, fill: Color, rim: Color, dark: Boolean): Modifier {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val scale = LiquidScale
+    val blurPx = with(density) { 7.dp.toPx() } * scale
+    val lensHeight = with(density) { (0.60f * 48).dp.toPx() } * scale
+    val lensAmount = with(density) { (0.69f * 48).dp.toPx() } * scale
+    // Thin enough to read as glass, thick enough that labels stay legible over busy artwork.
+    val tint = fill.copy(alpha = if (dark) 0.50f else 0.58f)
+    val rimColor = Color.White.copy(alpha = if (dark) 0.45f else 0.7f)
+    val shapeBlock = remember(shape) { { shape } }
+    val effects: dev.musicforge.ui.backdrop.BackdropEffectScope.() -> Unit = remember(blurPx, lensHeight, lensAmount) {
+        {
+            colorControls(saturation = 1.6f)
+            blur(blurPx)
+            lens(lensHeight, lensAmount)
+        }
+    }
+    val highlight = remember(rimColor) { { Highlight(width = 0.8.dp, style = HighlightStyle.Default(color = rimColor, angle = 45f)) } }
+    val shadow = remember(dark) { { Shadow(radius = 18.dp, color = Color.Black.copy(alpha = if (dark) 0.35f else 0.12f)) } }
+    val surface: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = remember(tint) { { drawRect(tint) } }
+    return this
+        .drawBackdrop(
+            backdrop = backdrop,
+            shape = shapeBlock,
+            effects = effects,
+            highlight = highlight,
+            shadow = shadow,
+            onDrawSurface = surface,
+            backdropScale = scale,
+        )
+        .border(0.5.dp, rim.copy(alpha = if (dark) 0.10f else 0.08f), shape)
+}
+
+private const val LiquidScale = 0.5f

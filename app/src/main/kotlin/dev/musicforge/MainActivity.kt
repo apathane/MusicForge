@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
             Look(
                 darkMode = prefs[Keys.DarkMode]?.let { runCatching { DarkMode.valueOf(it) }.getOrNull() } ?: DarkMode.AUTO,
                 pureBlack = prefs[Keys.PureBlack] ?: false,
-                glass = prefs[Keys.GlassTier]?.let { runCatching { GlassTier.valueOf(it) }.getOrNull() } ?: GlassTier.ARTWORK,
+                glass = prefs[Keys.GlassTier]?.let { runCatching { GlassTier.valueOf(it) }.getOrNull() } ?: GlassTier.Default,
             )
         }
         graph.player.connect()
@@ -78,6 +78,6 @@ class MainActivity : ComponentActivity() {
     private data class Look(
         val darkMode: DarkMode = DarkMode.AUTO,
         val pureBlack: Boolean = false,
-        val glass: GlassTier = GlassTier.ARTWORK,
+        val glass: GlassTier = GlassTier.Default,
     )
 }
