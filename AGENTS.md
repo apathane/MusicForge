@@ -16,3 +16,4 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts here.
    - artwork requested at slot size;
    - keep upstream DataStore key names, because backups depend on them.
 7. Never commit real user data: backups, cookies, databases.
+8. Voice: see "Personality" and "UI voice" under Conventions in CLAUDE.md. Comments explain why and may be funny when something earned it; empty states and errors can have a wink; buttons stay literal.
