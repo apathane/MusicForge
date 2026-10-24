@@ -153,7 +153,7 @@ class BackupImporter(
                     zip.closeEntry()
                 }
             }
-            if (!found) throw InvalidBackupException("This zip has no song.db: not a Metrolist or ConvX backup")
+            if (!found) throw InvalidBackupException("This file has no song.db, so it isn't a library backup")
         }
     }
 

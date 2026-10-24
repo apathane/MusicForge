@@ -204,8 +204,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         SectionTitle("Backup & restore")
         Group {
             ActionRow(
-                title = "Restore from Metrolist or ConvX",
-                subtitle = "A one-off copy of a backup file: history, lyrics and settings too. Signing in keeps the rest in sync",
+                title = "Restore a backup",
+                subtitle = "A MusicForge, Metrolist or ConvX backup file, history, lyrics and settings included. Signing in keeps the rest in sync",
                 onClick = { openBackup.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             )
             var autoList by androidx.compose.runtime.remember { mutableStateOf<List<java.io.File>?>(null) }
@@ -329,7 +329,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · GPL-3.0\nBuilt on the work of Metrolist, ConvX and BitChord.",
+            "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · GPL-3.0\nOpen source; credits are under About.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
