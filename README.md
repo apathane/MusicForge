@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/brand/banner.svg" alt="MusicForge" style="width: 100%; max-width: 1280px;">
+  <img src="docs/brand/social-preview.png" alt="MusicForge: YouTube Music, forged for offline" width="100%">
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 <p align="center">
   <img src="docs/screenshots/home.jpg" width="240" alt="Home screen — shelves built from your own plays">
-  <img src="docs/screenshots/player.jpg" width="240" alt="Player — full-bleed artwork with codec pill and Up Next">
+  <img src="docs/screenshots/player.jpg" width="240" alt="The player, tinted from the artwork">
   <img src="docs/screenshots/queue.jpg" width="240" alt="Queue — swipe to remove, drag to reorder">
   <img src="docs/screenshots/artist.jpg" width="240" alt="Artist page — related artists and discography">
 </p>
