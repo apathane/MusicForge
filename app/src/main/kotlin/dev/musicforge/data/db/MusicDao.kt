@@ -45,6 +45,8 @@ data class ArtistStat(
 
 data class HourCount(val hour: Int, val plays: Int)
 
+data class PlaylistPlays(val plays: Int, val lastPlayed: Long?)
+
 /** An artist the listener asked to hear less of, and until when. */
 data class LessOfArtist(
     @Embedded val artist: ArtistEntity,
@@ -299,6 +301,15 @@ interface MusicDao {
     fun activeFeedback(now: Long): Flow<List<RecommendationFeedback>>
 
     @Insert suspend fun insert(feedback: RecommendationFeedback)
+
+    /** How often, and when last, anything on this playlist was played (from anywhere). */
+    @Query(
+        """
+        SELECT COUNT(*) AS plays, MAX(timestamp) AS lastPlayed FROM event
+        WHERE songId IN (SELECT songId FROM playlist_song_map WHERE playlistId = :playlistId)
+        """,
+    )
+    fun playlistPlays(playlistId: String): Flow<PlaylistPlays>
 
     /** Plays per local hour of the day, across all history (hours with none are absent). */
     @Query(

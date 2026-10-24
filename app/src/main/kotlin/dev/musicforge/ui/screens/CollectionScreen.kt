@@ -62,6 +62,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -77,6 +78,8 @@ data class CollectionUi(
     val loading: Boolean = false,
     val error: String? = null,
     val hasMore: Boolean = false,
+    /** Local playlists: how it's used (plays, when, whose, what plays offline). */
+    val insight: String? = null,
 )
 
 class CollectionViewModel(private val graph: AppGraph, private val kind: CollectionKind, private val id: String) : ViewModel() {
@@ -89,6 +92,7 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
         when (kind) {
             CollectionKind.LOCAL_PLAYLIST -> local(
                 combine(dao.playlist(id), dao.playlistSongs(id)) { p, songs -> (p?.name ?: "Playlist") to songs },
+                insight = { songs -> dao.playlistPlays(id).map { playlistInsight(songs, it, System.currentTimeMillis()) } },
             )
             CollectionKind.LIKED -> local(dao.likedSongs().map { "Liked songs" to it })
             CollectionKind.SONGS -> local(dao.librarySongs().map { "Songs" to it })
@@ -99,13 +103,20 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
         }
     }
 
-    private fun local(source: Flow<Pair<String, List<Song>>>) = viewModelScope.launch {
-        source.collect { (title, songs) ->
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun local(
+        source: Flow<Pair<String, List<Song>>>,
+        insight: ((List<Song>) -> Flow<String?>)? = null,
+    ) = viewModelScope.launch {
+        source.flatMapLatest { (title, songs) ->
+            (insight?.invoke(songs) ?: kotlinx.coroutines.flow.flowOf(null)).map { line -> Triple(title, songs, line) }
+        }.collect { (title, songs, line) ->
             _ui.value = CollectionUi(
                 title = title,
                 subtitle = count(songs.size) + duration(songs.sumOf { it.song.duration.coerceAtLeast(0) }),
                 artwork = songs.mapNotNull { it.song.thumbnailUrl }.distinct().take(4),
                 tracks = songs.map { Track(it.toMediaItem(), it.artistLine) },
+                insight = line,
             )
         }
     }
@@ -284,6 +295,10 @@ private fun Header(ui: CollectionUi, onPlay: (shuffle: Boolean) -> Unit, onDownl
             Spacer(Modifier.height(4.dp))
             Text(ui.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
+        ui.insight?.let {
+            Spacer(Modifier.height(2.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             HeaderButton("Play", ForgeIcons.Play, primary = true) { onPlay(false) }
@@ -385,5 +400,35 @@ private fun androidx.compose.foundation.lazy.LazyListScope.reorderableTracks(
                 )
             }
         }
+    }
+}
+
+/**
+ * "Played 34 times · last 3 days ago · mostly Portishead · 12 downloaded": how a playlist is
+ * actually used. Parts with nothing to say are left out; null when none has.
+ */
+internal fun playlistInsight(songs: List<Song>, plays: dev.musicforge.data.db.PlaylistPlays, now: Long): String? {
+    val parts = buildList {
+        if (plays.plays > 0) add(if (plays.plays == 1) "Played once" else "Played ${plays.plays} times")
+        plays.lastPlayed?.let { add("last " + ago(now - it)) }
+        // "Mostly" only when one artist really is most of it.
+        songs.groupingBy { it.artists.firstOrNull()?.name }.eachCount()
+            .filterKeys { it != null }.maxByOrNull { it.value }
+            ?.takeIf { songs.size >= 4 && it.value * 3 >= songs.size }
+            ?.let { add("mostly ${it.key}") }
+        songs.count { it.song.isDownloaded }.takeIf { it > 0 }?.let { add(if (it == songs.size) "all downloaded" else "$it downloaded") }
+    }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")?.replaceFirstChar { it.uppercase() }
+}
+
+private fun ago(ms: Long): String {
+    val days = ms / 86_400_000L
+    return when {
+        ms < 3_600_000L -> "just now"
+        days < 1 -> "today"
+        days == 1L -> "yesterday"
+        days < 30 -> "$days days ago"
+        days < 365 -> "${days / 30} months ago".replace("1 months", "a month")
+        else -> "over a year ago"
     }
 }
