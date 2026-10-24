@@ -74,6 +74,8 @@ object Keys {
     val PersistentQueue = bool("persistentQueue")
     /** Metrolist's name: carry on with radio when the queue runs out. */
     val Autoplay = bool("autoplay")
+    /** Swipe and drag are disabled in the queue while this is on. */
+    val QueueLocked = bool("forge.queueLocked")
     val CrossfadeEnabled = bool("crossfadeEnabled")
     val CrossfadeSeconds = float("crossfadeDuration")
     val CrossfadeGapless = bool("crossfadeGapless")

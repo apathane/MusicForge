@@ -274,6 +274,8 @@ interface MusicDao {
 
     @Query("SELECT * FROM format WHERE id = :id")
     suspend fun format(id: String): FormatEntity?
+    @Query("SELECT * FROM format WHERE id = :id")
+    fun formatFlow(id: String): Flow<FormatEntity?>
 
     @Query("SELECT liked FROM song WHERE id = :id")
     fun isLiked(id: String): Flow<Boolean?>
