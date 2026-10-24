@@ -250,6 +250,9 @@ interface MusicDao {
     @Query("SELECT * FROM artist WHERE id = :id")
     suspend fun artist(id: String): ArtistEntity?
 
+    @Query("SELECT bookmarkedAt IS NOT NULL FROM artist WHERE id = :id")
+    fun isArtistFollowed(id: String): Flow<Boolean?>
+
     // ArtRepair: which rows carry a picture link that stopped loading, and the fresh link.
     @Query("SELECT id FROM song WHERE thumbnailUrl = :url") suspend fun songIdsWithThumb(url: String): List<String>
     @Query("SELECT id FROM album WHERE thumbnailUrl = :url") suspend fun albumIdsWithThumb(url: String): List<String>
