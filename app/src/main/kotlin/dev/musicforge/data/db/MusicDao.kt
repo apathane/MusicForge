@@ -344,6 +344,49 @@ interface MusicDao {
     @Query("DELETE FROM recommendation_feedback")
     suspend fun clearFeedback()
 
+    // ---- account sync (YouTube Music library mirrored into Room) ----
+
+    @Query("SELECT id FROM song WHERE liked")
+    suspend fun likedIds(): List<String>
+
+    @Query("SELECT id FROM song WHERE inLibrary IS NOT NULL")
+    suspend fun libraryIds(): List<String>
+
+    @Query("UPDATE song SET inLibrary = :at WHERE id = :id")
+    suspend fun setInLibrary(id: String, at: Long?)
+
+    @Query("SELECT id FROM album WHERE bookmarkedAt IS NOT NULL")
+    suspend fun bookmarkedAlbumIds(): List<String>
+
+    @Query("UPDATE album SET bookmarkedAt = :at WHERE id = :id")
+    suspend fun setAlbumBookmark(id: String, at: Long?)
+
+    @Query("SELECT id FROM artist WHERE bookmarkedAt IS NOT NULL")
+    suspend fun bookmarkedArtistIds(): List<String>
+
+    @Query("UPDATE artist SET bookmarkedAt = :at WHERE id = :id")
+    suspend fun setArtistBookmark(id: String, at: Long?)
+
+    @Query("SELECT * FROM playlist WHERE browseId = :browseId LIMIT 1")
+    suspend fun playlistByBrowseId(browseId: String): PlaylistEntity?
+
+    @Query("SELECT * FROM playlist WHERE id = :id")
+    suspend fun playlistEntity(id: String): PlaylistEntity?
+
+    @Query("SELECT browseId FROM playlist WHERE browseId IS NOT NULL")
+    suspend fun syncedPlaylistBrowseIds(): List<String>
+
+    @Upsert suspend fun upsert(playlist: PlaylistEntity)
+
+    @Query("SELECT songId FROM playlist_song_map WHERE playlistId = :playlistId ORDER BY position, id")
+    suspend fun playlistSongIds(playlistId: String): List<String>
+
+    @Query("DELETE FROM playlist_song_map WHERE playlistId = :playlistId")
+    suspend fun clearPlaylistSongs(playlistId: String)
+
+    @Query("SELECT setVideoId FROM playlist_song_map WHERE playlistId = :playlistId AND songId = :songId ORDER BY position LIMIT 1")
+    suspend fun setVideoId(playlistId: String, songId: String): String?
+
     @Query("UPDATE song SET totalPlayTime = totalPlayTime + :ms WHERE id = :id")
     suspend fun addPlayTime(id: String, ms: Long)
 }

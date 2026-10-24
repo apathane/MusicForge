@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 
@@ -35,6 +36,8 @@ object Keys {
     val AccountName = str("accountName")
     val AccountEmail = str("accountEmail")
     val AccountChannelHandle = str("accountChannelHandle")
+    /** When the YouTube Music library was last mirrored into this phone (epoch ms). Not imported. */
+    val LastAccountSync = longPreferencesKey("forge.lastAccountSync")
     /** Metrolist's key: browse requests (Home, artists, charts) carry the account. Default on. */
     val UseLoginForBrowse = bool("useLoginForBrowse")
 

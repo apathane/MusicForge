@@ -56,6 +56,7 @@ sealed interface HomeAction {
     data object OpenStats : HomeAction
     data object OpenDownloads : HomeAction
     data object OpenRestore : HomeAction
+    data object OpenSignIn : HomeAction
     data object DismissWelcome : HomeAction
     data class SelectChip(val chip: HomePage.Chip?) : HomeAction
     data object LoadMore : HomeAction
@@ -104,6 +105,7 @@ class HomeViewModel(
             HomeAction.OpenStats -> navigate(Routes.STATS)
             HomeAction.OpenDownloads -> navigate(Tab.Downloads.route)
             HomeAction.OpenRestore -> navigate(SETTINGS_ROUTE)
+            HomeAction.OpenSignIn -> navigate(Routes.LOGIN)
             HomeAction.DismissWelcome -> {
                 onWelcomeDismissed()
                 _state.update { it.copy(isWelcomeDismissed = true) }

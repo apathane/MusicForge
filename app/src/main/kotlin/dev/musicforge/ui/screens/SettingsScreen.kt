@@ -99,7 +99,10 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
             .getOrElse { RestoreState.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
+    fun syncNow() = graph.scope.launch { graph.accountSync.sync() }
+
     fun signOut() = viewModelScope.launch {
+        graph.accountSync.forgetSnapshots()
         graph.settings.edit { p ->
             listOf(Keys.InnerTubeCookie, Keys.DataSyncId, Keys.InnerTubeAuthUser, Keys.AccountName, Keys.AccountEmail, Keys.AccountChannelHandle)
                 .forEach { p.remove(it) }
@@ -174,9 +177,21 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         Group {
             val name = prefs?.get(Keys.AccountName)?.takeIf { it.isNotBlank() && prefs?.get(Keys.InnerTubeCookie) != null }
             if (name == null) {
-                ActionRow("Sign in to YouTube Music", "Your likes, playlists, history and recommendations", onSignIn)
+                ActionRow("Sign in with Google", "Your likes, playlists, albums and artists from YouTube Music, kept in sync", onSignIn)
             } else {
+                val sync by context.graph.accountSync.status.collectAsStateWithLifecycle()
+                val last = prefs?.get(Keys.LastAccountSync)
                 ActionRow("Signed in as $name", prefs?.get(Keys.AccountEmail).orEmpty().ifEmpty { "YouTube Music" }) {}
+                ActionRow(
+                    "Sync now",
+                    when (val s = sync) {
+                        is dev.musicforge.data.AccountSync.Status.Running -> "Syncing ${s.step.lowercase()}…"
+                        is dev.musicforge.data.AccountSync.Status.Done -> "Synced just now: ${s.summary}"
+                        is dev.musicforge.data.AccountSync.Status.Failed -> "Last sync failed: ${s.message}"
+                        else -> last?.let { "Last synced " + android.text.format.DateUtils.getRelativeTimeSpanString(it) } ?: "Likes, playlists, albums and artists"
+                    },
+                ) { vm.syncNow() }
+                ActionRow("Switch account", "Sign in with a different Google account", onSignIn)
                 ActionRow("Sign out", "Keeps your library on this phone", vm::signOut)
             }
         }
@@ -185,7 +200,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         Group {
             ActionRow(
                 title = "Restore from Metrolist or ConvX",
-                subtitle = "Songs, likes, playlists, albums, artists, history, lyrics and settings",
+                subtitle = "A one-off copy of a backup file: history, lyrics and settings too. Signing in keeps the rest in sync",
                 onClick = { openBackup.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             )
             var autoList by androidx.compose.runtime.remember { mutableStateOf<List<java.io.File>?>(null) }

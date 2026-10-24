@@ -89,6 +89,8 @@ class AppGraph(val app: Application) {
 
     val player by lazy { PlayerConnection(app) }
 
+    val accountSync by lazy { dev.musicforge.data.AccountSync(app, database, recorder, settings) }
+
     val listenBrainz by lazy { dev.musicforge.data.ListenBrainz(app, settings, http) }
 
     val lyrics by lazy { dev.musicforge.data.lyrics.LyricsRepository(database.dao(), http) }

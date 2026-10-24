@@ -133,8 +133,8 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             item {
                 EmptyState(
                     title = "Your library is empty",
-                    body = "Bring everything over from Metrolist or ConvX: songs, likes, playlists, history and your login.",
-                ) { PillButton("Restore a backup", onOpenSettings) }
+                    body = "Sign in with Google to bring your YouTube Music likes, playlists, albums and artists, kept in sync. Or restore a Metrolist or ConvX backup from Settings.",
+                ) { PillButton("Sign in with Google", { nav.navigate(Routes.LOGIN) }) }
             }
             return@LazyColumn
         }

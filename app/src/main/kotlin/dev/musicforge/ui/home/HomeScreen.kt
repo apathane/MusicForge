@@ -231,17 +231,24 @@ private fun WelcomeCard(onAction: (HomeAction) -> Unit) {
             .signalSurface(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(20.dp),
     ) {
-        Text("Make Home yours", style = MaterialTheme.typography.titleLarge)
+        Text("Bring your music", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(6.dp))
         Text(
-            "Home fills with what you actually play. Coming from Metrolist or ConvX? Bring your likes, playlists, " +
-                "history and sign-in over in a few seconds, or start with a mood below.",
+            "Sign in with Google and everything you have on YouTube Music comes with you: likes, playlists, albums " +
+                "and artists, kept in sync both ways. Home then fills with what you actually play.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            PillButton("Restore my library", { onAction(HomeAction.OpenRestore) })
+        PillButton("Sign in with Google", { onAction(HomeAction.OpenSignIn) }, modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Restore a backup instead",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickable { onAction(HomeAction.OpenRestore) }.padding(horizontal = 4.dp, vertical = 12.dp),
+            )
+            Spacer(Modifier.weight(1f))
             Text(
                 "Not now",
                 style = MaterialTheme.typography.labelLarge,

@@ -40,11 +40,28 @@ class LibraryActions(
             dao.insert(PlaylistSongMap(playlistId = playlistId, songId = item.mediaId, position = dao.lastPosition(playlistId) + 1))
             dao.touchPlaylist(playlistId, System.currentTimeMillis())
         }
+        // A playlist that lives in the YouTube Music account gets the change there too.
+        remoteId(playlistId)?.let { browseId ->
+            YouTube.addToPlaylist(browseId, item.mediaId).onFailure { Timber.w(it, "YouTube playlist add failed") }
+        }
     }
 
     fun removeFromPlaylist(playlistId: String, songId: String) = scope.launch {
+        // YouTube removes by the entry's setVideoId, known once the playlist has been synced.
+        val setVideoId = db.dao().setVideoId(playlistId, songId)
         db.dao().removeFromPlaylist(playlistId, songId)
         db.dao().touchPlaylist(playlistId, System.currentTimeMillis())
+        val browseId = remoteId(playlistId)
+        if (browseId != null && setVideoId != null) {
+            YouTube.removeFromPlaylist(browseId, songId, setVideoId).onFailure { Timber.w(it, "YouTube playlist remove failed") }
+        }
+    }
+
+    /** The account playlist behind a local one, when signed in and it's editable there. */
+    private suspend fun remoteId(playlistId: String): String? {
+        if (YouTube.cookie == null) return null
+        val p = db.dao().playlistEntity(playlistId) ?: return null
+        return p.browseId?.takeIf { p.isEditable }?.removePrefix("VL")
     }
 
     /** Moves one song within a playlist and renumbers positions 0..n-1 in one transaction. */

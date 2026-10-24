@@ -20,6 +20,12 @@ class ForgeApp : Application() {
         }
         graph = AppGraph(this)
         graph.youTubeSession.start()
+        // Signed in: bring the YouTube Music library up to date, at most hourly (live enough, and
+        // gentle on YouTube). The session needs a moment to apply the stored cookie first.
+        graph.scope.launch {
+            delay(5_000)
+            graph.accountSync.syncIfStale()
+        }
         // Off the startup path: a daily safety copy of the library.
         graph.scope.launch {
             delay(30_000)

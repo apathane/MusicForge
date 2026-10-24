@@ -99,7 +99,11 @@ fun LoginScreen(onDone: () -> Unit) {
                             p[Keys.AccountChannelHandle] = account.channelHandle.orEmpty()
                         }
                         CookieManager.getInstance().flush()
-                        onDone()
+                        // A new or different account: the old account's snapshots must not decide removals.
+                        context.graph.accountSync.forgetSnapshots()
+                        context.graph.scope.launch { context.graph.accountSync.sync() }
+                        // Reload so everything already on screen (Home's feed, Library) asks again as this account.
+                        (context as? android.app.Activity)?.recreate() ?: onDone()
                         return@launch
                     }
                 }
@@ -129,8 +133,27 @@ fun LoginScreen(onDone: () -> Unit) {
                         settings.domStorageEnabled = true
                         CookieManager.getInstance().setAcceptCookie(true)
                         webViewClient = object : WebViewClient() {
+                            // Google's sign-in can hand off to intent:// links (account chooser, passkeys).
+                            // A WebView can't load those and the flow stalls there, so open them as Android
+                            // intents, the way Metrolist does; ordinary pages stay in the WebView.
+                            override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean {
+                                val scheme = request.url.scheme
+                                if (scheme == "http" || scheme == "https") return false
+                                if (scheme == "intent") {
+                                    runCatching {
+                                        android.content.Intent.parseUri(request.url.toString(), android.content.Intent.URI_INTENT_SCHEME).apply {
+                                            addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+                                            component = null
+                                            selector = null
+                                        }.let(ctx::startActivity)
+                                    }
+                                }
+                                return true
+                            }
+
                             override fun onPageFinished(view: WebView, url: String?) {
-                                if (url?.startsWith("https://music.youtube.com") == true) captureSession(view)
+                                val uri = url?.let(android.net.Uri::parse)
+                                if (uri?.scheme == "https" && uri.host == "music.youtube.com") captureSession(view)
                             }
                         }
                         loadUrl(LOGIN_URL)
