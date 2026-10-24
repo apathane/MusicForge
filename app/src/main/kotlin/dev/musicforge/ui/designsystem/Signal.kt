@@ -9,7 +9,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -33,7 +37,7 @@ object Signal {
 @Composable
 fun SectionHeader(title: String, reason: String?, modifier: Modifier = Modifier) {
     Column(modifier.padding(start = Signal.gutter, end = Signal.gutter, top = 22.dp, bottom = 10.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (!reason.isNullOrEmpty()) {
             Text(
                 reason,
@@ -65,3 +69,17 @@ fun SignalChip(label: String, selected: Boolean, onClick: () -> Unit) {
 /** A flat grouping surface (cards, welcome and restore prompts): no blur, no shadow. */
 fun Modifier.signalSurface(color: androidx.compose.ui.graphics.Color, radius: androidx.compose.ui.unit.Dp = Signal.radiusSurface) =
     clip(RoundedCornerShape(radius)).background(color)
+
+/**
+ * Pressed things give way a little (0.97), so a tap is felt before anything else happens. Read
+ * in the draw phase on one layer: no recomposition per frame.
+ */
+fun Modifier.pressScale(interaction: androidx.compose.foundation.interaction.InteractionSource): Modifier = composed {
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        if (pressed) 0.97f else 1f,
+        androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 900f),
+        label = "press",
+    )
+    graphicsLayer { scaleX = scale; scaleY = scale }
+}

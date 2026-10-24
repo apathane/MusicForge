@@ -1,6 +1,9 @@
 package dev.musicforge.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +63,7 @@ import dev.musicforge.ui.designsystem.SectionHeader
 import dev.musicforge.ui.designsystem.Signal
 import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.ui.designsystem.signalSurface
+import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.openItem
 import dev.musicforge.ui.theme.ForgeTheme
 import java.util.Calendar
@@ -130,6 +134,20 @@ fun HomeScreen(
 @Composable
 private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
     when (section.layout) {
+        // The first shelf leads with a hero: the song you were last on, big, with its cover as the room.
+        HomeLayout.SHELF if section.id == "jump-back-in" -> Column {
+            (section.items.firstOrNull() as? HomeItem.Track)?.let { Hero(it.song, section.reason) { onAction(HomeAction.PlayFrom(section.id, 0)) } }
+            if (section.items.size > 1) {
+                SectionHeader("Before that", null)
+                LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    itemsIndexed(section.items.drop(1), key = { _, it -> it.key }) { i, item ->
+                        (item as? HomeItem.Track)?.let {
+                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i + 1)) }
+                        }
+                    }
+                }
+            }
+        }
         HomeLayout.SHELF -> Column {
             SectionHeader(section.title, section.reason)
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -179,7 +197,7 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
     }
 }
 
-private val CardSize = 128.dp
+private val CardSize = 148.dp
 
 /**
  * A song on a shelf: tap plays, long-press opens its actions with why it is here and the two
@@ -188,10 +206,12 @@ private val CardSize = 128.dp
 @Composable
 private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) -> Unit, onClick: () -> Unit) {
     var menu by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Column(
-        Modifier.width(CardSize).combinedClickable(onClick = onClick, onLongClick = { menu = true }, onLongClickLabel = "More options"),
+        Modifier.width(CardSize).pressScale(press)
+            .combinedClickable(interactionSource = press, indication = null, onClick = onClick, onLongClick = { menu = true }, onLongClickLabel = "More options"),
     ) {
-        Artwork(song.song.thumbnailUrl, CardSize, corner = Signal.radiusSmall)
+        Artwork(song.song.thumbnailUrl, CardSize, corner = Signal.radiusRow)
         Spacer(Modifier.height(6.dp))
         Text(song.song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(song.artistLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -213,11 +233,62 @@ private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) ->
 
 @Composable
 private fun PlaylistCard(p: PlaylistSummary, onClick: () -> Unit) {
-    Column(Modifier.width(CardSize).clickable(onClick = onClick)) {
-        Artwork(p.playlist.thumbnailUrl, CardSize, corner = Signal.radiusSmall, fallbackLetter = p.playlist.name)
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Column(Modifier.width(CardSize).pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick)) {
+        Artwork(p.playlist.thumbnailUrl, CardSize, corner = Signal.radiusRow, fallbackLetter = p.playlist.name)
         Spacer(Modifier.height(6.dp))
         Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(if (p.songCount == 1) "1 song" else "${p.songCount} songs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Home's one memorable surface (spec §3): the last song, its cover filling a wide card under a
+ * dark gradient so the white type always reads, a big title, why it's here, and a solid play
+ * button. One image at card size and a gradient: no blur, cheap on the X7b.
+ */
+@Composable
+private fun Hero(song: Song, reason: String, onPlay: () -> Unit) {
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .height(232.dp)
+            .pressScale(press)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(Signal.radiusHero))
+            .clickable(interactionSource = press, indication = null, onClickLabel = "Play", onClick = onPlay),
+    ) {
+        Artwork(song.song.thumbnailUrl, maxWidth, corner = 0.dp, modifier = Modifier.align(Alignment.Center))
+        Box(
+            Modifier.fillMaxSize().background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.05f),
+                    0.45f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.35f),
+                    1f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.85f),
+                ),
+            ),
+        )
+        Row(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text(reason, style = MaterialTheme.typography.labelLarge, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f))
+                Text(
+                    song.song.title,
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = androidx.compose.ui.graphics.Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(song.artistLine, style = MaterialTheme.typography.bodyLarge, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(
+                Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color.White),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.material3.Icon(dev.musicforge.ui.components.ForgeIcons.Play, null, tint = androidx.compose.ui.graphics.Color.Black, modifier = Modifier.size(30.dp))
+            }
+        }
     }
 }
 
