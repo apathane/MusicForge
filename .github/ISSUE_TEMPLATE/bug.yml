@@ -1,0 +1,90 @@
+name: Bug report
+description: Something isn't working
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please fill out the sections below. **Remove cookies, tokens, and backup paths from any logs you paste.**
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: Model and SoC (e.g., "Honor X7b, Snapdragon 680")
+      placeholder: Honor X7b, Snapdragon 680
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      description: e.g., "14 (API 34), MagicOS 8"
+      placeholder: 14
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / codename
+      description: From Settings → About, or the launcher label (e.g., "Rondo 0.13.0", "phase-13-rondo")
+      placeholder: Rondo 0.13.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered, minimal steps
+      placeholder: |
+        1. Open the app
+        2. Go to Search
+        3. Paste a YouTube link
+        4. Crash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen
+      placeholder: The link should parse and open the song/playlist/artist
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happens instead (crash, wrong screen, nothing, etc.)
+      placeholder: App crashes with NullPointerException in YouTubeLink.kt
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: Relevant logcat, stack trace, or `scripts/check.sh` output. **Strip cookies, account tokens, and backup file paths.**
+      render: text
+      placeholder: |
+        E/AndroidRuntime: FATAL EXCEPTION: main
+        java.lang.NullPointerException: ...
+        at dev.musicforge.ui.YouTubeLink.parse(YouTubeLink.kt:42)
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have stripped cookies/tokens/backup paths from logs
+          required: true
+        - label: I have searched existing issues and this isn't a duplicate
+          required: true
+        - label: I'm on the latest release (not a pre-release build)
+          required: false
