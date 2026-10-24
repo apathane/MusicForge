@@ -56,14 +56,16 @@ private fun darkScheme(pureBlack: Boolean) = darkColorScheme(
     onPrimary = InkLight,
     secondary = Color(0xFFD1D0CC),
     onSecondary = InkLight,
+    // Pure black is black everywhere, not just the canvas: #09090B next to #000 is invisible, so
+    // surfaces, cards and sheets go dark too and only hairlines separate them.
     background = if (pureBlack) Color.Black else Color(0xFF09090B),
     onBackground = Ink,
     surface = if (pureBlack) Color.Black else Color(0xFF0F0F12),
     onSurface = Ink,
-    surfaceVariant = Color(0xFF1C1C20),
+    surfaceVariant = if (pureBlack) Color(0xFF111113) else Color(0xFF1C1C20),
     onSurfaceVariant = Color(0xFFA2A2AA),
-    surfaceContainer = Color(0xFF141417),
-    surfaceContainerHigh = Color(0xFF1C1C20),
+    surfaceContainer = if (pureBlack) Color(0xFF0A0A0B) else Color(0xFF141417),
+    surfaceContainerHigh = if (pureBlack) Color(0xFF111113) else Color(0xFF1C1C20),
     outline = Color(0xFF2A2A2F),
     outlineVariant = Color(0xFF1F1F23),
     error = Color(0xFFFF453A),
@@ -106,7 +108,8 @@ fun ForgeTheme(
     artwork: ArtworkColors = ArtworkColors.Unset,
     content: @Composable () -> Unit,
 ) {
-    val dark = when (darkMode) {
+    // Pure black is a dark theme; chosen with Auto on a light phone it would otherwise do nothing.
+    val dark = pureBlack || when (darkMode) {
         DarkMode.ON -> true
         DarkMode.OFF -> false
         DarkMode.AUTO -> isSystemInDarkTheme()

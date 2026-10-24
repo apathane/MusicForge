@@ -80,6 +80,8 @@ fun HomeRoot() {
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
+    val signedIn by remember { graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.InnerTubeCookie] != null }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(false)
     val nav = LocalNavController.current
     LaunchedEffect(vm) {
         vm.events.collect { event ->
@@ -89,7 +91,7 @@ fun HomeRoot() {
         }
     }
     // Remote items open through the shared router, the same as Search and artist pages.
-    HomeScreen(state, vm::onAction, onRemoteItem = { item, siblings -> openItem(item, siblings, nav, graph.player) })
+    HomeScreen(state, vm::onAction, signedIn = signedIn, onRemoteItem = { item, siblings -> openItem(item, siblings, nav, graph.player) })
 }
 
 private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
@@ -103,6 +105,7 @@ private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_
 fun HomeScreen(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
+    signedIn: Boolean = false,
     onRemoteItem: (com.metrolist.innertube.models.YTItem, List<com.metrolist.innertube.models.YTItem>) -> Unit = { _, _ -> },
 ) {
     val list = rememberLazyListState()
@@ -120,7 +123,7 @@ fun HomeScreen(
         state.sections.orEmpty().forEach { section ->
             item(key = section.id, contentType = section.layout) { Section(section, onAction) }
         }
-        remoteFeed(state, onAction, onRemoteItem)
+        remoteFeed(state, signedIn, onAction, onRemoteItem)
     }
 }
 
@@ -252,12 +255,16 @@ private fun WelcomeCard(onAction: (HomeAction) -> Unit) {
 /** YouTube Music's feed, labelled as such and always after what's yours. */
 private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
     state: HomeState,
+    signedIn: Boolean,
     onAction: (HomeAction) -> Unit,
     onRemoteItem: (com.metrolist.innertube.models.YTItem, List<com.metrolist.innertube.models.YTItem>) -> Unit,
 ) {
     val remote = state.remote
     item(key = "remote-header", contentType = "header") {
-        SectionHeader("From YouTube Music", remote.selected ?: "Picked by YouTube Music, not from your listening")
+        SectionHeader(
+            "From YouTube Music",
+            remote.selected ?: if (signedIn) "Your account's mixes and picks" else "YouTube Music's picks; sign in to make them yours",
+        )
     }
     if (remote.chips.isNotEmpty()) {
         item(key = "remote-chips", contentType = "chips") {

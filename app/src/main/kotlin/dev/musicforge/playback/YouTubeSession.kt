@@ -73,6 +73,11 @@ class YouTubeSession(
         scope.launch {
             settings.data.map { it[Keys.InnerTubeAuthUser] ?: "0" }.distinctUntilChanged().collect { YouTube.authUser = it }
         }
+        // Without this every browse request (Home, artist pages, charts) goes out logged out and
+        // YouTube serves its generic feed, even with a valid sign-in. Metrolist defaults it on.
+        scope.launch {
+            settings.data.map { it[Keys.UseLoginForBrowse] ?: true }.distinctUntilChanged().collect { YouTube.useLoginForBrowse = it }
+        }
         scope.launch {
             settings.data.map { it[Keys.InnerTubeCookie] }.distinctUntilChanged().collect { cookie ->
                 runCatching { YouTube.cookie = cookie?.takeIf { it.isNotBlank() } }

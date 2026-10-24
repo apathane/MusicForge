@@ -62,7 +62,7 @@ fun Modifier.glass(shape: Shape, tint: Color = Color.Unspecified): Modifier {
     val style = LocalGlassStyle.current
     val scheme = MaterialTheme.colorScheme
     val dark = scheme.background.luminance() < 0.5f
-    val fill = if (tint != Color.Unspecified) tint else if (dark) Color(0xFF1C1C1E) else Color(0xFFF7F7F9)
+    val fill = if (tint != Color.Unspecified) tint else if (dark) scheme.surfaceContainerHigh else scheme.surface
     val rim = if (dark) Color.White else Color.Black
     val backdrop = style.backdrop.takeIf { style.tier != GlassTier.SOLID }
     val holder = remember { OriginHolder() }

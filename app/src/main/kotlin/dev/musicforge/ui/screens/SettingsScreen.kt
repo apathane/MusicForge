@@ -290,7 +290,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         Group {
             val dark = prefs?.get(Keys.DarkMode) ?: DarkMode.AUTO.name
             ChoiceRow("Theme", listOf("AUTO" to "Auto", "ON" to "Dark", "OFF" to "Light"), dark) { vm.set(Keys.DarkMode, it) }
-            ToggleRow("Pure black", prefs?.get(Keys.PureBlack) ?: false) { vm.set(Keys.PureBlack, it) }
+            ToggleRow("Pure black", prefs?.get(Keys.PureBlack) ?: false, subtitle = "Dark theme on true black, surfaces included") { vm.set(Keys.PureBlack, it) }
             val glass = prefs?.get(Keys.GlassTier) ?: GlassTier.ARTWORK.name
             ChoiceRow(
                 "Glass",

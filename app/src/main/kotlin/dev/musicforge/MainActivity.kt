@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.LaunchedEffect(current.darkMode, current.pureBlack) {
                 if (Build.VERSION.SDK_INT >= 33) {
                     splashScreen.setSplashScreenTheme(
-                        when (current.darkMode) {
+                        when (if (current.pureBlack) DarkMode.ON else current.darkMode) {
                             DarkMode.ON -> R.style.Theme_Forge_Dark
                             DarkMode.OFF -> R.style.Theme_Forge_Light
                             DarkMode.AUTO -> R.style.Theme_Forge

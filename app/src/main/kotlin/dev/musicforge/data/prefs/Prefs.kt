@@ -35,6 +35,8 @@ object Keys {
     val AccountName = str("accountName")
     val AccountEmail = str("accountEmail")
     val AccountChannelHandle = str("accountChannelHandle")
+    /** Metrolist's key: browse requests (Home, artists, charts) carry the account. Default on. */
+    val UseLoginForBrowse = bool("useLoginForBrowse")
 
     // Content
     val ContentLanguage = str("contentLanguage")
@@ -83,7 +85,7 @@ object Keys {
         AccountChannelHandle, ContentLanguage, ContentCountry, DarkMode, PureBlack, AudioQuality,
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
-        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike, Autoplay,
+        ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike, Autoplay, UseLoginForBrowse,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,
