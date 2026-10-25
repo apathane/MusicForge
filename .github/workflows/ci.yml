@@ -7,38 +7,121 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# The workflow only needs to read the repository.
 permissions:
   contents: read
+
+# Cancel outdated runs when a newer commit arrives on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-test-lint:
     name: Build, test, lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up JDK 21 (Temurin)
+      - name: Set up JDK 21
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
+      # This action installs the SDK tools and accepts the SDK licenses.
+      # API 37 is a preview platform, so install it separately below.
+      - name: Set up Android SDK tools
         uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools platforms;android-37 build-tools;36.0.0'
+          packages: 'platform-tools'
 
-      - name: Setup Gradle
+      - name: Install Android 17 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sdkmanager --channel=3 \
+            "platforms;android-37" \
+            "build-tools;36.0.0"
+
+      - name: Verify Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "::error::ANDROID_SDK_ROOT and ANDROID_HOME are both unset."
+            exit 1
+          fi
+
+          test -d "$SDK_ROOT/platforms/android-37" || {
+            echo "::error::Android API 37 platform was not installed."
+            exit 1
+          }
+
+          test -d "$SDK_ROOT/build-tools/36.0.0" || {
+            echo "::error::Android Build Tools 36.0.0 were not installed."
+            exit 1
+          }
+
+          echo "Android SDK verified: $SDK_ROOT"
+          echo "Compile SDK: Android 17 / API 37"
+          echo "Build Tools: 36.0.0"
+
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          cache-read-only: false
           gradle-version: wrapper
+          # Don't let pull requests write to the shared Gradle cache.
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Grant execute permission to gradlew
-        run: chmod +x gradlew
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
 
-      - name: Run build, tests, lint
-        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --no-daemon --stacktrace
+      - name: Build, test and lint
+        shell: bash
+        run: |
+          set -o pipefail
+
+          ./gradlew \
+            --no-daemon \
+            --stacktrace \
+            --continue \
+            :app:assembleDebug \
+            :app:testDebugUnitTest \
+            :innertube:testDebugUnitTest \
+            :app:lintDebug \
+            :innertube:lintDebug
+
+      # The project deliberately redirects its build output to /dev/shm.
+      # Upload the APK even if a test or lint task failed, provided it exists.
+      - name: Upload debug APK
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicForge-debug-apk-${{ github.run_number }}
+          path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Keep test results and lint reports available for troubleshooting.
+      - name: Upload test and lint reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicForge-reports-${{ github.run_number }}
+          path: |
+            /dev/shm/musicforge-build-MusicForge/app/reports/
+            /dev/shm/musicforge-build-MusicForge/app/test-results/
+            /dev/shm/musicforge-build-MusicForge/innertube/reports/
+            /dev/shm/musicforge-build-MusicForge/innertube/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+# if anybody asks, i have no idea what any of this shit does bro, please dont kill me
