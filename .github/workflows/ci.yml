@@ -7,11 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# The workflow only needs to read the repository.
 permissions:
   contents: read
 
-# Cancel outdated runs when a newer commit arrives on the same branch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -32,23 +30,21 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # This action installs the SDK tools and accepts the SDK licenses.
-      # API 37 is a preview platform, so install it separately below.
       - name: Set up Android SDK tools
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
 
-      - name: Install Android 17 SDK
+      - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
 
-          sdkmanager --channel=3 \
-            "platforms;android-37" \
+          sdkmanager --install --channel=3 \
+            "platforms;android-37.0" \
             "build-tools;36.0.0"
 
-            - name: Verify Android SDK
+      - name: Verify Android SDK
         shell: bash
         run: |
           set -euo pipefail
@@ -60,23 +56,23 @@ jobs:
             exit 1
           fi
 
-          test -d "$SDK_ROOT/platforms/android-37.2" || {
-            echo "::error::Android API 37.2 was not installed."
+          test -f "$SDK_ROOT/platforms/android-37.0/android.jar" || {
+            echo "::error::Android API 37.0 platform is missing."
             exit 1
           }
 
-          test -d "$SDK_ROOT/build-tools/37.0.0" || {
-            echo "::error::Android Build Tools 37.0.0 were not installed."
+          test -d "$SDK_ROOT/build-tools/36.0.0" || {
+            echo "::error::Android Build Tools 36.0.0 are missing."
             exit 1
           }
 
-          echo "Android SDK verified: $SDK_ROOT"
+          echo "Android SDK verified."
+          echo "SDK root: $SDK_ROOT"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          # Don't let pull requests write to the shared Gradle cache.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Make Gradle wrapper executable
@@ -85,7 +81,7 @@ jobs:
       - name: Build, test and lint
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
 
           ./gradlew \
             --no-daemon \
@@ -93,12 +89,10 @@ jobs:
             --continue \
             :app:assembleDebug \
             :app:testDebugUnitTest \
-            :innertube:testDebugUnitTest \
             :app:lintDebug \
+            :innertube:testDebugUnitTest \
             :innertube:lintDebug
 
-      # The project deliberately redirects its build output to /dev/shm.
-      # Upload the APK even if a test or lint task failed, provided it exists.
       - name: Upload debug APK
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -108,7 +102,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # Keep test results and lint reports available for troubleshooting.
       - name: Upload test and lint reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -121,5 +114,3 @@ jobs:
             /dev/shm/musicforge-build-MusicForge/innertube/test-results/
           if-no-files-found: ignore
           retention-days: 7
-
-# if anybody asks, i have no idea what any of this shit does bro, please dont kill me
