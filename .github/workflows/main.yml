@@ -1,0 +1,46 @@
+name: First Run
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Test the Actions setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Confirm runner is working
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Commit: $GITHUB_SHA"
+          echo "Runner: $RUNNER_OS / $RUNNER_ARCH"
+          echo "Checkout successful."
+
+      - name: Generate run report
+        run: |
+          mkdir -p out
+
+          {
+            echo "Repository: $GITHUB_REPOSITORY"
+            echo "Commit: $GITHUB_SHA"
+            echo "Runner: $RUNNER_OS / $RUNNER_ARCH"
+            echo ""
+            echo "Top-level files:"
+            find . -mindepth 1 -maxdepth 1 \
+              ! -name .git -printf '%f\n' | sort
+          } > out/run-report.txt
+
+      - name: Save report
+        uses: actions/upload-artifact@v7
+        with:
+          name: run-report-${{ github.run_number }}
+          path: out/run-report.txt
+          retention-days: 3
