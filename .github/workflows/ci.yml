@@ -48,7 +48,7 @@ jobs:
             "platforms;android-37" \
             "build-tools;36.0.0"
 
-      - name: Verify Android SDK
+            - name: Verify Android SDK
         shell: bash
         run: |
           set -euo pipefail
@@ -56,23 +56,21 @@ jobs:
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 
           if [[ -z "$SDK_ROOT" ]]; then
-            echo "::error::ANDROID_SDK_ROOT and ANDROID_HOME are both unset."
+            echo "::error::Android SDK environment variable is missing."
             exit 1
           fi
 
-          test -d "$SDK_ROOT/platforms/android-37" || {
-            echo "::error::Android API 37 platform was not installed."
+          test -d "$SDK_ROOT/platforms/android-37.2" || {
+            echo "::error::Android API 37.2 was not installed."
             exit 1
           }
 
-          test -d "$SDK_ROOT/build-tools/36.0.0" || {
-            echo "::error::Android Build Tools 36.0.0 were not installed."
+          test -d "$SDK_ROOT/build-tools/37.0.0" || {
+            echo "::error::Android Build Tools 37.0.0 were not installed."
             exit 1
           }
 
           echo "Android SDK verified: $SDK_ROOT"
-          echo "Compile SDK: Android 17 / API 37"
-          echo "Build Tools: 36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
