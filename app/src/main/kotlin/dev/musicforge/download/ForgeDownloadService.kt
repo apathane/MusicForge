@@ -53,7 +53,7 @@ class ForgeDownloadService : DownloadService(
             PendingIntent.FLAG_IMMUTABLE,
         )
         val cancelCompat = NotificationCompat.Action.Builder(
-            Icon.createWithResource(this, R.drawable.ic_download),
+            IconCompat.createWithResource(this, R.drawable.ic_download),
             "Cancel all",
             cancelIntent,
         ).build()
