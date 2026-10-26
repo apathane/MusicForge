@@ -61,14 +61,19 @@ class MusicExport(
         val resolver = context.contentResolver
         val base = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.IS_PENDING}=1"
-        val n = resolver.delete(
-            base,
-            android.os.Bundle().apply {
-                putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
-                putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf(folder))
-                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
-            },
-        )
+        val n = if (Build.VERSION.SDK_INT >= 30) {
+            resolver.delete(
+                base,
+                android.os.Bundle().apply {
+                    putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                    putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf(folder))
+                    putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+                },
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            resolver.delete(MediaStore.setIncludePending(base), selection, arrayOf(folder))
+        }
         if (n > 0) Timber.i("removed %d unfinished exports", n)
     }
 
