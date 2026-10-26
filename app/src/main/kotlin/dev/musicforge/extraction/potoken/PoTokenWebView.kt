@@ -72,7 +72,8 @@ class PoTokenWebView private constructor(
     //region Initialization
     init {
         val webViewSettings = webView.settings
-        //noinspection SetJavaScriptEnabled we want to use JavaScript!
+        // why: JavaScript is required for botguard/CAPTCHA execution and PoToken minting.
+        // WebView has blockNetworkLoads = true so no external network access occurs.
         webViewSettings.javaScriptEnabled = true
         webViewSettings.userAgentString = USER_AGENT
         webViewSettings.blockNetworkLoads = true // the WebView does not need internet access

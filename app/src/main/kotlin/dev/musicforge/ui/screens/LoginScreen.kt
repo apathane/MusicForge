@@ -1,6 +1,5 @@
 package dev.musicforge.ui.screens
 
-import android.annotation.SuppressLint
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -52,7 +51,6 @@ return c?JSON.stringify({v:c.VISITOR_DATA||'',d:c.DATASYNC_ID||'',a:String(c.SES
  * cookie, the session (cookie, visitor data, data-sync id, auth user) is saved under the same
  * keys Metrolist and ConvX use, and YouTubeSession picks it up from settings.
  */
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun LoginScreen(onDone: () -> Unit) {
     val context = LocalContext.current
@@ -129,6 +127,7 @@ fun LoginScreen(onDone: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
                     WebView(ctx).apply {
+                        // why: JavaScript is required for the Google sign-in page (ytcfg reading, cookie capture).
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         CookieManager.getInstance().setAcceptCookie(true)

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.drawable.Icon
 import androidx.annotation.OptIn
+import androidx.core.app.NotificationCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
@@ -46,16 +47,26 @@ class ForgeDownloadService : DownloadService(
             else -> "${downloads.size} songs"
         }
         val progress = notifications.buildProgressNotification(this, R.drawable.ic_download, null, title, downloads, notMetRequirements)
-        val cancel = Notification.Action.Builder(
+        val cancelIntent = PendingIntent.getService(
+            this, 0,
+            Intent(this, ForgeDownloadService::class.java).setAction(ACTION_CANCEL_ALL),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val cancelCompat = NotificationCompat.Action.Builder(
             Icon.createWithResource(this, R.drawable.ic_download),
             "Cancel all",
-            PendingIntent.getService(
-                this, 0,
-                Intent(this, ForgeDownloadService::class.java).setAction(ACTION_CANCEL_ALL),
-                PendingIntent.FLAG_IMMUTABLE,
-            ),
+            cancelIntent,
         ).build()
-        return Notification.Builder.recoverBuilder(this, progress).setActions(cancel).build()
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_download)
+            .setContentTitle(title)
+            .setContentText("Download in progress")
+            .setProgress(100, progress, false)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
+            .addAction(cancelCompat)
+            .build()
     }
 
     companion object {
