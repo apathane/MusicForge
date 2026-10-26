@@ -3,10 +3,10 @@
     <base-config cleartextTrafficEnabled="false"/>
     <domain-config>
         <domain includeSubdomains="true">metrolist.dev</domain>
-        <trustAnchors includeSystem="true"/>
+        <trust-anchors includeSystem="true"/>
     </domain-config>
     <domain-config>
         <domain includeSubdomains="true">innertube.dev</domain>
-        <trustAnchors includeSystem="true"/>
+        <trust-anchors includeSystem="true"/>
     </domain-config>
 </network-security-config>
