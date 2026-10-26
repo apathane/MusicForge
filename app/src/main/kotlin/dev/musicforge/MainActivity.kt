@@ -65,10 +65,14 @@ class MainActivity : ComponentActivity() {
         handlePlayFromSearch(intent)
     }
 
-    /** Refresh the YouTube Music history mirror when the app returns to the foreground. */
+    /**
+     * Refresh the YouTube Music history mirror when the app returns to the foreground. A short
+     * window (5 min, not the hourly one) so plays made in YouTube Music on another device show up
+     * on Home soon after the app is opened (SONATA-SPEC §0).
+     */
     override fun onStart() {
         super.onStart()
-        graph.scope.launch { runCatching { graph.accountSync.syncHistoryIfStale() } }
+        graph.scope.launch { runCatching { graph.accountSync.syncHistoryIfStale(5 * 60 * 1000L) } }
     }
 
     /** Voice: "play X on MusicForge". Your own songs first, then YouTube Music. */

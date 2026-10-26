@@ -96,8 +96,14 @@ class AccountSync(
             step("Albums") { albums()?.let { counts += "$it albums" } }
             step("Artists") { artists()?.let { counts += "$it artists" } }
             step("Playlists") { playlists()?.let { counts += "$it playlists" } }
+            // History syncs with the rest, so "Sync now" and pull-to-refresh bring remote plays too
+            // (SONATA-SPEC §0). Called directly: syncHistory() would deadlock on this same lock.
+            step("History") { history()?.let { counts += "$it recent plays" } }
             val now = System.currentTimeMillis()
-            settings.edit { it[Keys.LastAccountSync] = now }
+            settings.edit {
+                it[Keys.LastAccountSync] = now
+                it[Keys.LastHistorySync] = now
+            }
             _status.value = Status.Done(now, counts.joinToString(", ").ifEmpty { "nothing to bring over" })
         } catch (e: Exception) {
             Timber.w(e, "account sync failed")
