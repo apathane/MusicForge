@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
