@@ -967,6 +967,7 @@ object YouTube {
             }
         }
 
+    @Suppress("SuspiciousIndentation")
     suspend fun playlist(playlistId: String): Result<PlaylistPage> =
         runCatching {
             val response =
