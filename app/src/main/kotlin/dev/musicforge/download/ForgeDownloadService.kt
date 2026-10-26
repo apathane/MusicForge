@@ -58,11 +58,15 @@ class ForgeDownloadService : DownloadService(
             "Cancel all",
             cancelIntent,
         ).build()
+        // Calculate overall progress from all downloads (0-100)
+        val currentProgress = if (downloads.isNotEmpty()) {
+            (downloads.sumOf { it.bytesDownloaded.toDouble() } / downloads.sumOf { it.contentLength.toDouble() } * 100).toInt()
+        } else 0
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_download)
             .setContentTitle(title)
             .setContentText("Download in progress")
-            .setProgress(100, progress, false)
+            .setProgress(100, currentProgress, false)
             .setOngoing(true)
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
