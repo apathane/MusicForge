@@ -1,7 +1,8 @@
 # Agents working on MusicForge
 
-Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts here.
+Any coding agent (Claude Code, OpenCode, Kilo, Cline, Copilot, Freebuff) starts here.
 
+0. **Ponytail at ultra, for the whole session.** Lazy senior dev: the smallest change that fully solves the task. Read `~/.claude/skills/ponytail/SKILL.md` and follow its **ultra** rules (question the request, skip anything the need doesn't justify, name what you skipped). Never cut validation, error handling that prevents data loss, security, accessibility, or anything the owner asked for. End with what you skipped and any risk.
 1. Read `CLAUDE.md`. It's the architecture guide and the project rules, for every agent, not only Claude.
 2. Build gate: `scripts/check.sh` (debug build + unit tests + lint, 0 lint errors). Run nothing else heavier, and never two Gradle commands at once: the dev machine has 14 GB.
 3. Work in your own git worktree and branch. Commit small, with a message that says why, ending with the `Co-Authored-By:` line your harness uses. Don't push; the coordinator reviews and merges.
