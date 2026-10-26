@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartext-traffic-enabled="false"/>
+    <base-config cleartextTrafficEnabled="false"/>
     <domain-config>
-        <domain include-subdomains="true">metrolist.dev</domain>
-        <trust-anchors include-system="true"/>
+        <domain includeSubdomains="true">metrolist.dev</domain>
+        <trustAnchors includeSystem="true"/>
     </domain-config>
     <domain-config>
-        <domain include-subdomains="true">innertube.dev</domain>
-        <trust-anchors include-system="true"/>
+        <domain includeSubdomains="true">innertube.dev</domain>
+        <trustAnchors includeSystem="true"/>
     </domain-config>
 </network-security-config>
