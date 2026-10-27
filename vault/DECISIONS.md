@@ -8,7 +8,7 @@ This is the “things an agent must not accidentally break” page. Some entries
 
 1. **No ads, analytics, crash reporting or telemetry.** This is explicit project policy in CONTRIBUTING/SECURITY. Do not quietly add analytics or a tracker.
 2. **Local-first, no invented recommendations.** Home should use real user signals and provider data; every personal shelf needs a reason. Remote feed failures should not make local content disappear.
-3. **Network destinations must be explicit.** YouTube Music and LRCLIB are the core services; ListenBrainz is a third-party service used only when the listener explicitly enables it and supplies a token. Update `CONTRIBUTING.md` and `SECURITY.md` if integration behavior changes. A cookie is only for YouTube Music requests.
+3. **Network destinations must be explicit.** YouTube/YouTube Music APIs and Google's video-delivery hosts support browse, account sync, stream resolution and playback; LRCLIB supports lyric lookup; ListenBrainz is a third-party service used only when the listener explicitly enables it and supplies a token. Update `CONTRIBUTING.md` and `SECURITY.md` if integration behavior changes. The YouTube account cookie is for YouTube Music requests and must not be sent to lyric/scrobbling providers.
 4. **Secrets stay out of Git/issues.** Never commit cookies, token values, PoTokens, signing keys, real backups, Room DBs, preference files, session IDs or logs that reveal them.
 5. **No paid API key dependence, root-only requirement, or hidden network behavior.**
 
