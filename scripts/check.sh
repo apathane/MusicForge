@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# The one build gate every agent runs: debug build, unit tests, lint.
+# Local fallback gate: debug build, app unit tests and app lint.
+# Prefer GitHub Actions CI on pushed code branches on a slow machine; CI also checks :innertube.
 # Safe in parallel git worktrees: each gets its own RAM build folder (see build.gradle.kts) and
 # project cache, and the JVMs are capped so two checks fit in 14 GB.
 set -euo pipefail
