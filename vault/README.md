@@ -19,7 +19,9 @@ This vault is a maintained map of the project, not a replacement for source code
 6. [Build, test and agent workflow](WORKFLOW.md)
 7. [Project history and decision context](CONTEXT.md)
 8. [Source/test file index](FILE-MAP.md)
-9. [Active quest board](../docs/QUEST-BOARD.md)
+9. [Comparative reference audit and source boundaries](REFERENCE-AUDIT.md)
+10. [Proposed Phase 15 roadmap](../docs/PHASE-15-OVERTURE-ROADMAP.md)
+11. [Active quest board](../docs/QUEST-BOARD.md)
 
 For a focused task, read this index, STATE, the relevant subsystem section, the actual source files and relevant tests. Do not assume this vault remains current after code changes unless it has been updated.
 
@@ -37,6 +39,8 @@ MusicForge is the user's **first-priority ongoing project** and their main inten
 At the start of a MusicForge task:
 - Check the branch and current HEAD, then read this page and STATE.
 - Read `AGENTS.md` and `CLAUDE.md` before code work.
+- For phase-level work, read the [reference audit](REFERENCE-AUDIT.md) and [Phase 15 proposal](../docs/PHASE-15-OVERTURE-ROADMAP.md). They are planning sources, not proof a feature is missing or approved.
+- Observe the ArchiveTune no-AI boundary in [the reference audit](REFERENCE-AUDIT.md): no upstream contributions, fork, copied code/assets, messages or contact.
 - Verify the relevant source and tests on the active branch. This vault was initially written from `main` plus the review-branch documents; don't treat old notes as more authoritative than current source.
 - Separate code that's implemented, code that's tested, and features that are only planned.
 - Make the smallest change that solves the task. Avoid unrelated refactors.
