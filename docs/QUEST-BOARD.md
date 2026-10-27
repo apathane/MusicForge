@@ -23,6 +23,7 @@ The repository vault is the first priority for future ChatGPT work on MusicForge
 - [x] Create the vault index, current-state snapshot, product context, architecture, subsystem guide, engineering invariants, workflow guide, history and source/test map.
 - [x] Link the vault from README and make it the first required read in AGENTS.md and CLAUDE.md.
 - [x] Correct stale Room schema context and document the opt-in ListenBrainz service in security/contributor docs.
+- [x] Correct the misleading claim that exported backups never contain the YouTube Music cookie; document backups as sensitive credentials.
 - [ ] Verify the docs against the reviewed source, then review/merge the documentation branch.
 - [ ] Keep the vault current whenever a source, test, architecture decision or meaningful phase status changes.
 - [ ] After code work, record test outcomes and distinguish what ran locally from what CI/device checks remain.
@@ -38,7 +39,7 @@ The repository vault is the first priority for future ChatGPT work on MusicForge
 
 MusicForge already has LRCLIB lookup, a YouTube Music plain-lyrics fallback, a Room cache, line timing, tap-to-seek and export support. Improve correctness before adding richer animation.
 
-- [ ] Add focused unit tests for the existing LRC parser and timestamp handling.
+- [ ] Expand the existing `download/CoversTest.kt` LRC round-trip into focused parser tests, or move lyrics cases to a dedicated `LrcTest.kt`.
 - [ ] Cover malformed timestamps, empty lyrics, repeated timestamps, multiple stamps on one line, and invalid/out-of-range values.
 - [ ] Test provider failure, empty response, cache hit/miss and duration mismatch.
 - [ ] Review title/artist normalization and matching of live, remix and alternate versions.
@@ -236,6 +237,17 @@ This is a tooling decision, not a prerequisite for shipping player features.
 - Do not let Hermes and a coding harness edit the same worktree concurrently.
 
 **References:** [FCC README](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [Hermes fallback providers](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) · [Reddit: Hermes vs Claude Code, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xey47r/hermes_vs_claude_code/) · [Reddit: Hermes and strict task boundaries, 23 Sep 2026](https://www.reddit.com/r/hermesagent/comments/1wo8x6r/anyone_using_hermes_with_codexclaude_code_a/) · [Reddit: Hermes as orchestrator, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xf3vml/how_are_you_guys_using_hermes_as_a/) · [Reddit: coding harness comparison, LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/comments/1w8f7bp/which_agent_harness_do_you_use_and_why/)
+
+### Q14 · Triage existing source TODOs
+**Status: LATER · Priority: P2 · Size: S/M**
+
+The main-branch code search found two explicit TODO groups. They are not release blockers, and the transform TODO sits inside sensitive vendored rendering code.
+
+- [ ] Review the two album paths in `innertube/.../YouTube.kt` that currently set `explicit = false`; identify whether the response/model exposes an explicit-content badge and test the mapping before changing it.
+- [ ] Only investigate the `LayerBackdrop.kt` outer-transform fallback TODO if a reproducible coordinate issue is found; preserve upstream attribution and add a targeted regression test.
+- [ ] Search TODO/FIXME again before taking the quest, because source branches may have moved.
+
+**Acceptance:** metadata is mapped from real response data with tests; any renderer change is justified by a reproducible issue, not a TODO alone.
 
 ## Deferred ideas
 
