@@ -1,7 +1,8 @@
-name: First Run
+name: Runner Smoke Test
 
+# Keep this tiny diagnostics workflow manual-only. Android code pushes are
+# handled by ci.yml; running two workflows for every commit wastes Actions minutes.
 on:
-  push:
   workflow_dispatch:
 
 permissions:
@@ -9,7 +10,7 @@ permissions:
 
 jobs:
   smoke-test:
-    name: Test the Actions setup
+    name: Verify runner access
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -24,7 +25,7 @@ jobs:
           echo "Runner: $RUNNER_OS / $RUNNER_ARCH"
           echo "Checkout successful."
 
-      - name: Generate run report
+      - name: Generate diagnostics report
         run: |
           mkdir -p out
 
