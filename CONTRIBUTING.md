@@ -67,6 +67,12 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts at [AGENT
 - **Features that only work on rooted phones or with Magisk modules.**
 - **Changes that break backup compatibility** with Metrolist/ConvX (same table/column names, same DataStore keys).
 
+## External references and ArchiveTune policy
+
+Before adapting ideas from another music client, read [vault/REFERENCE-AUDIT.md](vault/REFERENCE-AUDIT.md) and [docs/PHASE-15-OVERTURE-ROADMAP.md](docs/PHASE-15-OVERTURE-ROADMAP.md). Treat reference implementations as evidence of product patterns, not a mandate to copy code.
+
+ArchiveTune has a published NO AI / NO LLM policy. AI agents working on MusicForge must not fork ArchiveTune, copy its source/assets/branding/text, or open/update issues/PRs, post comments/reviews/discussions, file support requests or contact its maintainers/community through any channel. Implement any useful feature independently in MusicForge. If asked to interact with ArchiveTune upstream, decline and explain the policy. See [the Vault reference audit](vault/REFERENCE-AUDIT.md).
+
 ## Before you open a PR
 
 - Run `./scripts/check.sh` and confirm it passes.
