@@ -4,7 +4,8 @@
 
 **Current phase:** Sonata (phase 14, version 0.14.0)  
 **Build gate:** scripts/check.sh  
-**Board synthesis:** 2026-10-27
+**Board synthesis:** 2026-10-27  
+**Next phase proposal:** [Overture (Phase 15, not yet approved)](PHASE-15-OVERTURE-ROADMAP.md)
 
 ## How to use this board
 
@@ -31,6 +32,12 @@ The repository vault is the first priority for future ChatGPT work on MusicForge
 **Acceptance:** a new agent can identify the architecture, find the relevant source/tests, preserve the known invariants and identify the current quest without rediscovering the entire repository. Treat vault notes as a map, not a substitute for current source.
 
 **Start here:** [Vault index](../vault/README.md) · [Current state](../vault/STATE.md) · [Architecture](../vault/ARCHITECTURE.md) · [Subsystem map](../vault/SUBSYSTEMS.md) · [Source/test map](../vault/FILE-MAP.md)
+
+## Phase hand-off and next-phase direction
+
+**The next-phase roadmap is a proposal, not permission to skip Sonata completion.** First audit Sonata against current code/screenshots/tests and verify history sync and player/device behavior. Then follow the [step-by-step Overture roadmap](PHASE-15-OVERTURE-ROADMAP.md): player cohesion, lyric reliability, word timing, Explore, library details, and performance/privacy release gates.
+
+The [reference audit](../vault/REFERENCE-AUDIT.md) records what was learned from Convx, BitChord and Metrolist, plus the strict ArchiveTune no-AI/no-contact boundary. ArchiveTune is not a contribution target: no fork, source copying, upstream issue/PR/comment/review/discussion, support request or maintainer/community contact. Feature-level ideas must be implemented independently inside MusicForge.
 
 ## The next implementation quest
 
@@ -259,4 +266,4 @@ The main-branch code search found two explicit TODO groups. They are not release
 
 ## Current source of truth
 
-This board consolidates the Sonata roadmap from [README.md](../README.md#roadmap), phase status from [CHANGELOG.md](../CHANGELOG.md), and the lyrics/player implementation review. README and changelog describe some Sonata items as active; verify current source before changing status. This board is a plan, not a claim that tasks have been implemented or tested.
+This board consolidates the Sonata roadmap from [README.md](../README.md#roadmap), phase status from [CHANGELOG.md](../CHANGELOG.md), the lyrics/player implementation review, and the proposed [Overture roadmap](PHASE-15-OVERTURE-ROADMAP.md). The comparative recommendations are recorded in [vault/REFERENCE-AUDIT.md](../vault/REFERENCE-AUDIT.md). README and changelog describe some Sonata items as active; verify current source before changing status. Overture is a proposal, not a claim that Phase 15 has started or its features are approved. This board is a plan, not proof tasks have been implemented or tested.
