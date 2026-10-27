@@ -17,7 +17,23 @@
 - Build outputs and Gradle project caches are configured to live in `/dev/shm`; this avoids expensive writes on the developer's slow disk, but build outputs are disposable across reboot.
 - Main app package: `dev.musicforge`; app ID `dev.musicforge.app`; debug suffix `.debug`.
 
-Prescribed local build gate:
+## Remote-first build gate for a slow laptop
+
+The preferred full build/test gate is the [GitHub Actions CI workflow](https://github.com/apathane/MusicForge/actions/workflows/ci.yml), which runs on pushes to every branch when Android-relevant files change. This moves SDK setup, Gradle, compilation, unit tests and lint onto a GitHub-hosted runner instead of heating up or swapping out the development laptop. Documentation-only changes intentionally skip the Android build.
+
+After pushing a code change, open Actions → CI, select the run for your branch and wait for its result. Download the debug APK from the “MusicForge-debug-apk” artifact to install it locally; use the “MusicForge-reports” artifact for test/lint diagnostics. The CI workflow can also be manually started from Actions using Run workflow. The manually-run “Runner Smoke Test” is only a tiny diagnostics check, not a substitute for Android CI.
+
+Full remote CI runs these tasks together:
+
+- `:app:assembleDebug`
+- `:app:testDebugUnitTest`
+- `:app:lintDebug`
+- `:innertube:testDebugUnitTest`
+- `:innertube:lintDebug`
+
+## Local fallback build gate
+
+Use the local gate only when remote CI is unavailable, a red CI run requires reproduction, or a local device/build iteration is specifically needed:
 
 ```sh
 ./scripts/check.sh
@@ -32,7 +48,7 @@ CI's `.github/workflows/ci.yml` additionally runs:
 - `:innertube:testDebugUnitTest`
 - `:innertube:lintDebug`
 
-So a local `scripts/check.sh` pass is not identical to full CI. When a task touches `:innertube`, run or request the corresponding checks if available. The repository rules prohibit running multiple heavy Gradle commands concurrently on the same machine; `scripts/check.sh` should be the normal entry point.
+So a local `scripts/check.sh` pass is not identical to full CI. Prefer remote CI for the complete gate on this slow machine. If doing local diagnosis, do not run multiple heavy Gradle commands concurrently; `scripts/check.sh` remains the single local entry point.
 
 Focused test examples from `CLAUDE.md`:
 
