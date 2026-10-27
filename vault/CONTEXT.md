@@ -43,7 +43,7 @@ The [Personalized UI spec](../docs/PERSONALIZED-UI-SPEC.md) records a larger res
 ### Sonata / phase 14
 - The current development version is `0.14.0-sonata`, while the latest stable published release found on 2026-10-27 remained Rondo. Check releases before claiming otherwise.
 - Source/changelog document two-way YouTube Music listening-history sync plus the first player redesign pass (codec pill, Up Next, volume, output-device picker).
-- Commit `248c4fee9e2631ac48ac89eafbc83005fa3d8fdf` (the exact SHA is [here](https://github.com/apathane/MusicForge/commit/248c4fee9e2631ac48ac89eafbc83005fa3d8fdf)) says the first player pass passed the build gate on its worker/emulator but that the full-bleed artwork was still a card and there were icon/touching-disc follow-ups. Inspect current source before assuming each is still open.
+- Commit `248c4fee9e2631ac48ac89eafbc8306405b16a6e` (the exact SHA is [here](https://github.com/apathane/MusicForge/commit/248c4fee9e2631ac48ac89eafbc8306405b16a6e)) says the first player pass passed the build gate on its worker/emulator but that the full-bleed artwork was still a card and there were icon/touching-disc follow-ups. Inspect current source before assuming each is still open.
 - Commit `43194be9613df8152ad29c91474f53198c347b16` added remote history table/migration and local/remote recent-play merge; its message records five merge tests and a schema migration test.
 
 ## Research still worth keeping active
