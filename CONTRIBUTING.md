@@ -62,7 +62,7 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts at [AGENT
 - **Trackers or analytics.** Not even "anonymous" ones.
 - **Ads.** The app doesn't have them and never will.
 - **Features that need paid API keys** (YouTube Music Premium gating, Last.fm scrobbling that requires a key, etc.). The app works with what YouTube Music serves for free.
-- **Network destinations must be explicit and documented.** Core calls go to `music.youtube.com`; lyrics lookup uses `lrclib.net`; `api.listenbrainz.org` is used only when the listener opts in to ListenBrainz scrobbling and supplies a token. Do not add analytics, crash reporting, telemetry or undocumented destinations.
+- **Network destinations must be explicit and documented.** The app uses YouTube/YouTube Music endpoints for browse, search, account sync and stream resolution, plus Google's video-delivery hosts for media bytes. Lyrics lookup uses `lrclib.net`; `api.listenbrainz.org` is used only when the listener opts in to ListenBrainz scrobbling and supplies a token. Do not add analytics, crash reporting, telemetry or undocumented destinations.
 - **DI frameworks, Ktor, RxJava, or Compose Multiplatform.** The stack is intentional.
 - **Features that only work on rooted phones or with Magisk modules.**
 - **Changes that break backup compatibility** with Metrolist/ConvX (same table/column names, same DataStore keys).
