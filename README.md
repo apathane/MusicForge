@@ -164,9 +164,13 @@ The design direction follows the Sonata spec — every screen from the owner's s
 
 **Later.** Crossfade (deferred to a dedicated phase — it needs two decoders on a 680), a real app name + 1.0, and whatever the owner decides after Sonata ships.
 
+## Project Vault
+
+The long-lived technical map for future contributors and ChatGPT sessions lives in [`vault/README.md`](vault/README.md). Start there, then read [`vault/STATE.md`](vault/STATE.md) for current priorities and [`docs/QUEST-BOARD.md`](docs/QUEST-BOARD.md) for the active plan. The vault distinguishes implemented code, documented claims and open questions; always verify important details against the active branch's source.
+
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). The build gate is `scripts/check.sh` (debug build + unit tests + lint, 0 lint errors). Work in your own git worktree and branch; commit small with a `Co-Authored-By:` trailer.
+Read [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and the [project vault](vault/README.md). The build gate is `scripts/check.sh` (debug build + unit tests + lint, 0 lint errors). Work in your own git worktree and branch; commit small with a `Co-Authored-By:` trailer.
 
 ## Credits
 
