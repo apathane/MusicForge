@@ -174,7 +174,7 @@ The proposed next-phase plan is [`docs/PHASE-15-OVERTURE-ROADMAP.md`](docs/PHASE
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and the [project vault](vault/README.md). The build gate is `scripts/check.sh` (debug build + unit tests + lint, 0 lint errors). Work in your own git worktree and branch; commit small with a `Co-Authored-By:` trailer.
+Read [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and the [project vault](vault/README.md). The default full build/test gate is [GitHub Actions CI](https://github.com/apathane/MusicForge/actions/workflows/ci.yml): push your task branch, then download the debug APK or test reports from the run artifacts. Documentation-only edits skip Android builds. Use `scripts/check.sh` locally only for diagnosis or when Actions cannot run. Work in your own git worktree and branch; commit small with a `Co-Authored-By:` trailer.
 
 ## Credits
 
