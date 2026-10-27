@@ -4,7 +4,7 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts here.
 
 1. Read `vault/README.md` and `vault/STATE.md` first. This is the maintained cross-session project context and current priority snapshot; treat it as a map, not a replacement for source verification.
 2. Read `CLAUDE.md`. It's the architecture guide and the project rules, for every agent, not only Claude.
-3. Build gate: `scripts/check.sh` (debug build + unit tests + lint, 0 lint errors). Run nothing else heavier, and never two Gradle commands at once: the dev machine has 14 GB.
+3. Build gate: prefer the green [GitHub Actions CI](https://github.com/apathane/MusicForge/actions/workflows/ci.yml) run for your task branch. Code pushes run the remote debug build + app tests/lint + innertube tests/lint, and upload the APK/reports. On the slow dev laptop, do not repeat this entire build locally just to prove CI again. Use `scripts/check.sh` only if Actions cannot run, CI is red and a local reproduction is needed, or the owner explicitly requests local verification. Run no other heavy Gradle command alongside it; never run two Gradle commands at once.
 4. Work in your own git worktree and branch. Commit small, with a message that says why, ending with the `Co-Authored-By:` line your harness uses. Don't push; the coordinator reviews and merges.
 5. Don't use adb, the emulator or the phone unless your task says so. Device checks belong to whoever merges.
 6. Stay inside the files your task names. If something outside them must change, ask (Orca: `orchestration ask`) instead of editing.
