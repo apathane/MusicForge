@@ -61,3 +61,12 @@ The [Personalized UI spec](../docs/PERSONALIZED-UI-SPEC.md) records a larger res
 - Home is based on actual user signals and explicit remote content, not invented fillers.
 - Liquid glass is a limited accent; more blur does not equal better design if the target GPU loses frames.
 - The vault exists to avoid repeatedly rebuilding project context, but must remain explicitly grounded in current source.
+
+
+## Comparative reference review, 2026-10-27
+
+The detailed findings live in [REFERENCE-AUDIT.md](REFERENCE-AUDIT.md). In brief: Convx shows provider state/concurrency and the complexity behind Automix; BitChord demonstrates prioritized lyric sources, a drift-correcting lyric clock and truthful output-path reporting; Metrolist provides a clear lyric provider registry/TTML parser but explicitly says it is in maintenance mode. ArchiveTune was reviewed only through public README, policy and release-description text, not its code.
+
+**ArchiveTune boundary:** its NO AI / NO LLM policy forbids AI-assisted contributions and directs agents not to interact with its repository. MusicForge agents must not fork it, copy code/assets/branding/text, open upstream issues or PRs, post comments/reviews/discussions or contact maintainers/community through any channel. Implement useful feature-level ideas independently inside MusicForge. This rule is linked from README, AGENTS.md, CLAUDE.md and CONTRIBUTING.md.
+
+The proposed next phase is [Overture](../docs/PHASE-15-OVERTURE-ROADMAP.md), currently a proposal only. Finish the Sonata hand-off and feature-gap audit before treating any Overture feature as approved or missing.
