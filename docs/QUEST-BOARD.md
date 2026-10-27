@@ -23,7 +23,7 @@ The repository vault is the first priority for future ChatGPT work on MusicForge
 - [x] Create the vault index, current-state snapshot, product context, architecture, subsystem guide, engineering invariants, workflow guide, history and source/test map.
 - [x] Link the vault from README and make it the first required read in AGENTS.md and CLAUDE.md.
 - [x] Correct stale Room schema context and document the opt-in ListenBrainz service in security/contributor docs.
-- [x] Correct the misleading claim that exported backups never contain the YouTube Music cookie; document backups as sensitive credentials.
+- [x] Correct the misleading claim that exported backups never contain the YouTube Music cookie; document that the ZIP is unencrypted and may contain YouTube, ListenBrainz and proxy credentials.
 - [ ] Verify the docs against the reviewed source, then review/merge the documentation branch.
 - [ ] Keep the vault current whenever a source, test, architecture decision or meaningful phase status changes.
 - [ ] After code work, record test outcomes and distinguish what ran locally from what CI/device checks remain.
