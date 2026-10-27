@@ -12,7 +12,9 @@ You need JDK 21 and the Android SDK (platform 37, `compileSdk 37`, `targetSdk 36
 ./gradlew :app:lintDebug
 ```
 
-Or run the prescribed local build gate:
+**Preferred for the slow development laptop:** push the task branch and use the [GitHub Actions CI run](https://github.com/apathane/MusicForge/actions/workflows/ci.yml) as the full gate. It runs the app debug build, app unit tests/lint and `:innertube` unit tests/lint, then uploads a debug APK and reports as downloadable artifacts. Code pushes on all branches trigger it automatically; documentation-only changes intentionally skip the Android build. You can also open Actions → CI → Run workflow to request a full check manually.
+
+Use the local prescribed gate only for diagnosis or when remote Actions cannot run:
 
 ```sh
 ./scripts/check.sh
@@ -49,7 +51,7 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts at [AGENT
 
 1. Read [`vault/README.md`](vault/README.md) and [`vault/STATE.md`](vault/STATE.md) first; they are the persistent project map and current priority snapshot.
 2. Read `CLAUDE.md` — it's the architecture guide and project rules.
-3. Run `scripts/check.sh` before opening a PR (debug build + app unit tests + app lint, 0 lint errors). CI also runs tests and lint for `:innertube`.
+3. Prefer a green [GitHub Actions CI run](https://github.com/apathane/MusicForge/actions/workflows/ci.yml) on the task branch before opening a PR; download the debug APK/reports from its artifacts. Run `scripts/check.sh` locally only when remote CI is unavailable or a failing task needs a local reproduction. CI additionally covers `:innertube` tests/lint.
 4. Work in your own git worktree and branch. Commit small, with the `Co-Authored-By:` trailer.
 5. Don't use adb, the emulator or the phone unless your task says so.
 6. Stay inside the files your task names. If something outside them must change, ask.
@@ -75,7 +77,7 @@ ArchiveTune has a published NO AI / NO LLM policy. AI agents working on MusicFor
 
 ## Before you open a PR
 
-- Run `./scripts/check.sh` and confirm it passes.
+- Confirm the task branch has a green [Actions CI run](https://github.com/apathane/MusicForge/actions/workflows/ci.yml). If remote CI cannot be used, run `./scripts/check.sh` locally and report the limitation.
 - If you changed UI, check the screenshots in `docs/screenshots/` still look right.
 - If you added a setting, add its DataStore key to `Keys.importable` in `data/prefs/Prefs.kt` so backups restore it.
 - If you changed the database, add a Room migration and update `app/schemas/`.
