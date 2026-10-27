@@ -197,13 +197,13 @@ This is a tooling decision, not a prerequisite for shipping player features.
 ### Q13 · Decide the right job for Hermes and FCC
 **Status: DECISION · Priority: P1 · Size: S**
 
-**Working hypothesis:** FCC and Hermes are not direct substitutes. FCC is the provider/router and launcher layer; Hermes is an agent harness with persistent memory, skills, tools and delegation. FCC's current README lists a Hermes launcher (fcc-hermes) and fallback-model routing. The useful experiment is to compare:
+**Working hypothesis:** FCC and Hermes are not direct substitutes. FCC is the provider/router and launcher layer; Hermes is an agent harness with persistent memory, skills, tools and delegation. FCC's current README lists a Hermes launcher (fcc-hermes) and configurable fallback models. The launcher routes attached Hermes sessions through FCC; changing provider inside Hermes can intentionally leave the FCC route, so verify the active route rather than assuming all requests use FCC. The useful experiment is to compare:
 
 1. **FCC + a coding harness:** current baseline using existing Claude Code/OpenCode/Kilo workflows with FCC routing.
 2. **Hermes through FCC:** Hermes launched with fcc-hermes and using FCC's configured model/router.
 3. **Standalone Hermes:** Hermes configured directly with a provider.
 
-**Research signal, not a verdict:** Reddit reports are mixed. Some users prefer Hermes for persistent, remote/background work and orchestration; others say it is less focused for complex implementation and prefer it to plan/delegate to a dedicated coding harness. A benchmark article found Hermes competitive under a shared Kimi model, but that does not prove it will outperform the current setup on MusicForge. Model, provider, tools and task design can dominate results.
+**Research signal, not a verdict:** Reddit reports are mixed. Several users describe Hermes as useful for persistent memory, remote/background work and orchestration, while delegating implementation to Claude Code, Codex or OpenCode. Others report that Hermes can overrun a task, consume more context than expected, or be less consistent on complex code than a dedicated coding harness. These are individual anecdotes, not controlled benchmarks. Model, provider, tools and task design can dominate results.
 
 - [ ] Confirm current FCC version's fcc-hermes launch and provider behavior from installed-version help/docs.
 - [ ] Run the same bounded MusicForge task through all three configurations on a disposable branch/worktree.
@@ -219,7 +219,7 @@ This is a tooling decision, not a prerequisite for shipping player features.
 - Provider quotas and terms change; do not assume a model remains free forever.
 - Do not let Hermes and a coding harness edit the same worktree concurrently.
 
-**References:** [FCC README](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [Reddit: Hermes vs Claude Code, October 2026](https://www.reddit.com/r/hermesagent/comments/1xey47r/hermes_vs_claude_code/) · [Reddit: Hermes for programming, October 2026](https://www.reddit.com/r/hermesagent/comments/1x5db7g/hermes_for_programming/) · [Reddit: Hermes with OpenCode](https://www.reddit.com/r/hermesagent/comments/1tmeywo/opencode_in_hermes_agent/) · [Reddit: agent harness comparison](https://www.reddit.com/r/LocalLLaMA/comments/1t7d9h0/the_amount_of_new_agent_apisharnesses_are/)
+**References:** [FCC README](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [FCC README and launcher details](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [Hermes fallback providers](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) · [Reddit: Hermes vs Claude Code, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xey47r/hermes_vs_claude_code/) · [Reddit: Hermes and strict task boundaries, 23 Sep 2026](https://www.reddit.com/r/hermesagent/comments/1wo8x6r/anyone_using_hermes_with_codexclaude_code_a/) · [Reddit: Hermes as orchestrator, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xf3vml/how_are_you_guys_using_hermes_as_a/) · [Reddit: coding harness comparison, LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/comments/1w8f7bp/which_agent_harness_do_you_use_and_why/)
 
 ## Deferred ideas
 
