@@ -30,6 +30,13 @@ The user explicitly designated MusicForge as their first-priority ongoing projec
 - **Build gate:** `scripts/check.sh` runs app debug assemble, app unit tests and app lint. CI also runs `:innertube:testDebugUnitTest` and `:innertube:lintDebug`.
 - **No implementation build/test was run for the vault-doc changes.** These are documentation-only commits, and source behavior has been inspected statically.
 
+## Remote CI verification (2026-10-27)
+
+- Full [GitHub Actions CI run #22](https://github.com/apathane/MusicForge/actions/runs/40579218535) completed **successfully** on `docs/musicforge-quest-board` at tested commit `7cccbc9d5b24fed466541d5fd02b4278e8ae0786`. The current branch may be ahead with documentation-only commits; check the active HEAD when using this record.
+- Verified tasks: `:app:assembleDebug`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:innertube:testDebugUnitTest`, and `:innertube:lintDebug`. The source indentation error previously reported by `:innertube:lintDebug` was corrected before this passing run.
+- Artifacts uploaded successfully: [debug APK and reports](https://github.com/apathane/MusicForge/actions/runs/40579218535). Artifact retention at upload was until 2026-11-03. The APK is a debug build for local installation/testing, not a signed public release.
+- This confirms the Actions-first workflow works without running Gradle on the development laptop. Use `vault/WORKFLOW.md` for steps to retrieve artifacts. Do not claim this run validates later code changes unless the tested source SHA matches or differs only in documented non-code files.
+
 ## New roadmap context from the reference audit
 
 - [Reference audit](REFERENCE-AUDIT.md) compares Convx, BitChord, Metrolist and ArchiveTune, distinguishing source-inspected findings from README-only information.
