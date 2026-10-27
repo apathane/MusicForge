@@ -40,7 +40,7 @@ This is the “things an agent must not accidentally break” page. Some entries
 - Sync deletion is allowed only when an item was in the previous successful remote snapshot and is absent from the new complete snapshot. Partial requests must not erase local data.
 - Sign-out clears identity/sync snapshots, not the user's local library.
 - Restore must validate input, reject empty/damaged backups and snapshot the nonempty local library first. Do not add permissive archive extraction.
-- **Backups are sensitive.** `BackupExporter` copies `settings.preferences_pb` into the user-requested archive as-is; that file can contain the YouTube Music cookie and session state. Never commit backup archives, tell users they are safe to share, or log those values. The restore UI has an explicit choice about importing account/session state.
+- **Backups are sensitive and not encrypted by the app.** `BackupExporter` copies `settings.preferences_pb` into the user-requested ZIP as-is; it can contain the YouTube Music cookie/session state, ListenBrainz token, proxy credentials and other saved preferences. Never commit backup archives, say they are safe to share, or log those values. The restore UI has an explicit choice about importing account/session state, but that does not encrypt the exported file.
 - App-specific `recommendation_feedback` and `remote_history` tables are outside the foreign backup table list. Inspect restore semantics before changing what imported backup data replaces.
 - Export only after enough bytes are actually in cache; don't trigger hidden network downloads while “saving files”. Do not delete files that were deliberately exported to the user's Music folder merely because an in-app download was removed.
 
