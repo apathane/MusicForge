@@ -71,10 +71,10 @@ The Quest Board is the actionable checklist; this page is the status snapshot. U
 
 ## Known doc/source inconsistencies to resolve carefully
 
-1. `CLAUDE.md` still describes Room schema version 2 in one architecture paragraph; actual `MusicDatabase.kt` is version 3 and includes `remote_history`. Correct the stale paragraph when updating the architecture guide.
+1. **Resolved on this branch:** `CLAUDE.md` now states Room schema version 3, documents migrations 1→2 and 2→3, and explains how `recommendation_feedback` and `remote_history` behave during restore. This correction is not on `main` until the review branch is merged.
 2. `README.md`/CHANGELOG discuss phase 14 as active while the latest stable release metadata is phase 13. This is a normal branch-vs-release distinction, but public claims should be exact.
 3. `docs/PERSONALIZED-UI-SPEC.md` labels itself as originally targeting Nocturne/phase 10+, but it remains a design reference. Do not assume every screen listed in its migration plan is still unimplemented.
-4. `CONTRIBUTING.md` and `SECURITY.md` say app network calls are limited to YouTube and LRCLIB (lyrics opt-in), but `data/ListenBrainz.kt` posts to `api.listenbrainz.org` when the user enables it. Update the wording to acknowledge this opt-in third-party service before using those statements as a literal allowlist.
+4. **Resolved on this branch:** `CONTRIBUTING.md` and `SECURITY.md` now document `api.listenbrainz.org` as an explicit opt-in destination, alongside YouTube Music and LRCLIB. Check that wording if adding another network integration.
 5. `scripts/check.sh` omits the `:innertube` test/lint tasks that CI runs. The script is the prescribed local gate, but it is narrower than CI.
 6. Current Sonata UI status is not a checklist yet. The roadmap, commits and source indicate a mix of implemented and open features; do a code-by-code gap audit before marking Sonata done.
 
