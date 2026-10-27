@@ -4,7 +4,7 @@
 
 **Last checked:** 2026-10-27  
 **Context branch:** `docs/musicforge-quest-board`  
-**Priority order:** Vault context first, then the highest-value implementation quest.
+**Priority order:** Vault/context accuracy first, Sonata hand-off verification second, then the proposed Overture plan.
 
 ## First priority: this vault
 
@@ -29,6 +29,13 @@ The user explicitly designated MusicForge as their first-priority ongoing projec
 - **Tests:** JUnit4 + Robolectric + Truth for app JVM tests; `:innertube` has its own unit tests. No dedicated MusicForge lyrics test file exists in the current test tree at this review, although `download/CoversTest.kt` contains one basic `Lrc` round-trip test.
 - **Build gate:** `scripts/check.sh` runs app debug assemble, app unit tests and app lint. CI also runs `:innertube:testDebugUnitTest` and `:innertube:lintDebug`.
 - **No implementation build/test was run for the vault-doc changes.** These are documentation-only commits, and source behavior has been inspected statically.
+
+## New roadmap context from the reference audit
+
+- [Reference audit](REFERENCE-AUDIT.md) compares Convx, BitChord, Metrolist and ArchiveTune, distinguishing source-inspected findings from README-only information.
+- [Phase 15: Overture](../docs/PHASE-15-OVERTURE-ROADMAP.md) is a proposal, not an approved phase or codename change. Do not update versionName/versionCode or call features missing until the Sonata gap matrix has been checked against the active branch.
+- The recommended direction is player cohesion, lyric reliability/word timing and Explore. Pocket Library, Smart Transitions and social/provider modules are separate later-phase proposals.
+- ArchiveTune is a strict no-AI contribution/no-contact boundary: no fork, copied code/assets, upstream issues/PRs/comments/reviews/discussions, support requests or maintainer/community contact. Independent feature implementation belongs in MusicForge only.
 
 ## Current app status: implemented vs planned
 
