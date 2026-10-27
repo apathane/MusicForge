@@ -97,7 +97,7 @@
 | `data/AccountSyncTest.kt` | Snapshot-backed sync deletion rules |
 | `data/backup/BackupImporterTest.kt` | Backup formats, safety, malformed archive/data |
 | `data/db/MigrationTest.kt` | Schema migration preservation |
-| `download/CoversTest.kt` | Artwork/cover support |
+| `download/CoversTest.kt` | FLAC cover-picture block plus basic LRC round-trip |
 | `download/DownloadMetaTest.kt` | Saved metadata decoding |
 | `download/DuplicatesTest.kt` | Audio identity / shared bytes rule |
 | `download/OggTagsTest.kt` | Ogg comments and CRC/tag structure |
