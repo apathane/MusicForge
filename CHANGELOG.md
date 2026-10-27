@@ -13,7 +13,9 @@ Version 0.14.0, codename `Sonata`.
 - One RAM build folder per git worktree
 - Settings button on every tab; version follows the phase
 - Voice rules codified: why-comments may be funny, UI gets a little warmth
-- `AGENTS.md` and `scripts/check.sh`: one entry point for every coding agent
+- `AGENTS.md` and `scripts/check.sh`: clear entry point and local fallback for coding agents
+- GitHub Actions: build/test/lint on every code branch, debug APK + reports artifacts, docs-only paths skipped
+- Fixed playlist author fallback indentation reported by `:innertube:lintDebug`
 
 ---
 
