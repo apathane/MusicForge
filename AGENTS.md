@@ -18,3 +18,11 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts here.
    - keep upstream DataStore key names, because backups depend on them.
 8. Never commit real user data: backups, cookies, databases.
 9. Voice: see "Personality" and "UI voice" under Conventions in CLAUDE.md. Comments explain why and may be funny when something earned it; empty states and errors can have a wink; buttons stay literal.
+
+
+## Third-party reference boundaries
+
+- Read the [reference audit](vault/REFERENCE-AUDIT.md) before using ideas from other music clients and read the [proposed Phase 15 roadmap](docs/PHASE-15-OVERTURE-ROADMAP.md) before planning phase-level work.
+- **ArchiveTune is reference-only, never an AI contribution target.** Its public NO AI / NO LLM policy forbids AI-assisted contributions. Do not fork it, create an ArchiveTune-derived branch/worktree, copy its code/assets/branding/text, open or modify its issues/PRs, post comments/reviews/discussions, submit support requests, or contact its maintainers/community on GitHub, Discord, Telegram, email or elsewhere.
+- You may implement independently designed feature-level ideas inside MusicForge. Keep provenance clear, use no ArchiveTune code or assets, and do not imply affiliation or approval. If asked to contact or contribute to ArchiveTune upstream, refuse that action and explain the policy.
+- This boundary does not replace licence/provenance review for Convx, BitChord, Metrolist or any dependency. Learn from behavior and architecture first; source reuse requires an explicit review of licensing, notices and project fit.
