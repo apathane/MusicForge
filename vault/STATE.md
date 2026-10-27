@@ -26,7 +26,7 @@ The user explicitly designated MusicForge as their first-priority ongoing projec
 - **Latest published stable release returned by GitHub API:** `v0.13.0-rondo`, published 2026-10-24. Confirm releases before external/public claims.
 - **Room:** schema version 3, migrations 1→2 and 2→3.
 - **Open GitHub issues:** none returned by the repository issue search on 2026-10-27. This is not a substitute for checking the issue tracker later.
-- **Tests:** JUnit4 + Robolectric + Truth for app JVM tests; `:innertube` has its own unit tests. No dedicated MusicForge lyrics test file exists in the current test tree at this review.
+- **Tests:** JUnit4 + Robolectric + Truth for app JVM tests; `:innertube` has its own unit tests. No dedicated MusicForge lyrics test file exists in the current test tree at this review, although `download/CoversTest.kt` contains one basic `Lrc` round-trip test.
 - **Build gate:** `scripts/check.sh` runs app debug assemble, app unit tests and app lint. CI also runs `:innertube:testDebugUnitTest` and `:innertube:lintDebug`.
 - **No implementation build/test was run for the vault-doc changes.** These are documentation-only commits, and source behavior has been inspected statically.
 
@@ -78,6 +78,12 @@ The Quest Board is the actionable checklist; this page is the status snapshot. U
 5. `scripts/check.sh` omits the `:innertube` test/lint tasks that CI runs. The script is the prescribed local gate, but it is narrower than CI.
 6. Current Sonata UI status is not a checklist yet. The roadmap, commits and source indicate a mix of implemented and open features; do a code-by-code gap audit before marking Sonata done.
 7. **Resolved on this branch:** `SECURITY.md` previously said the account cookie was never included in exported backups, but `BackupExporter` copies the DataStore preferences file into the archive. The corrected guidance says backups can contain account/session secrets and must be treated as sensitive. Verify this against the current exporter before changing backup format.
+
+## Explicit source TODOs found on main at this review
+
+- `innertube/src/main/kotlin/com/metrolist/innertube/YouTube.kt` has two TODOs for extracting the explicit-content badge for albums from the YouTube response (around lines 426 and 516 on the reviewed source). This may affect metadata accuracy; it is small, but should be checked against the current upstream model before implementation.
+- `app/src/main/kotlin/dev/musicforge/ui/backdrop/backdrops/LayerBackdrop.kt` has a TODO to account for outer transforms in a fallback coordinate calculation (around line 168). This is backdrop-renderer internals; do not change casually. First reproduce an actual issue, because this area is performance-sensitive and derived from vendored artwork.
+- The GitHub code search for `FIXME` returned no results on the reviewed main tree. Search again before assuming these are still the only explicit TODOs.
 
 ## How to update this page
 
