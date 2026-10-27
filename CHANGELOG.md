@@ -14,6 +14,7 @@ Version 0.14.0, codename `Sonata`.
 - Settings button on every tab; version follows the phase
 - Voice rules codified: why-comments may be funny, UI gets a little warmth
 - `AGENTS.md` and `scripts/check.sh`: one entry point for every coding agent
+- Lyrics: reject malformed LRC seconds; choose LRCLIB search results safely when track duration is unknown
 
 ---
 
