@@ -12,7 +12,7 @@ You need JDK 21 and the Android SDK (platform 37, `compileSdk 37`, `targetSdk 36
 ./gradlew :app:lintDebug
 ```
 
-Or run the one command the CI runs:
+Or run the prescribed local build gate:
 
 ```sh
 ./scripts/check.sh
