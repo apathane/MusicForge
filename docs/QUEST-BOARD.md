@@ -15,7 +15,23 @@
 - **DECISION**: requires a design or tooling decision first.
 - Tick a quest only after acceptance checks pass. Keep changes small and reviewable; run scripts/check.sh.
 
-## The next quest
+## Q0 · Keep the Vault accurate and useful
+**Status: ACTIVE · Priority: P0 · Size: ongoing**
+
+The repository vault is the first priority for future ChatGPT work on MusicForge. It exists to preserve technical context, source maps, invariants and project history so work does not restart from zero each session.
+
+- [x] Create the vault index, current-state snapshot, product context, architecture, subsystem guide, engineering invariants, workflow guide, history and source/test map.
+- [x] Link the vault from README and make it the first required read in AGENTS.md and CLAUDE.md.
+- [x] Correct stale Room schema context and document the opt-in ListenBrainz service in security/contributor docs.
+- [ ] Verify the docs against the reviewed source, then review/merge the documentation branch.
+- [ ] Keep the vault current whenever a source, test, architecture decision or meaningful phase status changes.
+- [ ] After code work, record test outcomes and distinguish what ran locally from what CI/device checks remain.
+
+**Acceptance:** a new agent can identify the architecture, find the relevant source/tests, preserve the known invariants and identify the current quest without rediscovering the entire repository. Treat vault notes as a map, not a substitute for current source.
+
+**Start here:** [Vault index](../vault/README.md) · [Current state](../vault/STATE.md) · [Architecture](../vault/ARCHITECTURE.md) · [Subsystem map](../vault/SUBSYSTEMS.md) · [Source/test map](../vault/FILE-MAP.md)
+
+## The next implementation quest
 
 ### Q1 · Make lyrics dependable
 **Status: NEXT · Priority: P0 · Size: M**
@@ -219,7 +235,7 @@ This is a tooling decision, not a prerequisite for shipping player features.
 - Provider quotas and terms change; do not assume a model remains free forever.
 - Do not let Hermes and a coding harness edit the same worktree concurrently.
 
-**References:** [FCC README](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [FCC README and launcher details](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [Hermes fallback providers](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) · [Reddit: Hermes vs Claude Code, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xey47r/hermes_vs_claude_code/) · [Reddit: Hermes and strict task boundaries, 23 Sep 2026](https://www.reddit.com/r/hermesagent/comments/1wo8x6r/anyone_using_hermes_with_codexclaude_code_a/) · [Reddit: Hermes as orchestrator, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xf3vml/how_are_you_guys_using_hermes_as_a/) · [Reddit: coding harness comparison, LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/comments/1w8f7bp/which_agent_harness_do_you_use_and_why/)
+**References:** [FCC README](https://github.com/Alishahryar1/free-claude-code) · [Hermes Agent](https://github.com/NousResearch/hermes-agent) · [Hermes tools docs](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md) · [Hermes fallback providers](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) · [Reddit: Hermes vs Claude Code, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xey47r/hermes_vs_claude_code/) · [Reddit: Hermes and strict task boundaries, 23 Sep 2026](https://www.reddit.com/r/hermesagent/comments/1wo8x6r/anyone_using_hermes_with_codexclaude_code_a/) · [Reddit: Hermes as orchestrator, 25 Oct 2026](https://www.reddit.com/r/hermesagent/comments/1xf3vml/how_are_you_guys_using_hermes_as_a/) · [Reddit: coding harness comparison, LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/comments/1w8f7bp/which_agent_harness_do_you_use_and_why/)
 
 ## Deferred ideas
 
