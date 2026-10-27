@@ -79,7 +79,7 @@ Do not run baseline-profile generation or device benchmarks against a phone cont
 - `ui/YouTubeLinkTest.kt`
 - `ui/screens/PlaylistInsightTest.kt`
 
-The initial repository inventory found no dedicated `LyricsTest` / `LrcTest` file. Check again before creating one; Q1 starts with lyrics parser/provider regression coverage.
+The initial repository inventory found no dedicated `LyricsTest` / `LrcTest` file. `download/CoversTest.kt` does include a basic `lrcRoundTrips()` test, so extend it with edge cases or split lyric parser coverage into a focused test file. Check again before creating one; Q1 starts with lyrics parser/provider regression coverage.
 
 ### InnerTube module tests
 
