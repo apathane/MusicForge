@@ -132,6 +132,7 @@ Relevant source: `playback/MediaEngine.kt`, `StreamResolver.kt`, `ChunkedDataSou
 - It uses column intersection between tables rather than a per-version migration matrix. Tables are copied in parent-before-child order; rows the current DB owns but backup lacks get defaults when allowed.
 - It keeps bytes the app actually has and identifies backup-marked downloads whose bytes are absent, so the UI can offer redownload.
 - Before a restore, `AutoBackup.snapshotBeforeRestore()` creates a safety copy when the local library is nonempty.
+- The backup is an ordinary ZIP written by `ZipOutputStream`, not an encrypted container. It includes the DataStore preferences file as-is, which can contain the YouTube cookie, ListenBrainz token, proxy credentials and other saved settings. Treat exported and auto-backup files as secrets; never use real backup files as test fixtures in Git.
 - The settings cookie/account inclusion choice is a security-sensitive behavior. Never put a real export fixture or account backup in a commit.
 
 ## UI composition and lifecycle
