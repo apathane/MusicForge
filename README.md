@@ -168,6 +168,10 @@ The design direction follows the Sonata spec — every screen from the owner's s
 
 The long-lived technical map for future contributors and ChatGPT sessions lives in [`vault/README.md`](vault/README.md). Start there, then read [`vault/STATE.md`](vault/STATE.md) for current priorities and [`docs/QUEST-BOARD.md`](docs/QUEST-BOARD.md) for the active plan. The vault distinguishes implemented code, documented claims and open questions; always verify important details against the active branch's source.
 
+The proposed next-phase plan is [`docs/PHASE-15-OVERTURE-ROADMAP.md`](docs/PHASE-15-OVERTURE-ROADMAP.md). It is a proposal, not approval to change the version or codename. The comparative findings are in [`vault/REFERENCE-AUDIT.md`](vault/REFERENCE-AUDIT.md).
+
+**ArchiveTune reference boundary:** its published NO AI / NO LLM policy must be respected. AI agents working on MusicForge must not fork ArchiveTune, copy its source, or interact with its upstream issue/PR/comment/review/discussion/support channels or maintainers. Feature-level inspiration belongs in MusicForge, implemented independently. See the [reference audit](vault/REFERENCE-AUDIT.md).
+
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and the [project vault](vault/README.md). The build gate is `scripts/check.sh` (debug build + unit tests + lint, 0 lint errors). Work in your own git worktree and branch; commit small with a `Co-Authored-By:` trailer.
