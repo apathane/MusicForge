@@ -34,6 +34,6 @@ Only the **latest release** receives security updates. Older versions (including
 
 - The app stores your YouTube Music cookie in DataStore (`Keys.InnerTubeCookie`). It is never logged, never sent anywhere except `music.youtube.com`, and never included in backups exported via the in-app "Export backup" button.
 - Downloads are written to the app's private cache (`downloadCache`). They are not world-readable. `MusicExport` copies them to `Music/MusicForge` via MediaStore only when you explicitly choose "Save to files".
-- The app does not use any analytics, crash reporters, or telemetry. The only network calls are to `music.youtube.com` (stream extraction, search, account sync) and `lrclib.net` (lyrics, opt-in).
+- The app does not use analytics, crash reporters, or telemetry. Core network calls to `music.youtube.com` support stream extraction, search and account sync. `lrclib.net` is used for lyric lookup. `api.listenbrainz.org` is contacted only when the listener explicitly enables ListenBrainz scrobbling and supplies a token. These are the documented data destinations; any new destination must be reviewed and disclosed.
 - Google sign-in uses a WebView that captures the `music.youtube.com` cookie. The WebView is not reused for anything else.
 - The vendored `innertube` module and InnerTubeX (JitPack) handle stream extraction. We pin InnerTubeX to a specific commit in `settings.gradle.kts`.
