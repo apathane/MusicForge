@@ -77,7 +77,7 @@ The Quest Board is the actionable checklist; this page is the status snapshot. U
 4. **Resolved on this branch:** `CONTRIBUTING.md` and `SECURITY.md` now document `api.listenbrainz.org` as an explicit opt-in destination, alongside YouTube Music and LRCLIB. Check that wording if adding another network integration.
 5. `scripts/check.sh` omits the `:innertube` test/lint tasks that CI runs. The script is the prescribed local gate, but it is narrower than CI.
 6. Current Sonata UI status is not a checklist yet. The roadmap, commits and source indicate a mix of implemented and open features; do a code-by-code gap audit before marking Sonata done.
-7. **Resolved on this branch:** `SECURITY.md` previously said the account cookie was never included in exported backups, but `BackupExporter` copies the DataStore preferences file into the archive. The corrected guidance says backups can contain account/session secrets and must be treated as sensitive. Verify this against the current exporter before changing backup format.
+7. **Resolved on this branch:** `SECURITY.md` previously said the account cookie was never included in exported backups, but `BackupExporter` copies the DataStore preferences file into an ordinary, unencrypted ZIP. That file can contain the YouTube cookie/session values, ListenBrainz token, proxy credentials and other settings. The corrected guidance says backups are sensitive and must be stored securely. Re-check this boundary before changing backup format.
 
 ## Explicit source TODOs found on main at this review
 
