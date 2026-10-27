@@ -88,6 +88,10 @@ A visible feature existing in source is not proof every path behaves correctly o
 
 These are influences, not permission to transplant code without checking license, attribution, API fit, performance and MusicForge-specific invariants.
 
+## Next phase proposal
+
+The proposed Phase 15 direction is **Overture** (name/codename not yet approved). Read the [step-by-step roadmap](../docs/PHASE-15-OVERTURE-ROADMAP.md) and [reference audit](REFERENCE-AUDIT.md) before planning a large change. Complete the Sonata hand-off first; the proposal prioritizes player cohesion, lyric reliability/word timing and real Explore content. Local files and Smart Transitions are separate later-phase proposals.
+
 ## Primary documents
 
 - [README](../README.md): user-facing features and Sonata roadmap.
@@ -97,4 +101,6 @@ These are influences, not permission to transplant code without checking license
 - [CONTRIBUTING](../CONTRIBUTING.md): build, branch and contribution policy.
 - [Personalized UI spec](../docs/PERSONALIZED-UI-SPEC.md): product/design/implementation intent, originally drafted for an earlier phase.
 - [Quest Board](../docs/QUEST-BOARD.md): ordered proposed work.
+- [Reference audit](REFERENCE-AUDIT.md): what to learn from Convx, BitChord, Metrolist and ArchiveTune, with the no-contact boundary.
+- [Phase 15 roadmap](../docs/PHASE-15-OVERTURE-ROADMAP.md): proposed scope and future-phase gates.
 - [Benchmarks](../docs/BENCHMARKS.md): measured transfer and emulator rendering results.
