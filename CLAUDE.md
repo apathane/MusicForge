@@ -6,7 +6,7 @@ MusicForge is a YouTube Music player for Android (Kotlin, Jetpack Compose, Media
 
 ## Start with the project vault
 
-Read [`vault/README.md`](vault/README.md) and [`vault/STATE.md`](vault/STATE.md) before taking a task. The vault is MusicForge's durable cross-session context and source map. Verify every important claim in the active branch's code/tests; update the relevant vault page and [`docs/QUEST-BOARD.md`](docs/QUEST-BOARD.md) when a durable decision or status changes.
+Read [`vault/README.md`](vault/README.md) and [`vault/STATE.md`](vault/STATE.md) before taking a task. The vault is MusicForge's durable cross-session context and source map. Verify every important claim in the active branch's code/tests; update the relevant vault page and [`docs/QUEST-BOARD.md`](docs/QUEST-BOARD.md) when a durable decision or status changes. Before using other music apps as references, read [`vault/REFERENCE-AUDIT.md`](vault/REFERENCE-AUDIT.md) and the [`Phase 15 roadmap`](docs/PHASE-15-OVERTURE-ROADMAP.md).
 
 ## Commands
 
@@ -76,3 +76,8 @@ JDK 21 and the Android SDK (compileSdk 37, minSdk 26, targetSdk 36).
 - **Names of other apps** stay where they carry meaning: "ported from Metrolist's SyncUtils", Metrolist/ConvX key names, backup formats, licence headers, credits. Drop them where they are only "like X does".
 - **UI voice:** short, plain, a little warm, never cute at the cost of clarity. Empty states, errors and loading lines can have a wink ("Nothing here yet. Press play somewhere and it'll fill up."); buttons and settings stay literal.
 - The Gradle version catalog is `gradle/libs.versions.toml`. Media3 is pinned to 1.10.x on purpose (see the comment there).
+
+
+## ArchiveTune policy boundary
+
+ArchiveTune's published NO AI / NO LLM policy prohibits AI-assisted contributions to ArchiveTune. This agent must not fork ArchiveTune, create ArchiveTune-derived worktrees/branches, copy its code/assets/branding/text, or interact with its upstream issues, pull requests, comments, reviews, discussions, support channels or maintainers/community on GitHub, Discord, Telegram, email or elsewhere. Use only independently designed feature-level inspiration for MusicForge itself. If asked to interact with ArchiveTune upstream, refuse that action and point to vault/REFERENCE-AUDIT.md. Do not imply affiliation or endorsement.
