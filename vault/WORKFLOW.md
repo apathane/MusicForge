@@ -31,6 +31,8 @@ Full remote CI runs these tasks together:
 - `:innertube:testDebugUnitTest`
 - `:innertube:lintDebug`
 
+**Last verified:** CI run [#22 on 2026-10-27](https://github.com/apathane/MusicForge/actions/runs/40579218535) completed successfully, running all five tasks above and uploading APK/reports. It corrected an existing `:innertube:lintDebug` suspicious-indentation issue before passing. The debug APK/report artifacts are time-limited and may expire; later runs have their own artifacts.
+
 ## Local fallback build gate
 
 Use the local gate only when remote CI is unavailable, a red CI run requires reproduction, or a local device/build iteration is specifically needed:
