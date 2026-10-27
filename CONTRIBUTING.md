@@ -47,14 +47,15 @@ The project has a distinct, human voice. See [CLAUDE.md](CLAUDE.md#conventions) 
 
 Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts at [AGENTS.md](AGENTS.md). The short version:
 
-1. Read `CLAUDE.md` — it's the architecture guide and the project rules.
-2. Run `scripts/check.sh` before opening a PR (debug build + unit tests + lint, 0 lint errors).
-3. Work in your own git worktree and branch. Commit small, with the `Co-Authored-By:` trailer.
-4. Don't use adb, the emulator or the phone unless your task says so.
-5. Stay inside the files your task names. If something outside them must change, ask.
-6. Rules that bite: no DI framework (wire through `AppGraph`), no Ktor (YouTube goes through the vendored innertube module), tests are JUnit4 + Robolectric + Truth, Compose motion uses `graphicsLayer` only, nothing heavy on the main thread, artwork requested at slot size, keep upstream DataStore key names.
-7. Never commit real user data: backups, cookies, databases.
-8. Voice: see "Personality" and "UI voice" in CLAUDE.md.
+1. Read [`vault/README.md`](vault/README.md) and [`vault/STATE.md`](vault/STATE.md) first; they are the persistent project map and current priority snapshot.
+2. Read `CLAUDE.md` — it's the architecture guide and project rules.
+3. Run `scripts/check.sh` before opening a PR (debug build + app unit tests + app lint, 0 lint errors). CI also runs tests and lint for `:innertube`.
+4. Work in your own git worktree and branch. Commit small, with the `Co-Authored-By:` trailer.
+5. Don't use adb, the emulator or the phone unless your task says so.
+6. Stay inside the files your task names. If something outside them must change, ask.
+7. Rules that bite: no DI framework (wire through `AppGraph`), no Ktor for YouTube (use the vendored `innertube` module), tests are JUnit4 + Robolectric + Truth, Compose motion uses `graphicsLayer` only, nothing heavy on the main thread, artwork requested at slot size, keep upstream DataStore key names.
+8. Never commit real user data: backups, cookies, databases.
+9. Voice: see "Personality" and "UI voice" in CLAUDE.md.
 
 ## What we won't take
 
