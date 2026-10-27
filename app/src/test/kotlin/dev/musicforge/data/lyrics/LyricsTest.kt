@@ -3,7 +3,10 @@ package dev.musicforge.data.lyrics
 import com.google.common.truth.Truth.assertThat
 import org.json.JSONObject
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class LyricsTest {
     @Test fun rejectsInvalidSecondsAndUntimedText() {
         assertThat(Lrc.parse("plain text\n[00:60.00]invalid\n[01:99]also invalid")).isNull()
