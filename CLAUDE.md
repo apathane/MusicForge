@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MusicForge is a YouTube Music player for Android (Kotlin, Jetpack Compose, Media3, Room). It was built from scratch on ideas from Metrolist (download engine), ConvX (screens, features, backup format) and BitChord (bounded-range transfers, monochrome style). GPL-3.0. The target device is an Honor X7b (Snapdragon 680, Adreno 610, Android 14, MagicOS, locale `en-ZA`).
 
+## Start with the project vault
+
+Read [`vault/README.md`](vault/README.md) and [`vault/STATE.md`](vault/STATE.md) before taking a task. The vault is MusicForge's durable cross-session context and source map. Verify every important claim in the active branch's code/tests; update the relevant vault page and [`docs/QUEST-BOARD.md`](docs/QUEST-BOARD.md) when a durable decision or status changes.
+
 ## Commands
 
 JDK 21 and the Android SDK (compileSdk 37, minSdk 26, targetSdk 36).
@@ -42,7 +46,7 @@ JDK 21 and the Android SDK (compileSdk 37, minSdk 26, targetSdk 36).
 
 **Playback** (`playback/PlaybackService.kt`) is a `MediaLibraryService`: notification and lock screen, Android Auto (`BrowseTree`), voice search (`SearchPlay`), radio continuation, read-ahead of upcoming items (`ReadAhead`), in-app 5-band EQ (`EqualizerProcessor` in the audio sink), loudness attenuation to −14 LUFS, play-time checkpoints every 30 s, the persistent queue (`QueueStore`) and `onPlaybackResumption`. The UI talks to it only through `PlayerConnection` (a `MediaController`). The home-screen widget (`widget/PlayerWidget`) sends commands through a short-lived controller so it works when the app is dead.
 
-**Data.** Room schema version 2 (`app/schemas/`). Its upstream tables are a superset of Metrolist v38 and ConvX v40 tables and columns, with the same table and column names, so backups copy across by column intersection. MusicForge's own tables (`recommendation_feedback`, from v2) are not in `BackupImporter.TABLE_ORDER`, so restores neither copy nor wipe them. Schema changes go through Room AutoMigrations; `MigrationTest` checks a v1 library survives (the schemas ride in debug assets for it). `BackupImporter`:
+**Data.** Room schema version 3 (`app/schemas/`), with AutoMigrations 1→2 (`recommendation_feedback`) and 2→3 (`remote_history`). Its upstream tables are a superset of Metrolist v38 and ConvX v40 tables and columns, with the same table and column names, so backups copy across by column intersection. `recommendation_feedback` is imported only from a MusicForge backup; `remote_history` is deliberately outside the backup table list and remains local state across restore. Schema changes go through Room AutoMigrations; `MigrationTest` checks an older library survives (the schemas ride in debug assets for it). `BackupImporter`:
 - never `ATTACH`es (Android turns WAL off for that connection); it streams rows from a separate connection;
 - replays a bundled `-wal` and refuses empty backups (the restore screen takes an `AutoBackup` snapshot first);
 - stashes songs whose bytes we hold, with their artists and `format` rows (ours win over the backup's), so downloads survive a restore;
