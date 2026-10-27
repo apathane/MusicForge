@@ -22,6 +22,8 @@ JDK 21 and the Android SDK (compileSdk 37, minSdk 26, targetSdk 36).
 ./gradlew :app:generateReleaseBaselineProfile     # needs a device; runs on every connected device unless ANDROID_SERIAL is set
 ```
 
+**Build remotely by default on the slow development laptop.** Push your task branch and use [GitHub Actions CI](https://github.com/apathane/MusicForge/actions/workflows/ci.yml): it runs the app build, tests and lint plus the `:innertube` test/lint tasks, and uploads a debug APK and reports. Documentation-only changes skip the Android workflow. Run the full local `scripts/check.sh` gate only to reproduce a red CI result, when Actions is unavailable, or when the owner specifically requests a local run. See [`vault/WORKFLOW.md`](vault/WORKFLOW.md).
+
 - Build outputs go to `/dev/shm/musicforge-build/<module>` (see the end of `build.gradle.kts`) and the project cache to `/dev/shm/musicforge-gradle` (`gradle.properties`), because the dev machine's disk is slow. APKs are under `/dev/shm/musicforge-build/app/outputs/apk/`. The `build` symlinks in module folders are local conveniences and are gitignored.
 - The baseline profile generator and the macrobenchmarks in `:baselineprofile` reinstall `dev.musicforge.app` and reset its data. Never point them at a phone whose release install holds real user data. Test on real hardware with the debug package instead.
 - Quick on-device checks without instrumentation: `adb shell am start -W` for start time, `adb shell dumpsys gfxinfo <pkg>` for frame stats, `adb shell setprop debug.hwui.overdraw show` for overdraw, `cmd package compile -m speed-profile -f <pkg>` vs `-m verify` to compare with and without the profile.
