@@ -12,9 +12,11 @@
 | `CLAUDE.md` | Detailed architecture, commands, invariants and coding conventions |
 | `CONTRIBUTING.md` | Toolchain, branch/commit, contribution and non-goal policy |
 | `SECURITY.md` | Secret-handling and vulnerability policy |
+| `vault/REFERENCE-AUDIT.md` | Comparative analysis of Convx, BitChord, Metrolist and ArchiveTune, plus its mandatory no-contact boundary |
 | `docs/PERSONALIZED-UI-SPEC.md` | Detailed product/design/recommendation spec |
 | `docs/BENCHMARKS.md` | Transfer and UI performance measurements |
-| `docs/QUEST-BOARD.md` | Prioritized next-step quests, including Hermes/FCC test |
+| `docs/QUEST-BOARD.md` | Prioritized next-step quests and the Sonata hand-off gate |
+| `docs/PHASE-15-OVERTURE-ROADMAP.md` | Proposed step-by-step Phase 15 plan and later-phase gates |
 | `scripts/check.sh` | Prescribed local build + app tests + app lint gate |
 | `gradle/libs.versions.toml` | Central version catalog |
 | `settings.gradle.kts` | Modules and allowed dependency repositories |
