@@ -1006,22 +1006,22 @@ object YouTube {
                     ?.let { Artist(name = it.text, id = it.navigationEndpoint?.browseEndpoint?.browseId) }
                 if (fromStrapline != null) return@run fromStrapline
 
-                    val detailSubtitle =
-                        base
-                            ?.musicEditablePlaylistDetailHeaderRenderer
-                            ?.header
+                val detailSubtitle =
+                    base
+                        ?.musicEditablePlaylistDetailHeaderRenderer
+                        ?.header
+                        ?.musicDetailHeaderRenderer
+                        ?.subtitle
+                        ?.runs
+                        ?: response.header
                             ?.musicDetailHeaderRenderer
                             ?.subtitle
                             ?.runs
-                            ?: response.header
-                                ?.musicDetailHeaderRenderer
-                                ?.subtitle
-                                ?.runs
-                    val fromDetail = PageHelper.extractArtists(detailSubtitle).firstOrNull()
-                    if (fromDetail != null) return@run fromDetail
+                val fromDetail = PageHelper.extractArtists(detailSubtitle).firstOrNull()
+                if (fromDetail != null) return@run fromDetail
 
-                    val fromHeaderSubtitle = PageHelper.extractArtists(header?.subtitle?.runs).firstOrNull()
-                    if (fromHeaderSubtitle != null) return@run fromHeaderSubtitle
+                val fromHeaderSubtitle = PageHelper.extractArtists(header?.subtitle?.runs).firstOrNull()
+                if (fromHeaderSubtitle != null) return@run fromHeaderSubtitle
 
                 val facepile = header?.facepile?.avatarStackViewModel
                 if (facepile != null) {
