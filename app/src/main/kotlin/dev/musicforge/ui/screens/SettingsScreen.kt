@@ -353,7 +353,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             )
             ToggleRow(
                 "Include previews",
-                prefs?.get(UpdateKeys.includePreviews) ?: BuildConfig.VERSION_NAME.startsWith("0."),
+                prefs?.get(UpdateKeys.includePreviews) ?: false,
                 subtitle = "Offer beta and preview releases when checking for updates",
             ) { vm.set(UpdateKeys.includePreviews, it) }
         }
