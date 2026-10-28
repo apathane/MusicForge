@@ -10,10 +10,10 @@ Plan: each agent owns its files only, at most 2 per provider at once, CI builds,
 - [x] **Sign-in loops** (LoginScreen.kt): after the cookie is captured, `recreate()` reopens the
       login route, which captures and recreates again. Leave the route first; add a "Use this
       account" confirm button (BitChord-style) instead of capturing on every page load. (fcc-claude · Laguna)
-- [ ] **Tapping the headphones icon crashes** (PlayerSheet.kt): `MEDIA_OUTPUT` panel missing on
+- [x] **Tapping the headphones icon crashes** (PlayerSheet.kt): `MEDIA_OUTPUT` panel missing on
       MagicOS, unguarded `startActivity`. Catch it, fall back to sound settings, then a toast.
       Same file: volume slider semantics, 48 dp hit area and debounce; output-device lookup off
-      the main thread. (Hermes · Nemotron 3.5 Super VL)
+      the main thread. (Hermes · Nemotron 3.5 Super VL) — commit 98d139f
 - [ ] **Artwork not loading** (Up Next and elsewhere): find why; candidates: queue items without
       artworkUri, the URL rewrite, repair not covering queue items. Files: MediaItems.kt,
       components/Common.kt (Artwork), data/ArtRepair.kt. (fcc-opencode · Laguna)
