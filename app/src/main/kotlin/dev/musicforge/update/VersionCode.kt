@@ -16,7 +16,7 @@ fun versionCodeOf(tag: String, releaseBody: String? = null): Int? {
     // final 0.14.0 release to supersede previews (which already use 1401+), while preserving
     // tag-only compatibility for older releases.
     val declaredCode = releaseBody
-        ?.let { Regex("""\\bcode\\s+(\\d+)\\b""", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1) }
+        ?.let { Regex("""\bcode\s+(\d+)\b""", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1) }
         ?.toIntOrNull()
     if (declaredCode != null && declaredCode > 0) return declaredCode
     val clean = tag.removePrefix("v")
