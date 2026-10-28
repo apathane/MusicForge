@@ -77,7 +77,8 @@ class AccountSync(
         if (YouTube.cookie == null) return@withContext
         if (!lock.tryLock()) return@withContext
         try {
-            val synced = history()
+            var synced: Int? = null
+            step("History") { synced = history() }
             if (synced != null) settings.edit { it[Keys.LastHistorySync] = System.currentTimeMillis() }
         } catch (e: Exception) {
             Timber.w(e, "history sync failed")
