@@ -37,6 +37,6 @@ Text contrast preserved: tint stays light enough (0.31-0.40 alpha) that labels r
 
 The site hero eyebrow said "Android · 0.15 Rondo" — a leftover from phase 13. The actual build is `0.14.0-sonata` (phase 14, codename Sonata). Fixed to `SONATA / 0.14` on hero line 28 and closing topline line 369, matching `build.gradle.kts` and `CHANGELOG.md`.
 
-## Why no commit/push yet
+## Current integration status
 
-User instruction: "im cleaning up the repo, ill tell you pull it all when im done." All changes remain uncommitted in the worktree for review.
+The original site redesign and glass-mode naming are now merged to `main`; GitHub Pages deployment passed in run 40757309328. PR #2 is merged. The preview 4 updater and release workflow are tracked separately in PR #3, where CI and review must pass before the updater is merged and the release is published.
