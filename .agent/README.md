@@ -17,6 +17,14 @@ markdown in git, reviewed like code.
 | `models.md` | Which free model and harness is good for what, with evidence | Whoever measured it |
 | `private/` | **Not pushed (gitignored).** Local paths, account notes, device ids | Local only |
 
+## Day and night
+
+Check the clock (`TZ=Africa/Johannesburg date`) before picking work.
+
+- **Day** (underpaid MAPPA animator mode): roadmap features and releases.
+- **Night** (terrible sleep schedule, lowkey chillin): maintenance, cleanup, bug-fix releases,
+  preparation, and fun experiments on the `playground` branch. Main stays releasable.
+
 ## Rules (CI enforces the first one)
 
 1. **This folder is public.** No emails, home-directory paths, usernames, device serials,

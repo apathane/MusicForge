@@ -10,3 +10,7 @@ captures/
 
 # Agent vault: machine/account-specific notes stay local (see .agent/README.md).
 .agent/private/
+
+# APKs ship as GitHub release assets, never in the tree.
+/apk/
+*.apk
