@@ -3,6 +3,7 @@
 // No framework, no AI slop, no endless pulses.
 
 const html = document.documentElement;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 // === Theme toggle — dark (default) / light, persisted to localStorage ===
 const themeToggle = document.getElementById("theme-toggle");
@@ -20,12 +21,6 @@ function toggleTheme() {
 }
 
 themeToggle.addEventListener("click", toggleTheme);
-themeToggle.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    toggleTheme();
-  }
-});
 
 // === Screenshot rail — CSS scroll-snap, buttons step one card ===
 // Scrolling stays native so it works with JS off and keyboard.
@@ -116,8 +111,6 @@ if (panic) {
 }
 
 // === Cursor trail dots — mousedown only, reduced-motion safe ===
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
 if (!reducedMotion.matches) {
   document.addEventListener("mousedown", (event) => {
     const dot = document.createElement("div");
@@ -170,12 +163,13 @@ function frame() {
     room.style.setProperty("--spot-y", `${currentY}px`);
   }
 
-  requestAnimationFrame(frame);
+  if (!reducedMotion.matches) requestAnimationFrame(frame);
 }
 
-requestAnimationFrame(frame);
+if (!reducedMotion.matches) requestAnimationFrame(frame);
 
 document.addEventListener("mousemove", (event) => {
+  if (reducedMotion.matches) return;
   targetX = event.clientX;
   targetY = event.clientY;
 
@@ -220,6 +214,7 @@ function setMood(next) {
 
 // Cursor entering top 5% of viewport → restless (heading for the chrome/leave)
 document.addEventListener("mousemove", (event) => {
+  if (reducedMotion.matches) return;
   if (event.clientY < window.innerHeight * 0.05 && mood !== "leaving") {
     setMood("restless");
   }
