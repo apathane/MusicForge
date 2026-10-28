@@ -154,4 +154,4 @@ Tag `phase-8-reprise`.
 
 ---
 
-*See [Releases](../../releases) for APKs. Each phase is tagged `phase-N-<codename>`; releases are tagged `v<version>-<codename>`.*
+*See [Releases](../../releases) for APKs. Previews use `pN-0.x.y` tags (for example, `p4-0.14.0`). Small fixes increment the patch version (`0.14.1`, `0.14.2`) and use a short, code-appropriate subtitle. Android version codes keep previews ordered before the completed patch release.*

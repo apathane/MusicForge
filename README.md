@@ -170,12 +170,12 @@ No. MusicForge is an independent open-source project. It talks to YouTube Music 
 <details>
 <summary><strong>Why all the musical codenames?</strong></summary>
 
-Releases get names like Rondo and Sonata while the project finds its eventual name. The codename appears in the version name; the Android application ID remains `dev.musicforge.app`, so a codename change doesn't itself require a new app identity.
+Releases get names like Rondo and Sonata while the project finds its eventual name. The codename appears in the release title; the version stays numeric and machine-readable. The Android application ID remains `dev.musicforge.app`, so a codename change doesn't itself require a new app identity.
 </details>
 
 ## What's next?
 
-**Sonata (phase 14, 0.14.0)** is the current development phase. Its direction includes two-way listening-history sync, a redesigned full-bleed player with lyrics and queue panes, output-device controls, mood and genre discovery, a dedicated Explore tab, and better multi-select for collections. Treat this as the plan for the phase, not a claim that every item is already shipped.
+**Sonata (phase 14, 0.14.x)** is the current development phase. Its direction includes two-way listening-history sync, a redesigned full-bleed player with lyrics and queue panes, output-device controls, mood and genre discovery, a dedicated Explore tab, and better multi-select for collections. Treat this as the plan for the phase, not a claim that every item is already shipped.
 
 Later ideas include crossfade, a final app name and 1.0, and whatever proves worth building next. Crossfade is deliberately deferred: two decoders have a real cost on lower-powered devices, and adding a feature just because it looks good in a checklist isn't the point.
 
