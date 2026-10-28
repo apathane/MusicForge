@@ -16,7 +16,7 @@ object PlaygroundKeys {
  */
 fun streakDays(playTimesMs: List<Long>, today: java.time.LocalDate, zone: java.time.ZoneId): Int {
     // Streak: proof you listened more than you admitted to your therapist.
-    val daysWithPlays = playTimesMs.joinTo(LinkedHashSet()) { ms ->
+    val daysWithPlays = playTimesMs.mapTo(HashSet()) { ms ->
         // Not LocalDate.ofInstant: that's API 34, and minSdk is 26.
         java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
     }
