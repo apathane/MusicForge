@@ -91,6 +91,7 @@ jobs:
             --stacktrace \
             --continue \
             :app:assembleDebug \
+            :app:assembleRelease \
             :app:testDebugUnitTest \
             :app:lintDebug \
             :innertube:testDebugUnitTest \
@@ -102,6 +103,15 @@ jobs:
         with:
           name: MusicForge-debug-apk-${{ github.run_number }}
           path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload release APK
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicForge-release-apk-${{ github.run_number }}
+          path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release/*.apk
           if-no-files-found: ignore
           retention-days: 7
 
