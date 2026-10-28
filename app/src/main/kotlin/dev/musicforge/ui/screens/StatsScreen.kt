@@ -82,7 +82,10 @@ fun StatsScreen(onBack: () -> Unit) {
     val zone = remember { ZoneId.systemDefault() }
     val today = remember(zone) { LocalDate.now(zone) }
     val streakSince = remember(today) { today.minusDays(400).atStartOfDay(zone).toInstant().toEpochMilli() }
-    val streakPlays by remember(streakSince) { dao.playTimes(streakSince) }.collectAsStateWithLifecycle(emptyList())
+    // Only query 400 days of events when someone actually asked for the streak.
+    val streakPlays by remember(streakSince, showStreak) {
+        if (showStreak) dao.playTimes(streakSince) else kotlinx.coroutines.flow.flowOf(emptyList())
+    }.collectAsStateWithLifecycle(emptyList())
     val streak = remember(streakPlays, today, zone) { streakDays(streakPlays, today, zone) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
