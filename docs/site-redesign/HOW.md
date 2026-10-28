@@ -2,7 +2,7 @@
 
 ## What was done, step by step
 
-1. **Reconnaissance**: inspected live repo state (branch `phase-13-rondo` = `origin/main` at `1a00a81`), PR #2 (open, verification cleanup), GitHub Pages (enabled, main / path "/"), CI workflow, current site files, Glass.kt, SettingsScreen.kt, BENCHMARKS.md, CHANGELOG.md.
+1. **Reconnaissance (historical)**: the initial implementation started from `phase-13-rondo` at `1a00a81`. Since then, PR #2 merged, the site redesign landed on `main`, and GitHub Pages deployment passed in run 40757309328. Preview 4 is now tracked separately in PR #3.
 2. **Extracted overlay zip**: `musicforge-redesign-overlay(4).zip` → site/index.html, site/styles.css, site/main.js, app-patch/liquid-glass.patch.
 3. **Copied site files**: overlay's three site files replaced the existing v0.2 versions in `app/site/`.
 4. **Applied liquid-glass patch** to `SettingsScreen.kt`: renamed `Artwork` → `Frosted Crayon`, `Liquid` → `Liquid Glass`, comment updated.
@@ -25,16 +25,14 @@
 
 | Check | Blocker |
 |---|---|
-| `scripts/check.sh` (Gradle build + tests + lint) | LOCAL BLOCKED — Android SDK missing at `sdk.dir` (local.properties) (directory doesn't exist). PASS via GitHub Actions CI — run 40631400402, `completed success`, 3m22s (:app:assembleDebug :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37). To run locally, install Android SDK and set `sdk.dir` in `local.properties`. |
+| `scripts/check.sh` (Gradle build + tests + lint) | PASS via GitHub Actions CI — run 40757309443 (`:app:assembleDebug`, `:app:assembleRelease`, app/innertube unit tests and lint on ubuntu-24.04, JDK 21, API 37). Local execution was not verified during this hosted review; check the current SDK path before assuming it is unavailable. |
 | Liquid Glass on real device | BLOCKED — no API 31+ device available in this environment. |
-| GitHub Pages deployment | NOT TRIGGERED — no push made per user instruction ("im cleaning up the repo, ill tell you pull it all when im done"). |
+| GitHub Pages deployment | PASS — run 40757309328 completed successfully after Pages was configured for Actions. |
 | HTML validator | Not run; visual inspection only. |
 
 ## Rollback
 
-All changes are uncommitted. To revert:
-- `git checkout -- site/index.html site/styles.css site/main.js` (restores previous v0.2 site)
-- `git checkout -- app/src/main/kotlin/dev/musicforge/ui/components/Glass.kt app/src/main/kotlin/dev/musicforge/ui/screens/SettingsScreen.kt` (restores original glass impl)
+The site redesign and glass-mode naming are merged to `main`. Revert with a reviewed revert commit or PR; do not use `git checkout` to discard current work or reset/force-push shared `main`.
 
 ## Conventions followed
 
@@ -42,4 +40,4 @@ All changes are uncommitted. To revert:
 - Anti-slop UI: no gradient blobs, no fake stats, no AI icons, no emoji, no monospace headings, no `transition: all`, no `scale(0)` entrances
 - Animation: transform/opacity/color only, gated by `prefers-reduced-motion`, under 300ms where animated
 - Version naming: `0.14.0-sonata` consistent across build config, site, changelog
-- Co-Authored-By trailer used on prior commits; no new commits made this session
+- Preview 4 updater/release work is tracked separately in PR #3 and must pass CI before merging.
