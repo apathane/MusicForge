@@ -44,6 +44,8 @@ import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.components.SongRow
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Calendar
 
 private enum class Period(val label: String) { WEEK("This week"), MONTH("This month"), YEAR("This year"), ALL("All time") }
@@ -74,6 +76,15 @@ fun StatsScreen(onBack: () -> Unit) {
     val songs by remember(since) { dao.topSongs(since) }.collectAsStateWithLifecycle(emptyList())
     val artists by remember(since) { dao.topArtists(since) }.collectAsStateWithLifecycle(emptyList())
 
+    // Listening streak (Playground, off by default): consecutive local days with a play.
+    val settings by graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val showStreak = settings?.get(PlaygroundKeys.listeningStreak) ?: false
+    val zone = remember { ZoneId.systemDefault() }
+    val today = remember(zone) { LocalDate.now(zone) }
+    val streakSince = remember(today) { today.minusDays(400).atStartOfDay(zone).toInstant().toEpochMilli() }
+    val streakPlays by remember(streakSince) { dao.playTimes(streakSince) }.collectAsStateWithLifecycle(emptyList())
+    val streak = remember(streakPlays, today, zone) { streakDays(streakPlays, today, zone) }
+
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
         item { ScreenHeader("Your listening", belowBackRow = true) }
@@ -96,6 +107,22 @@ fun StatsScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (showStreak) {
+                    val n = streak
+                    if (n >= 2) {
+                        Text(
+                            "$n-day listening streak",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else if (n == 1) {
+                        Text(
+                            "1 day so far. Tomorrow makes it a streak.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
         if (songs.isEmpty()) {

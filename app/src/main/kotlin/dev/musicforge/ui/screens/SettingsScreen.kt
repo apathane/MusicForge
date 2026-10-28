@@ -381,6 +381,11 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         if (playgroundUnlocked) {
             SectionTitle("Playground")
             Group {
+                ToggleRow(
+                    "Listening streak",
+                    prefs?.get(PlaygroundKeys.listeningStreak) ?: false,
+                    subtitle = "Shows on Stats",
+                ) { vm.set(PlaygroundKeys.listeningStreak, it) }
                 ToggleRow("Hide playground", checked = false, subtitle = "Removes this section until you unlock it again") { hide ->
                     vm.set(PlaygroundKeys.playgroundUnlocked, !hide)
                 }

@@ -218,6 +218,10 @@ interface MusicDao {
     @Query("SELECT COALESCE(SUM(playTime), 0) FROM event WHERE timestamp >= :since")
     fun listenedMs(since: Long): Flow<Long>
 
+    /** Epoch millis of every play event since [since], for the listening-streak counter. */
+    @Query("SELECT timestamp FROM event WHERE timestamp >= :since")
+    fun playTimes(since: Long): Flow<List<Long>>
+
     @Query("SELECT COUNT(DISTINCT songId) FROM event WHERE timestamp >= :since")
     fun distinctSongs(since: Long): Flow<Int>
 
