@@ -186,7 +186,7 @@ function scheduleIdle() {
   }, 6500);
 }
 
-scheduleIdle();
+if (!reducedMotion.matches) scheduleIdle();
 
 function setMood(next) {
   if (next === mood) return;
