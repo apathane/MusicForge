@@ -33,9 +33,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.14.0-preview.4 >/dev/null 2>&1; then
+          if gh release view v0.14.0-preview.4 --json assets --jq '[.assets[].name] | contains(["MusicForge-0.14.0-preview.4.apk", "SHA256SUMS.txt"])' 2>/dev/null | grep -qx true; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Preview 4 is already published; remaining steps will be skipped."
+            echo "Preview 4 already has both required assets; remaining steps will be skipped."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -122,10 +122,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create v0.14.0-preview.4 \
-            dist/MusicForge-0.14.0-preview.4.apk \
-            dist/SHA256SUMS.txt \
-            --title "MusicForge 0.14.0 preview 4 · Sonata" \
-            --prerelease \
-            --target "$GITHUB_SHA" \
-            --notes-file dist/release-notes.md
+          if gh release view v0.14.0-preview.4 >/dev/null 2>&1; then
+            # Recover a partially published release rather than silently skipping missing assets.
+            gh release upload v0.14.0-preview.4 \
+              dist/MusicForge-0.14.0-preview.4.apk \
+              dist/SHA256SUMS.txt \
+              --clobber
+            gh release edit v0.14.0-preview.4 \
+              --title "MusicForge 0.14.0 preview 4 · Sonata" \
+              --prerelease \
+              --notes-file dist/release-notes.md
+          else
+            gh release create v0.14.0-preview.4 \
+              dist/MusicForge-0.14.0-preview.4.apk \
+              dist/SHA256SUMS.txt \
+              --title "MusicForge 0.14.0 preview 4 · Sonata" \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --notes-file dist/release-notes.md
+          fi
