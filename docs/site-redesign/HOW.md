@@ -25,7 +25,7 @@
 
 | Check | Blocker |
 |---|---|
-| `scripts/check.sh` (Gradle build + tests + lint) | BLOCKED — no Java/JDK installed in this environment (`java: command not found`). `local.properties` exists with `sdk.dir=/home/zanthee/Android/Sdk`, but the JDK is missing. Must be run on a machine with Java 21 + Android SDK. |
+| `scripts/check.sh` (Gradle build + tests + lint) | PASS via GitHub Actions CI — run 40631400402, `completed success`, 3m22s. Local first-build was too slow (no JDK initially, then killed); CI on GitHub-hosted runners succeeded. |
 | Liquid Glass on real device | BLOCKED — no API 31+ device available in this environment. |
 | GitHub Pages deployment | NOT TRIGGERED — no push made per user instruction ("im cleaning up the repo, ill tell you pull it all when im done"). |
 | HTML validator | Not run; visual inspection only. |

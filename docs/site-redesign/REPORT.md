@@ -81,9 +81,10 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 | SettingsScreen.kt patch — labels renamed | PASS |
 | Version naming consistent (build.gradle.kts + site + CHANGELOG) | PASS |
 | Screenshot assets exist (4 real JPEGs) | PASS |
-| `scripts/check.sh` (Gradle build + tests + lint) | BLOCKED — first Gradle build too slow; killed. Moved to GitHub Actions CI. |
+| `scripts/check.sh` via GitHub Actions CI | PASS — run 40631400402, `completed success`, 3m22s |
+| GitHub Pages deploy | PASS — run 40631400520, `completed success`, 20s |
+| First Run workflow | PASS — run 40631400445, `completed success`, 8s |
 | Liquid Glass on real API 31+ device | NOT TESTED — no device available |
-| GitHub Pages deployment | NOT YET VERIFIED — push will trigger CI; Pages source is `main` / path "/" |
 | HTML validator | NOT RUN — visual inspection only |
 
 ---
