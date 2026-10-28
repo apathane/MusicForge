@@ -81,7 +81,7 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 | SettingsScreen.kt patch — labels renamed | PASS |
 | Version naming consistent (build.gradle.kts + site + CHANGELOG) | PASS |
 | Screenshot assets exist (4 real JPEGs) | PASS |
-| `scripts/check.sh` via GitHub Actions CI | PASS — run 40632526127, `completed success`, 5m57s (:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37) |
+| `scripts/check.sh` via GitHub Actions CI | PASS — run 40633593430, `completed success`, 1m29s (:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37). APKs committed from run 40632526127 (5m57s). |
 | Local `scripts/check.sh` | BLOCKED — Android SDK missing at `sdk.dir=/home/zanthee/Android/Sdk` (directory doesn't exist). Requires Android SDK installation to run locally. |
 | GitHub Pages deploy | PASS — run 40632526071, `completed success`, 16s |
 | First Run workflow | PASS — run 40632526117, `completed success`, 10s |
