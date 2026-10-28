@@ -39,8 +39,9 @@ jobs:
           phase = re.search(r'val phase = (\d+)', gradle)
           codename = re.search(r'val codename = "([^"]+)"', gradle)
           assert phase and codename, "Could not read app version from Gradle"
-          expected = f"0.{phase.group(1)} {codename.group(1)}"
-          assert f"Android · {expected}" in site, f"Landing page version must say {expected}"
+          # The v0.2 site shows the version as "SONATA / 0.14" in the header and closing panel.
+          expected = f"{codename.group(1).upper()} / 0.{phase.group(1)}"
+          assert expected in site, f"Landing page version must say {expected}"
           assert 'android:networkSecurityConfig="@xml/network_security_config"' in manifest
           assert Path("app/src/main/res/xml/network_security_config.xml").is_file()
           print(f"Landing page version and network security config verified ({expected}).")
@@ -113,6 +114,7 @@ jobs:
             --stacktrace \
             --continue \
             :app:assembleDebug \
+            :app:assembleRelease \
             :app:testDebugUnitTest \
             :app:lintDebug \
             :innertube:testDebugUnitTest \
@@ -124,6 +126,15 @@ jobs:
         with:
           name: MusicForge-debug-apk-${{ github.run_number }}
           path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload release APK
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicForge-release-apk-${{ github.run_number }}
+          path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release/*.apk
           if-no-files-found: ignore
           retention-days: 7
 
