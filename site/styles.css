@@ -1142,6 +1142,8 @@ body.theme-light .room {
 @media (prefers-reduced-motion: reduce) {
   html, .rail { scroll-behavior: auto; }
 
+  .room-light, .room, .scroll-progress { transition: none !important; }
+
   /* Remove all non-essential animation under reduced motion */
   .reveal {
     opacity: 1;
