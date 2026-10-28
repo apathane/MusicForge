@@ -7,12 +7,12 @@ or PR when it lands. Agents work in separate worktrees, never in the same checko
 
 - [x] PR #2 merged (verification fixes; network security config fixed to the real schema)
 - [x] CI: drop setup-android's unsupported `cache` inputs (OpenCode via fcc)
-- [ ] **One permanent release key**: CI and local builds sign with it, so updates install over
+- [x] **One permanent release key**: CI and local builds sign with it, so updates install over
       each other (they failed because every machine and CI runner had its own debug key)
-- [ ] Player fixes from the delegation test: full-bleed artwork + button gap; volume/headphone icons
+- [x] Player: full-bleed artwork + button gap (OpenCode/Laguna), Material volume/headphone icons
 - [x] **PlayerPanes accessibility** (48 dp targets: lock, row menu, drag handle, mini like/more, Undo, Clear; now-playing row glyph; TogglePill icon verified, no change) — fix/fix-player-panes, commit 0008a1d, not pushed
-- [ ] **PlayerSheet accessibility**: 48 dp Play next (PlayerSheet.kt:427), volume slider ≥ 48 dp hit area + slider semantics (518-546), debounce `setStreamVolume` off drag frames (526, 535), output-device lookup off the main thread (554-577), "Next unavailable" not by colour alone (451-452), MEDIA_OUTPUT intent guard for API 35+ (588), title clickable node (366)
-- [ ] Release: tag, notes, APK signed with the permanent key, SHA256SUMS
+- [ ] **PlayerSheet accessibility (rest)**: volume slider ≥ 48 dp hit area + slider semantics (518-546), debounce `setStreamVolume` off drag frames (526, 535), output-device lookup off the main thread (554-577), MEDIA_OUTPUT intent guard for API 35+ (588), title clickable node (366)
+- [x] Released v0.14.0-preview.1 and v0.14.0-preview.2 (CI-built, permanent key, SHA256SUMS)
 
 ## Next phase: Sonata (rest of docs/SONATA-SPEC in the workspace; summary here)
 
