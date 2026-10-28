@@ -8,16 +8,37 @@ All notable changes to MusicForge. Newest phase first.
 
 Version 0.14.0, codename `Sonata`.
 
-- Player sheet rewritten: codec pill, Up Next, volume slider, output device picker
-- History that syncs: pull remote plays, merge on Home, push local plays (Laguna S 2.1)
-- One RAM build folder per git worktree
+### Unreleased (preview 3)
+
+Planned for preview 3:
+- Sign-in loop fix: leave route before recreate, add an explicit account confirmation button
+- Player sheet: handle missing MEDIA_OUTPUT panel on MagicOS, volume slider accessibility and debounce, background output-device lookup
+- Artwork: fix missing cover art in Up Next and queue items
+- In-app updater: check GitHub Releases, verify SHA256SUMS, and hand APK to installer
+- Docs and versions: changelog entries, README status, and version alignment across repo and site
+
+### v0.14.0-preview.2 — 2026-10-28
+
+Tag `v0.14.0-preview.2`.
+
+- Player cover art is full-bleed: edge to edge across the top, fading into black
+- Like and more buttons have room to breathe
+- Accessibility & touch targets: 48 dp targets in queue (lock, row menu, drag handle, Undo, Clear) and mini player; TalkBack cover art description and queue end notice
+- Active song marked with a glyph in the queue, not just a tint
+
+### v0.14.0-preview.1 — 2026-10-28
+
+Tag `v0.14.0-preview.1`.
+
+- Permanent release key: signed with one key so future updates install directly (one-time reinstall and backup restore if upgrading from older builds)
+- Account history sync: two-way sync with YouTube Music account
+- Player sheet rewritten: codec pill, Up Next, volume slider, output device selector
+- Icon fixes: volume and headphone icons redrawn properly
+- Downloads: notification with progress display and Cancel all action
+- Lyrics: fixed LRC parsing and LRCLIB matching
 - Settings button on every tab; version follows the phase
-- Voice rules codified: why-comments may be funny, UI gets a little warmth
-- `AGENTS.md` and `scripts/check.sh`: one entry point for every coding agent
-- Lyrics: reject malformed LRC seconds; choose LRCLIB search results safely when track duration is unknown
-- Account history: only mark successful syncs fresh; clear stale mirrored history when the remote history is empty
-- Downloads: retain Media3's progress and unmet-requirements notification, with the cancel-all action added on top
-- Website: keep the displayed version aligned with the app; fix keyboard theme toggling, panic-button semantics, and reduced-motion behavior
+- Network security: HTTPS only, system certificates
+- Engineering: one RAM build folder per git worktree; `AGENTS.md` and `scripts/check.sh` unified entry points
 
 ---
 
