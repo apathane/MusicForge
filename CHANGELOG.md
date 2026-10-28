@@ -15,6 +15,9 @@ Version 0.14.0, codename `Sonata`.
 - Voice rules codified: why-comments may be funny, UI gets a little warmth
 - `AGENTS.md` and `scripts/check.sh`: one entry point for every coding agent
 - Lyrics: reject malformed LRC seconds; choose LRCLIB search results safely when track duration is unknown
+- Account history: only mark successful syncs fresh; clear stale mirrored history when the remote history is empty
+- Downloads: retain Media3's progress and unmet-requirements notification, with the cancel-all action added on top
+- Website: keep the displayed version aligned with the app; fix keyboard theme toggling, panic-button semantics, and reduced-motion behavior
 
 ---
 

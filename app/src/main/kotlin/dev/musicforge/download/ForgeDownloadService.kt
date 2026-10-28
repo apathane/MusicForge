@@ -6,9 +6,7 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
-import androidx.core.graphics.drawable.IconCompat
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadService
@@ -53,25 +51,14 @@ class ForgeDownloadService : DownloadService(
             Intent(this, ForgeDownloadService::class.java).setAction(ACTION_CANCEL_ALL),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val cancelCompat = NotificationCompat.Action.Builder(
-            IconCompat.createWithResource(this, R.drawable.ic_download),
+        val cancelAction = Notification.Action.Builder(
+            Icon.createWithResource(this, R.drawable.ic_download),
             "Cancel all",
             cancelIntent,
         ).build()
-        // Calculate overall progress from all downloads (0-100)
-        val currentProgress = if (downloads.isNotEmpty()) {
-            (downloads.sumOf { it.bytesDownloaded.toDouble() } / downloads.sumOf { it.contentLength.toDouble() } * 100).toInt()
-        } else 0
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_download)
-            .setContentTitle(title)
-            .setContentText("Download in progress")
-            .setProgress(100, currentProgress, false)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setOnlyAlertOnce(true)
-            .addAction(cancelCompat)
-            .build()
+        // Preserve Media3's notification and add the action without rebuilding its progress state.
+        progress.actions = (progress.actions ?: emptyArray()) + cancelAction
+        return progress
     }
 
     companion object {

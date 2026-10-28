@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- HTTPS only, trusting the system's certificate store. Everything the app talks to (YouTube,
+     LRCLIB, ListenBrainz, artwork CDNs) is HTTPS; plain HTTP is a bug, so it fails loudly. -->
 <network-security-config>
-    <base-config cleartextTrafficEnabled="false"/>
-    <domain-config>
-        <domain includeSubdomains="true">metrolist.dev</domain>
-        <trust-anchors includeSystem="true"/>
-    </domain-config>
-    <domain-config>
-        <domain includeSubdomains="true">innertube.dev</domain>
-        <trust-anchors includeSystem="true"/>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>
