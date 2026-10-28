@@ -116,9 +116,9 @@ fun sizedArtwork(url: String, px: Int): String {
     val step = listOf(128, 256, 544).firstOrNull { it >= px } ?: 544
     return when {
         Regex("=w\\d+-h\\d+").containsMatchIn(url) ->
-            url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w$step-h$step-l90-rj")
+            url.replace(Regex("=w\\d+-h\\d+[^&/?]*"), "=w$step-h$step-l90-rj")
         Regex("=s\\d+").containsMatchIn(url) ->
-            url.replace(Regex("=s\\d+[^&/]*"), "=s$step-l90-rj")
+            url.replace(Regex("=s\\d+[^&/?]*"), "=s$step-l90-rj")
         else -> url
     }
 }
@@ -140,7 +140,7 @@ fun isLetterboxedThumbnail(url: String): Boolean =
  */
 fun hiResArtwork(url: String): String =
     when {
-        Regex("=w\\d+-h\\d+").containsMatchIn(url) -> url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w544-h544-l90-rj")
+        Regex("=w\\d+-h\\d+").containsMatchIn(url) -> url.replace(Regex("=w\\d+-h\\d+[^&/?]*"), "=w544-h544-l90-rj")
         "i.ytimg.com" in url && !url.contains("?sqp=") && !url.contains("&rs=") -> url.replace(Regex("/(default|mqdefault|hqdefault|sddefault)\\.jpg"), "/hqdefault.jpg")
         else -> url
     }

@@ -12,7 +12,7 @@ plugins {
 // then 0.14.1 (1419). Keep preview numbers from 1 through 8.
 val phase = 14
 val patch = 0
-val preview = 4
+val preview = 0
 val codename = "Sonata"
 
 android {

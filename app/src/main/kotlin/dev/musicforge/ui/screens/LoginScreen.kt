@@ -39,9 +39,11 @@ import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.PillButton
 import dev.musicforge.ui.designsystem.signalSurface
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import timber.log.Timber
@@ -108,7 +110,8 @@ fun LoginScreen(onDone: () -> Unit) {
                         YouTube.visitorData = visitor
                         YouTube.dataSyncId = json.optString("d").substringBefore("||").ifEmpty { null }
                         YouTube.authUser = json.optString("a").filter(Char::isDigit).ifEmpty { "0" }
-                        val account = YouTube.accountInfo().getOrElse {
+                        // Ktor already does the network off Main; this keeps the JSON parse off it too.
+                        val account = withContext(Dispatchers.IO) { YouTube.accountInfo() }.getOrElse {
                             Timber.w(it, "account info failed after sign-in")
                             status = "Signed in, but couldn't read the account. Try again."
                             return@launch

@@ -202,8 +202,12 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
     }
     LaunchedEffect(queue) {
         if (!reorder.isAnyItemDragging) {
+            // Keep each surviving song's key so a queue change doesn't rebuild every row (and
+            // reset a swipe mid-gesture). Repeats of one song reuse its keys in order.
+            val spare = rows.groupBy({ it.second.mediaId }, { it.first }).mapValues { ArrayDeque(it.value) }
+            val next = queue.map { (spare[it.mediaId]?.removeFirstOrNull() ?: nextKey.longValue++) to it }
             rows.clear()
-            queue.forEach { rows.add(nextKey.longValue++ to it) }
+            rows.addAll(next)
         }
     }
 
