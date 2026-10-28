@@ -3,9 +3,9 @@ package dev.musicforge.download
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.drawable.Icon
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
-import androidx.core.graphics.drawable.IconCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
@@ -51,15 +51,14 @@ class ForgeDownloadService : DownloadService(
             Intent(this, ForgeDownloadService::class.java).setAction(ACTION_CANCEL_ALL),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        val cancelCompat = NotificationCompat.Action.Builder(
-            IconCompat.createWithResource(this, R.drawable.ic_download),
+        val cancelAction = Notification.Action.Builder(
+            Icon.createWithResource(this, R.drawable.ic_download),
             "Cancel all",
             cancelIntent,
         ).build()
-        // Keep Media3's progress/requirements notification and add our cancel-all action.
-        return NotificationCompat.Builder.recoverBuilder(this, progress)
-            .addAction(cancelCompat)
-            .build()
+        // Preserve Media3's notification and add the action without rebuilding its progress state.
+        progress.actions = (progress.actions ?: emptyArray()) + cancelAction
+        return progress
     }
 
     companion object {
