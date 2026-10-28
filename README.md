@@ -25,7 +25,7 @@
 
 MusicForge is an open-source Android music player built around a fairly simple idea: **your music app should still be useful when the internet isn't.** It brings YouTube Music discovery and playback together with persistent downloads, a library that stays yours, and an interface that tries to feel considered rather than crowded.
 
-It's still a work in progress. The current development phase is **Sonata (0.14.0)**, and the app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
+It's still a work in progress. The current development phase is **Sonata**, version **0.14 preview** ([latest release](../../releases/latest)). From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
 
 ## A quick look
 
