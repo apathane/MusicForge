@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -47,6 +48,9 @@ import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.GlassTier
+import dev.musicforge.update.ReleaseInfo
+import dev.musicforge.update.UpdateKeys
+import dev.musicforge.update.UpdateState
 import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
@@ -57,6 +61,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     sealed interface RestoreState {
@@ -155,6 +160,12 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun <T> set(key: androidx.datastore.preferences.core.Preferences.Key<T>, value: T) = viewModelScope.launch {
         graph.settings.edit { it[key] = value }
     }
+
+    val updateState = graph.updater.state
+
+    fun checkForUpdates() = viewModelScope.launch { graph.updater.checkNow() }
+
+    fun installUpdate(release: ReleaseInfo) = viewModelScope.launch { graph.updater.install(release) }
 }
 
 @Composable
@@ -332,7 +343,20 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         }
 
         SectionTitle("About")
-        Group { ActionRow("About ${BuildConfig.CODENAME}", "Credits, licenses and version", onAbout) }
+        Group {
+            ActionRow("About ${BuildConfig.CODENAME}", "Credits, licenses and version", onAbout)
+            val updateState by vm.updateState.collectAsStateWithLifecycle()
+            UpdateCheckRow(
+                state = updateState,
+                onCheck = { vm.checkForUpdates() },
+                onInstall = { release -> vm.installUpdate(release) },
+            )
+            ToggleRow(
+                "Include previews",
+                prefs?.get(UpdateKeys.includePreviews) ?: BuildConfig.VERSION_NAME.startsWith("0."),
+                subtitle = "Offer beta and preview releases when checking for updates",
+            ) { vm.set(UpdateKeys.includePreviews, it) }
+        }
 
         Spacer(Modifier.height(24.dp))
         Text(
@@ -432,6 +456,44 @@ private fun ActionRow(title: String, subtitle: String, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun UpdateCheckRow(
+    state: UpdateState,
+    onCheck: () -> Unit,
+    onInstall: (ReleaseInfo) -> Unit,
+) {
+    val subtitle = when (state) {
+        is UpdateState.Idle -> "Version ${BuildConfig.VERSION_NAME} · tap to check"
+        is UpdateState.Checking -> "Checking for updates…"
+        is UpdateState.UpToDate -> "You're up to date"
+        is UpdateState.Available -> "Update to ${state.release.versionName} · tap to install"
+        is UpdateState.Downloading -> "Downloading… ${(state.progress * 100).roundToInt()}%"
+        is UpdateState.Installing -> "Opening installer…"
+        is UpdateState.Failed -> state.message
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                when (state) {
+                    is UpdateState.Available -> onInstall(state.release)
+                    is UpdateState.Idle, is UpdateState.UpToDate, is UpdateState.Failed -> onCheck()
+                    else -> Unit
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text("Check for updates", style = MaterialTheme.typography.titleSmall)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (state is UpdateState.Downloading) {
+            LinearProgressIndicator(
+                progress = { state.progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(4.dp).padding(top = 8.dp),
+            )
+        }
     }
 }
 
