@@ -25,7 +25,7 @@
 
 MusicForge is an open-source Android music player built around a fairly simple idea: **your music app should still be useful when the internet isn't.** It brings YouTube Music discovery and playback together with persistent downloads, a library that stays yours, and an interface that tries to feel considered rather than crowded.
 
-It's still a work in progress. The current development phase is **Sonata**, version **P4 · 0.14.0** ([P4 release](../../releases/tag/p4-0.14.0)). From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
+It's still a work in progress. The current development phase is **Sonata**, version **P4 · 0.14.0** ([P4 release](../../releases/tag/p4-0.14.0)). P4 adds an in-app updater with SHA-256 verification and an Android installer handoff. The APK and checksum manifest are published together in [GitHub Releases](../../releases/tag/p4-0.14.0). From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
 
 ## A quick look
 
@@ -170,12 +170,12 @@ No. MusicForge is an independent open-source project. It talks to YouTube Music 
 <details>
 <summary><strong>Why all the musical codenames?</strong></summary>
 
-Releases get names like Rondo and Sonata while the project finds its eventual name. The codename appears in the release title; the version stays numeric and machine-readable. The Android application ID remains `dev.musicforge.app`, so a codename change doesn't itself require a new app identity.
+Releases get names like Rondo and Sonata while the project finds its eventual name. Previews use tags such as `p4-0.14.0` and app versions such as `0.14.0-p4`; the preview number is a milestone, not a patch bump. Once a patch is ready, `0.14.0` supersedes its previews, then small fixes move to `0.14.1`, `0.14.2`, and so on. Each release can have a short, humorous subtitle tied to the code or the state of the project, but the numeric version and Android version code remain the source of truth. The Android application ID remains `dev.musicforge.app`, so a codename change doesn't itself require a new app identity.
 </details>
 
 ## What's next?
 
-**Sonata (phase 14, 0.14.x)** is the current development phase. Its direction includes two-way listening-history sync, a redesigned full-bleed player with lyrics and queue panes, output-device controls, mood and genre discovery, a dedicated Explore tab, and better multi-select for collections. Treat this as the plan for the phase, not a claim that every item is already shipped.
+**Sonata (phase 14, 0.14.x)** is the current development phase. P4 adds the in-app update flow; the next work remains focused on player polish, mood and genre discovery, a dedicated Explore tab, and better multi-select for collections. Treat this as the plan for the phase, not a claim that every item is already shipped.
 
 Later ideas include crossfade, a final app name and 1.0, and whatever proves worth building next. Crossfade is deliberately deferred: two decoders have a real cost on lower-powered devices, and adding a feature just because it looks good in a checklist isn't the point.
 

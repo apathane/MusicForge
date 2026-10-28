@@ -3,7 +3,7 @@
 Claim an item by adding `claimed: <agent> · <branch>` under it; move it to Done with the commit
 or PR when it lands. Agents work in separate worktrees, never in the same checkout.
 
-## Now: P4 · 0.14.0 (release candidate, 2026-10-28)
+## Now: P4 · 0.14.0 (published preview, 2026-10-28)
 
 Plan: changes land through reviewable PRs, CI must pass, and release signing must match preview 3.
 
@@ -12,7 +12,8 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 - [x] **Artwork loading**: preserve signed thumbnail URLs and fall back when artwork is missing; merged to main.
 - [x] **Website redesign and visual modes**: product-led landing page, benchmark caveats, Frosted Crayon and Liquid Glass labels; deployed from main.
 - [x] **Updater implementation**: GitHub Releases discovery, version comparison, preview preference, progress, checksum validation, installer handoff.
-- [ ] **P4 verification**: CI, permanent signing-certificate check, release publication, and real-device updater test.
+- [x] **P4 release gate**: CI passed; permanent signing certificate verified; APK + SHA-256 manifest published as `p4-0.14.0`.
+- [ ] **Real-device updater test**: verify update discovery, checksum rejection, permission flow, and install over preview 3 on hardware.
 - [ ] **Identity (owner)**: the app still needs the owner's decision on its long-term name, colour, and signature element before a larger identity redesign.
 
 ## Earlier: bug-fix release (0.14.0 previews 1–2)
@@ -26,11 +27,9 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 - [ ] **PlayerSheet accessibility (rest)**: volume slider ≥ 48 dp hit area + slider semantics (518-546), debounce `setStreamVolume` off drag frames (526, 535), output-device lookup off the main thread (554-577), MEDIA_OUTPUT intent guard for API 35+ (588), title clickable node (366)
 - [x] Released v0.14.0-preview.1 and v0.14.0-preview.2 (CI-built, permanent key, SHA256SUMS)
 
-## Next phase: Sonata (rest of docs/SONATA-SPEC in the workspace; summary here)
+## Sonata roadmap (remaining work from docs/SONATA-SPEC)
 
-- [ ] **Update checker** (like ConvX/Metrolist): check GitHub Releases on start (at most daily),
-      show "Update available" with notes, download the APK and hand it to the installer;
-      a setting to turn it off
+- [x] **Update checker**: GitHub Releases updater, daily/manual checks, preview opt-in, download progress, SHA-256 validation, and Android installer handoff; shipped in P4.
 - [ ] **Heavy inspiration from ConvX and BitChord, premium feel:** player screens, lyrics,
       mixing and crossfade, Home, Settings, Downloads, theme settings, look and feel
 - [ ] Transfers sheet: progress bars and controls for every download, upgrade and export

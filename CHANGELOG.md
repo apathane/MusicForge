@@ -10,6 +10,10 @@ Version 0.14.0, codename `Sonata`.
 
 ### P4 · 0.14.0 — *The Updater Has Entered the Chat*
 
+Tag: [`p4-0.14.0`](../../releases/tag/p4-0.14.0) · Version code `1404` · Published 2026-10-28
+
+[Download the APK](../../releases/download/p4-0.14.0/MusicForge-p4-0.14.0.apk) · [SHA-256 manifest](../../releases/download/p4-0.14.0/SHA256SUMS.txt) · [Release workflow](../../actions/runs/40769284957)
+
 - In-app updater: daily background check, manual check, preview opt-in, download progress, and Android installer handoff
 - Update integrity: require a valid SHA-256 manifest entry before installing; fail closed when the manifest or entry is missing
 - Release selection: use the explicit Android versionCode in release notes so a future stable release can supersede preview builds
