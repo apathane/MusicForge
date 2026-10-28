@@ -111,7 +111,10 @@ class AppGraph(val app: Application) {
     }
 
     init {
-        // Check daily without blocking app startup. Failed requests do not consume the retry window.
-        scope.launch { updater.checkOnStart() }
+        // Avoid network traffic from debug builds and Robolectric tests. Release builds check daily;
+        // users can still trigger a manual check from Settings in debug builds.
+        if (!BuildConfig.DEBUG) {
+            scope.launch { updater.checkOnStart() }
+        }
     }
 }
