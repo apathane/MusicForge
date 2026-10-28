@@ -6,8 +6,10 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,10 +30,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.datastore.preferences.core.edit
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.AccountInfo
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
+import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.PillButton
+import dev.musicforge.ui.designsystem.signalSurface
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,17 +52,33 @@ private const val LOGIN_URL = "https://accounts.google.com/ServiceLogin?continue
 private const val READ_CONFIG = """(function(){var c=window.yt&&window.yt.config_;
 return c?JSON.stringify({v:c.VISITOR_DATA||'',d:c.DATASYNC_ID||'',a:String(c.SESSION_INDEX||0)}):'';})()"""
 
+/** The cookie, ytcfg and account read from the page; saved to settings only when the user confirms. */
+private data class CapturedSession(
+    val cookie: String,
+    val visitorData: String,
+    val dataSyncId: String,
+    val authUser: String,
+    val account: AccountInfo,
+)
+
 /**
- * Google sign-in in a WebView. Once the page lands on music.youtube.com with a SAPISID
- * cookie, the session (cookie, visitor data, data-sync id, auth user) is saved under the same
- * keys Metrolist and ConvX use, and YouTubeSession picks it up from settings.
+ * Google sign-in in a WebView. When the page lands on music.youtube.com with a SAPISID cookie,
+ * the session (cookie, visitor data, data-sync id, auth user and account info) is read and shown
+ * with a "Use this account" button. Saving to settings and starting sync happen only after that
+ * tap: auto-saving here recreated the activity while the login route was still on the back stack,
+ * reopening LoginScreen and looping forever. After saving, the route is popped first; Home and
+ * Library already observe the settings flow, so no recreate() is needed.
  */
 @Composable
 fun LoginScreen(onDone: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<String?>(null) }
+    var session by remember { mutableStateOf<CapturedSession?>(null) }
+    // Guards: capture tracks the running probe (Job?.isActive), committing blocks a second save or
+    // a re-probe after the user taps Use this account or navigates away.
     var capture by remember { mutableStateOf<Job?>(null) }
+    var committing by remember { mutableStateOf(false) }
 
     suspend fun eval(view: WebView, js: String): String {
         val result = CompletableDeferred<String>()
@@ -67,17 +89,21 @@ fun LoginScreen(onDone: () -> Unit) {
         }.orEmpty()
     }
 
-    fun captureSession(view: WebView) {
+    fun probeSession(view: WebView) {
         if (capture?.isActive == true) return
+        if (session != null || committing) return
         capture = scope.launch {
-            status = "Signing in…"
+            status = "Checking sign-in…"
             repeat(30) {
+                if (session != null || committing) return@launch
                 val cookie = CookieManager.getInstance().getCookie("https://music.youtube.com").orEmpty()
                 val config = eval(view, READ_CONFIG)
                 if ("SAPISID=" in cookie && config.isNotEmpty()) {
                     val json = JSONObject(config)
                     val visitor = json.optString("v")
                     if (visitor.isNotEmpty()) {
+                        // Set the YouTube client so accountInfo() works; YouTubeSession will replay
+                        // these from settings once the user confirms and the values are persisted.
                         YouTube.cookie = cookie
                         YouTube.visitorData = visitor
                         YouTube.dataSyncId = json.optString("d").substringBefore("||").ifEmpty { null }
@@ -87,27 +113,51 @@ fun LoginScreen(onDone: () -> Unit) {
                             status = "Signed in, but couldn't read the account. Try again."
                             return@launch
                         }
-                        context.graph.settings.edit { p ->
-                            p[Keys.InnerTubeCookie] = cookie
-                            p[Keys.VisitorData] = visitor
-                            p[Keys.DataSyncId] = json.optString("d").substringBefore("||")
-                            p[Keys.InnerTubeAuthUser] = YouTube.authUser
-                            p[Keys.AccountName] = account.name
-                            p[Keys.AccountEmail] = account.email.orEmpty()
-                            p[Keys.AccountChannelHandle] = account.channelHandle.orEmpty()
-                        }
-                        CookieManager.getInstance().flush()
-                        // A new or different account: the old account's snapshots must not decide removals.
-                        context.graph.accountSync.forgetSnapshots()
-                        context.graph.scope.launch { context.graph.accountSync.sync() }
-                        // Reload so everything already on screen (Home's feed, Library) asks again as this account.
-                        (context as? android.app.Activity)?.recreate() ?: onDone()
+                        session = CapturedSession(
+                            cookie = cookie,
+                            visitorData = visitor,
+                            dataSyncId = json.optString("d").substringBefore("||"),
+                            authUser = YouTube.authUser,
+                            account = account,
+                        )
+                        status = null
                         return@launch
                     }
                 }
                 delay(500)
             }
-            status = "Couldn't finish signing in. Check your connection and try again."
+            if (session == null && !committing) status = "Couldn't finish signing in. Check your connection and try again."
+        }
+    }
+
+    fun useAccount() {
+        if (committing) return
+        val sess = session ?: return
+        committing = true
+        status = "Saving account…"
+        scope.launch {
+            try {
+                context.graph.settings.edit { p ->
+                    p[Keys.InnerTubeCookie] = sess.cookie
+                    p[Keys.VisitorData] = sess.visitorData
+                    p[Keys.DataSyncId] = sess.dataSyncId
+                    p[Keys.InnerTubeAuthUser] = sess.authUser
+                    p[Keys.AccountName] = sess.account.name
+                    p[Keys.AccountEmail] = sess.account.email.orEmpty()
+                    p[Keys.AccountChannelHandle] = sess.account.channelHandle.orEmpty()
+                }
+                CookieManager.getInstance().flush()
+                // A new or different account: the old account's snapshots must not decide removals.
+                context.graph.accountSync.forgetSnapshots()
+                context.graph.scope.launch { context.graph.accountSync.sync() }
+                // Pop the login route first; Home and Library watch the settings flow, so no
+                // recreate() — that reopened LoginScreen and looped.
+                onDone()
+            } catch (e: Exception) {
+                Timber.e(e, "failed to save signed-in account")
+                committing = false
+                status = "Couldn't save the account. Try again."
+            }
         }
     }
 
@@ -120,6 +170,28 @@ fun LoginScreen(onDone: () -> Unit) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.padding(end = 10.dp).size(16.dp), color = MaterialTheme.colorScheme.onBackground, strokeWidth = 2.dp)
                 Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        session?.let { sess ->
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .signalSurface(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(20.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val thumb = sess.account.thumbnailUrl
+                    if (thumb != null) Artwork(thumb, 56.dp, corner = 28.dp)
+                    Column(Modifier.padding(start = if (thumb != null) 12.dp else 0.dp)) {
+                        Text(sess.account.name, style = MaterialTheme.typography.titleMedium)
+                        sess.account.email?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                PillButton("Use this account", { useAccount() }, modifier = Modifier.fillMaxWidth(), enabled = !committing)
             }
         }
         Box(Modifier.weight(1f).navigationBarsPadding()) {
@@ -152,7 +224,7 @@ fun LoginScreen(onDone: () -> Unit) {
 
                             override fun onPageFinished(view: WebView, url: String?) {
                                 val uri = url?.let(android.net.Uri::parse)
-                                if (uri?.scheme == "https" && uri.host == "music.youtube.com") captureSession(view)
+                                if (uri?.scheme == "https" && uri.host == "music.youtube.com") probeSession(view)
                             }
                         }
                         loadUrl(LOGIN_URL)
@@ -162,4 +234,3 @@ fun LoginScreen(onDone: () -> Unit) {
         }
     }
 }
-
