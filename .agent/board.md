@@ -3,7 +3,30 @@
 Claim an item by adding `claimed: <agent> · <branch>` under it; move it to Done with the commit
 or PR when it lands. Agents work in separate worktrees, never in the same checkout.
 
-## Now: bug-fix release (0.14.0 preview)
+## Now: preview 3 (owner bug list, 2026-10-28)
+
+Plan: each agent owns its files only, at most 2 per provider at once, CI builds, coordinator reviews.
+
+- [ ] **Sign-in loops** (LoginScreen.kt): after the cookie is captured, `recreate()` reopens the
+      login route, which captures and recreates again. Leave the route first; add a "Use this
+      account" confirm button (BitChord-style) instead of capturing on every page load. (fcc-claude · Laguna)
+- [ ] **Tapping the headphones icon crashes** (PlayerSheet.kt): `MEDIA_OUTPUT` panel missing on
+      MagicOS, unguarded `startActivity`. Catch it, fall back to sound settings, then a toast.
+      Same file: volume slider semantics, 48 dp hit area and debounce; output-device lookup off
+      the main thread. (Hermes · Nemotron 3.5 Super VL)
+- [ ] **Artwork not loading** (Up Next and elsewhere): find why; candidates: queue items without
+      artworkUri, the URL rewrite, repair not covering queue items. Files: MediaItems.kt,
+      components/Common.kt (Artwork), data/ArtRepair.kt. (fcc-opencode · Laguna)
+- [ ] **In-app updater**: check GitHub Releases (latest, prereleases opt-in), compare
+      versionCode, download the APK, verify SHA256SUMS, hand it to the installer
+      (REQUEST_INSTALL_PACKAGES + FileProvider). A Settings row + an "Update available" card.
+      (fcc-codex · Gemma 4 31B)
+- [ ] **Docs and versions**: CHANGELOG entries for previews 1–3; README status and version; site
+      version stays SONATA / 0.14. (fcc-pi · Gemini 3.5 Flash)
+- [ ] **Identity (owner)**: the app looks too much like BitChord. Needs the owner's call on a real
+      name, a colour and a signature element before Sonata's redesign. Not delegated.
+
+## Earlier: bug-fix release (0.14.0 previews 1–2)
 
 - [x] PR #2 merged (verification fixes; network security config fixed to the real schema)
 - [x] CI: drop setup-android's unsupported `cache` inputs (OpenCode via fcc)
