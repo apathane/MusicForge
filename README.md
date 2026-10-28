@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/apathane/MusicForge/releases"><img src="https://img.shields.io/github/v/release/apathane/MusicForge?color=000000&labelColor=222222&style=flat-square" alt="Latest Release"></a>
+  <a href="https://github.com/apathane/MusicForge/releases"><img src="https://img.shields.io/github/v/release/apathane/MusicForge?include_prereleases&label=Latest%20Preview&color=000000&labelColor=222222&style=flat-square" alt="Latest Preview"></a>
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License: GPL-3.0">
   <img src="https://img.shields.io/badge/Android-8.0%2B%20%7C%20minSdk%2026-green?style=flat-square" alt="Android 8.0+ | minSdk 26">
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
@@ -18,14 +18,14 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest">
-    <img src="https://img.shields.io/badge/Download%20APK-000000?style=for-the-badge&labelColor=222222&label=%20" alt="Download APK" width="280">
+  <a href="../../releases/tag/v0.14.0-preview.4">
+    <img src="https://img.shields.io/badge/Download%20Preview%204-000000?style=for-the-badge&labelColor=222222&label=%20" alt="Download APK" width="280">
   </a>
 </p>
 
 MusicForge is an open-source Android music player built around a fairly simple idea: **your music app should still be useful when the internet isn't.** It brings YouTube Music discovery and playback together with persistent downloads, a library that stays yours, and an interface that tries to feel considered rather than crowded.
 
-It's still a work in progress. The current development phase is **Sonata**, version **0.14 preview** ([latest release](../../releases/latest)). From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
+It's still a work in progress. The current development phase is **Sonata**, version **0.14 preview 4** ([preview 4 release](../../releases/tag/v0.14.0-preview.4)). From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
 
 ## A quick look
 
