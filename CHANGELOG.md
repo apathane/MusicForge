@@ -8,7 +8,7 @@ All notable changes to MusicForge. Newest phase first.
 
 Version 0.14.0, codename `Sonata`.
 
-### Unreleased (preview 4)
+### P4 · 0.14.0 — *The Updater Has Entered the Chat*
 
 - In-app updater: daily background check, manual check, preview opt-in, download progress, and Android installer handoff
 - Update integrity: require a valid SHA-256 manifest entry before installing; fail closed when the manifest or entry is missing

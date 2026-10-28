@@ -28,14 +28,14 @@ jobs:
       - name: Check out the merged source
         uses: actions/checkout@v7
 
-      - name: Check whether preview 4 is already published
+      - name: Check whether P4 is already published
         id: release_check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view v0.14.0-preview.4 --json assets --jq '[.assets[].name] | contains(["MusicForge-0.14.0-preview.4.apk", "SHA256SUMS.txt"])' 2>/dev/null | grep -qx true; then
+          if gh release view p4-0.14.0 --json assets --jq '[.assets[].name] | contains(["MusicForge-p4-0.14.0.apk", "SHA256SUMS.txt"])' 2>/dev/null | grep -qx true; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Preview 4 already has both required assets; remaining steps will be skipped."
+            echo "P4 already has both required assets; remaining steps will be skipped."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -90,22 +90,22 @@ jobs:
         run: |
           set -euo pipefail
           grep -Eq '^val phase = 14$' app/build.gradle.kts
-          grep -Eq '^val build = 4$' app/build.gradle.kts
+          grep -Eq '^val preview = 4$' app/build.gradle.kts
           APK="$(find /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK" || { echo "::error::Release APK was not produced."; exit 1; }
           mkdir -p dist
-          cp "$APK" dist/MusicForge-0.14.0-preview.4.apk
+          cp "$APK" dist/MusicForge-p4-0.14.0.apk
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           test -x "$SDK_ROOT/build-tools/36.0.0/apksigner" || { echo "::error::apksigner is missing from the Android SDK."; exit 1; }
-          "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --print-certs dist/MusicForge-0.14.0-preview.4.apk | tee dist/signature.txt
+          "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --print-certs dist/MusicForge-p4-0.14.0.apk | tee dist/signature.txt
           grep -Eiq 'a42e05a0ad85843b0eb3fd6a845794b4fe48730a8791c8d3d7a100befefba469' dist/signature.txt || {
             echo "::error::APK signer does not match the permanent preview 3 signing certificate."; exit 1;
           }
-          (cd dist && sha256sum MusicForge-0.14.0-preview.4.apk > SHA256SUMS.txt)
+          (cd dist && sha256sum MusicForge-p4-0.14.0.apk > SHA256SUMS.txt)
           cat > dist/release-notes.md <<'NOTES'
-          MusicForge 0.14.0 preview 4 · Sonata
+          MusicForge P4 · 0.14.0 · The Updater Has Entered the Chat
 
-          Version 0.14.0-sonata.4 (code 1404).
+          Version 0.14.0-p4 (code 1404).
 
           - Adds a Settings updater for GitHub Releases, including preview opt-in and download progress.
           - Requires a valid SHA-256 entry before handing a downloaded APK to Android's installer.
@@ -122,21 +122,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view v0.14.0-preview.4 >/dev/null 2>&1; then
+          if gh release view p4-0.14.0 >/dev/null 2>&1; then
             # Recover a partially published release rather than silently skipping missing assets.
-            gh release upload v0.14.0-preview.4 \
-              dist/MusicForge-0.14.0-preview.4.apk \
+            gh release upload p4-0.14.0 \
+              dist/MusicForge-p4-0.14.0.apk \
               dist/SHA256SUMS.txt \
               --clobber
-            gh release edit v0.14.0-preview.4 \
-              --title "MusicForge 0.14.0 preview 4 · Sonata" \
+            gh release edit p4-0.14.0 \
+              --title "MusicForge P4 · 0.14.0 · The Updater Has Entered the Chat" \
               --prerelease \
               --notes-file dist/release-notes.md
           else
-            gh release create v0.14.0-preview.4 \
-              dist/MusicForge-0.14.0-preview.4.apk \
+            gh release create p4-0.14.0 \
+              dist/MusicForge-p4-0.14.0.apk \
               dist/SHA256SUMS.txt \
-              --title "MusicForge 0.14.0 preview 4 · Sonata" \
+              --title "MusicForge P4 · 0.14.0 · The Updater Has Entered the Chat" \
               --prerelease \
               --target "$GITHUB_SHA" \
               --notes-file dist/release-notes.md

@@ -3,7 +3,7 @@
 Claim an item by adding `claimed: <agent> · <branch>` under it; move it to Done with the commit
 or PR when it lands. Agents work in separate worktrees, never in the same checkout.
 
-## Now: preview 4 (release candidate, 2026-10-28)
+## Now: P4 · 0.14.0 (release candidate, 2026-10-28)
 
 Plan: changes land through reviewable PRs, CI must pass, and release signing must match preview 3.
 
