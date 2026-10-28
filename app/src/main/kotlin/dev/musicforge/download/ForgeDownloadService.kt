@@ -3,12 +3,10 @@ package dev.musicforge.download
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
-import android.graphics.drawable.Icon
 import androidx.annotation.OptIn
 import androidx.core.app.NotificationCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadService
@@ -58,18 +56,8 @@ class ForgeDownloadService : DownloadService(
             "Cancel all",
             cancelIntent,
         ).build()
-        // Calculate overall progress from all downloads (0-100)
-        val currentProgress = if (downloads.isNotEmpty()) {
-            (downloads.sumOf { it.bytesDownloaded.toDouble() } / downloads.sumOf { it.contentLength.toDouble() } * 100).toInt()
-        } else 0
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_download)
-            .setContentTitle(title)
-            .setContentText("Download in progress")
-            .setProgress(100, currentProgress, false)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setOnlyAlertOnce(true)
+        // Keep Media3's progress/requirements notification and add our cancel-all action.
+        return NotificationCompat.Builder.recoverBuilder(this, progress)
             .addAction(cancelCompat)
             .build()
     }
