@@ -175,6 +175,25 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
     val restore by vm.restore.collectAsStateWithLifecycle()
     val prefs by vm.prefs.collectAsStateWithLifecycle(initialValue = null)
 
+    // 7 taps in 3 seconds. Google needs 7 for their Easter eggs; at least we're consistent.
+    var playgroundTapCount by androidx.compose.runtime.remember { mutableStateOf(0) }
+    var playgroundFirstTap by androidx.compose.runtime.remember { mutableStateOf(0L) }
+    fun onPlaygroundTap() {
+        val now = System.currentTimeMillis()
+        if (playgroundTapCount > 0 && now - playgroundFirstTap <= 3000) {
+            playgroundTapCount++
+        } else {
+            playgroundTapCount = 1
+            playgroundFirstTap = now
+        }
+        if (playgroundTapCount == 7) {
+            playgroundTapCount = 0
+            playgroundFirstTap = 0L
+            vm.set(PlaygroundKeys.playgroundUnlocked, true)
+            android.widget.Toast.makeText(context, "You found the playground. Nothing here is promised.", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.inspect(uri)
     }
@@ -358,12 +377,24 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ) { vm.set(UpdateKeys.includePreviews, it) }
         }
 
+        val playgroundUnlocked = prefs?.get(PlaygroundKeys.playgroundUnlocked) ?: false
+        if (playgroundUnlocked) {
+            SectionTitle("Playground")
+            Group {
+                ToggleRow("Hide playground", checked = false, subtitle = "Removes this section until you unlock it again") { hide ->
+                    vm.set(PlaygroundKeys.playgroundUnlocked, !hide)
+                }
+            }
+        }
+
         Spacer(Modifier.height(24.dp))
         Text(
             "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · GPL-3.0\nOpen source; credits are under About.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .clickable { onPlaygroundTap() },
         )
     }
 
