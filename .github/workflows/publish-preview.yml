@@ -1,0 +1,129 @@
+name: Publish preview release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/build.gradle.kts"
+      - "app/src/main/kotlin/dev/musicforge/update/**"
+      - "app/src/main/kotlin/dev/musicforge/AppGraph.kt"
+      - "app/src/main/kotlin/dev/musicforge/ui/screens/SettingsScreen.kt"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/res/xml/file_paths.xml"
+      - ".github/workflows/publish-preview.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: musicforge-preview-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'apathane/MusicForge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out the merged source
+        uses: actions/checkout@v7
+
+      - name: Check whether preview 4 is already published
+        id: release_check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.14.0-preview.4 >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Preview 4 is already published; remaining steps will be skipped."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up JDK 21
+        if: steps.release_check.outputs.exists != 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK tools
+        if: steps.release_check.outputs.exists != 'true'
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android SDK packages
+        if: steps.release_check.outputs.exists != 'true'
+        run: |
+          set -euo pipefail
+          sdkmanager --install --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+
+      - name: Restore permanent release signing key
+        if: steps.release_check.outputs.exists != 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.MUSICFORGE_KEYSTORE_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64" || { echo "::error::Permanent release keystore secret is missing."; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/musicforge-release.jks"
+          echo "MUSICFORGE_KEYSTORE=$RUNNER_TEMP/musicforge-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build, test and lint release candidate
+        if: steps.release_check.outputs.exists != 'true'
+        env:
+          MUSICFORGE_KEYSTORE_PASSWORD: ${{ secrets.MUSICFORGE_KEYSTORE_PASSWORD }}
+          MUSICFORGE_KEY_ALIAS: ${{ secrets.MUSICFORGE_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --stacktrace \
+            :app:assembleRelease \
+            :app:testDebugUnitTest \
+            :app:lintDebug \
+            :innertube:testDebugUnitTest \
+            :innertube:lintDebug
+
+      - name: Verify version and permanent signer, prepare release assets
+        if: steps.release_check.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq '^val phase = 14$' app/build.gradle.kts
+          grep -Eq '^val build = 4$' app/build.gradle.kts
+          APK="$(find /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK" || { echo "::error::Release APK was not produced."; exit 1; }
+          mkdir -p dist
+          cp "$APK" dist/MusicForge-0.14.0-preview.4.apk
+          apksigner verify --print-certs dist/MusicForge-0.14.0-preview.4.apk | tee dist/signature.txt
+          grep -Eiq 'a42e05a0ad85843b0eb3fd6a845794b4fe48730a8791c8d3d7a100befefba469' dist/signature.txt || {
+            echo "::error::APK signer does not match the permanent preview 3 signing certificate."; exit 1;
+          }
+          (cd dist && sha256sum MusicForge-0.14.0-preview.4.apk > SHA256SUMS.txt)
+          cat > dist/release-notes.md <<'NOTES'
+          MusicForge 0.14.0 preview 4 · Sonata
+
+          Version 0.14.0-sonata.4 (code 1404).
+
+          - Adds a Settings updater for GitHub Releases, including preview opt-in and download progress.
+          - Requires a valid SHA-256 entry before handing a downloaded APK to Android's installer.
+          - Fixes FileProvider metadata required by the installer handoff.
+          - Failed automatic update checks can retry on a later app launch.
+          - Includes the preview 3 sign-in, artwork, and player output-device fixes.
+
+          This is a prerelease. Back up your library before testing and report device-specific problems.
+          NOTES
+
+      - name: Publish GitHub prerelease
+        if: steps.release_check.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create v0.14.0-preview.4 \
+            dist/MusicForge-0.14.0-preview.4.apk \
+            dist/SHA256SUMS.txt \
+            --title "MusicForge 0.14.0 preview 4 · Sonata" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --notes-file dist/release-notes.md
