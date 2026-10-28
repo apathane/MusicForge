@@ -486,7 +486,7 @@ private fun UpdateCheckRow(
             }
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Text("Check for updates", style = MaterialTheme.typography.titleSmall)
+        Text(if (state is UpdateState.Available) "Install update" else "Check for updates", style = MaterialTheme.typography.titleSmall)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (state is UpdateState.Downloading) {
             LinearProgressIndicator(
