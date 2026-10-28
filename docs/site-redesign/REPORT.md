@@ -12,7 +12,7 @@ This session continued the MusicForge website redesign and Liquid Glass visual-m
 
 ## Files Changed
 
-### Website (`app/site/`)
+### Website (`site/`)
 
 Replaced wholesale with the overlay zip's product-led editorial landing page:
 
@@ -31,7 +31,7 @@ Assets reused from `site/img/`: home.jpg, player.jpg, queue.jpg, artist.jpg (4 r
 | `SettingsScreen.kt` | ChoiceRow labels: `Artwork` → `Frosted Crayon`, `Liquid` → `Liquid Glass`. Comment: "Liquid" → "Live glass". |
 | `Glass.kt` | ARTWORK doc → "Frosted Crayon". LIQUID doc expanded with performance warning. Liquid() values per liquid-glass.patch: blur 7→11dp*scale, lensHeight 0.60→0.76, lensAmount 0.69→0.92, tint alpha 0.50→0.31 (dark)/0.58→0.40 (light), rim alpha 0.45→0.72/0.7→0.82, highlight 0.8dp@45°→1.15dp@38°, shadow 18dp→22dp (0.35→0.38 dark / 0.12→0.16 light), border 0.5dp solid → 0.8dp vertical-gradient brush, LiquidScale 0.5→0.65. |
 
-### Documentation (`app/docs/site-redesign/`)
+### Documentation (`docs/site-redesign/`)
 
 | File | Role |
 |---|---|
@@ -81,13 +81,13 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 | SettingsScreen.kt patch — labels renamed | PASS |
 | Version naming consistent (build.gradle.kts + site + CHANGELOG) | PASS |
 | Screenshot assets exist (4 real JPEGs) | PASS |
-| `scripts/check.sh` via GitHub Actions CI | PASS — run 40633593430, `completed success`, 1m29s (:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37). APKs committed from run 40632526127 (5m57s). |
-| Local `scripts/check.sh` | BLOCKED — Android SDK missing at `sdk.dir` (local.properties) (directory doesn't exist). Requires Android SDK installation to run locally. |
-| GitHub Pages deploy | PASS — run 40632526071, `completed success`, 16s |
-| First Run workflow | PASS — run 40632526117, `completed success`, 10s |
-| Debug APK | `apk/app-debug.apk` — 24.5 MB, built by CI run 40632526127 |
-| Release APK | `apk/app-release.apk` — 5.6 MB, built by CI run 40632526127 |
-| Release signing | Signed with debug key (local-only project, per build.gradle.kts release config) |
+| `scripts/check.sh` via GitHub Actions CI | PASS — run 40757309443, `completed success` (:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37). APKs were uploaded as expiring Actions artifacts, not committed to Git. |
+| Local `scripts/check.sh` | NOT VERIFIED in this hosted review. Earlier notes reported an absent Android SDK path in `local.properties`; confirm on the current workstation before treating that as current. |
+| GitHub Pages deploy | PASS — run 40757309328, `completed success` |
+| First Run workflow | PASS — run 40757309105, `completed success` |
+| Debug APK | Uploaded by CI run 40757309443 as a temporary Actions artifact |
+| Release APK | Uploaded by CI run 40757309443 as a temporary Actions artifact |
+| Release signing | Preview 3 is signed with the permanent release key; its release notes record the certificate SHA-256. The preview 4 workflow independently verifies this fingerprint before publishing. |
 | Liquid Glass on real API 31+ device | NOT TESTED — no device available |
 | HTML validator | NOT RUN — visual inspection only |
 
@@ -105,22 +105,19 @@ This was already wired — pushing triggers CI on GitHub's infrastructure. No se
 
 ## GitHub Pages
 
-- Enabled. Source: `main` branch, path `/`. URL: `https://apathane.github.io/MusicForge/`. Build type: workflow, HTTPS enforced.
+- Enabled and successfully deployed through GitHub Actions. URL: `https://apathane.github.io/MusicForge/`; the repository is configured to publish via Actions.
 
 ---
 
 ## What Remains
 
-1. **CI results** — pending GitHub Actions run after push. Check the Actions tab on the repo.
-2. **Liquid Glass real-device test** — needs API 31+ device (Honor X7b recommended per docs).
-3. **Pages deployment confirmation** — check `https://apathane.github.io/MusicForge/` after CI passes.
+1. **Preview 4** — PR #3 adds the updater, strict checksum verification, and a guarded publishing workflow; it remains subject to CI and review until merged.
+2. **Liquid Glass real-device test** — still needs verification on an API 31+ device (Honor X7b recommended per docs).
+3. **Live site review** — deployment succeeded; inspect the rendered page on desktop and mobile.
 4. **HTML validation** — optional, can run `html-validator` or similar.
 
 ---
 
 ## Rollback
 
-All changes were pushed to GitHub. To revert:
-- `git revert <push-commit-sha>` or `git reset --hard <previous-sha>` and force-push (force-push not recommended on shared main)
-
-Previous main was `3caba3c` before this push.
+The site redesign and glass-mode naming are merged to `main`. Revert them with a reviewed revert commit or PR; do not reset or force-push shared `main`. Preview 4 changes are tracked separately in PR #3 until merged.
