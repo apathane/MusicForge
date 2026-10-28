@@ -82,6 +82,9 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.AdjustDirection
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,7 +109,11 @@ import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -231,52 +238,72 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     // System volume and active output device.
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
-    // On the artwork the whole sheet drags down, like Apple Music; over lyrics or the queue
-    // only the grabber does, so scrolling a list never pulls the player away.
-    Column(
-        Modifier.fillMaxSize().then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier)
-            .statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    BoxWithConstraints(
+        Modifier.fillMaxSize()
+            .then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier)
+            .statusBarsPadding().navigationBarsPadding(),
     ) {
-        // Grabber + collapse
-        Box(Modifier.fillMaxWidth().height(44.dp).then(if (pane != PlayerPane.ARTWORK) dismissDrag else Modifier), contentAlignment = Alignment.Center) {
+        // Artwork covers the top ~45% of the sheet when on the artwork pane.
+        // No artwork on lyrics/queue panes: the grabber height is the top inset instead.
+        val artHeight = if (pane == PlayerPane.ARTWORK) maxHeight * 0.45f else 44.dp
+
+        // Full-bleed cover, edge to edge, no card frame.
+        if (pane == PlayerPane.ARTWORK) {
+            BigArtwork(now, Modifier
+                .fillMaxWidth()
+                .height(artHeight)
+            )
+        }
+
+        // The grabber rests at the very top, over the artwork when shown.
+        Box(Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
             Box(Modifier.size(width = 38.dp, height = 5.dp).clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.35f)))
             Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(ForgeIcons.Collapse, "Close player", white, 30.dp, onClose) }
         }
 
-        // The middle pane changes; the controls below never move.
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            AnimatedContent(pane, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) }, label = "pane") { p ->
-                when (p) {
-                    PlayerPane.ARTWORK -> BigArtwork(now)
-                    PlayerPane.LYRICS -> LyricsPane(now, position, accent, onSeek = { connection.seekTo(it) }) { menu = true }
-                    PlayerPane.QUEUE -> QueuePane(now, connection) { menu = true }
+        // Controls below the artwork, with horizontal gutter.
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 26.dp)
+                .padding(top = artHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // The middle pane changes; lyrics and queue. Artwork pane has nothing here —
+            // the cover is full-bleed at the top.
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AnimatedContent(pane, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) }, label = "pane") { p ->
+                    when (p) {
+                        PlayerPane.ARTWORK -> Unit
+                        PlayerPane.LYRICS -> LyricsPane(now, position, accent, onSeek = { connection.seekTo(it) }) { menu = true }
+                        PlayerPane.QUEUE -> QueuePane(now, connection) { menu = true }
+                    }
                 }
             }
+
+            // Title row — only on the artwork pane.
+            if (pane == PlayerPane.ARTWORK) {
+                TitleRow(now, liked == true, accent, white, onClose, onMenu = { menu = true }, onLike = {
+                    connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
+                })
+            }
+
+            Scrubber(position, now.durationMs, white, onSeek = connection::seekTo, modifier = Modifier.padding(top = 10.dp), codecLabel = codecLabel)
+
+            // Up Next row: the next song's small cover, "Up Next", title, artist. Tap plays it.
+            if (nextItem != null) {
+                UpNextRow(nextItem, currentIndex, connection, white)
+            }
+
+            // Transport: previous, play/pause (~72 dp), next. Shuffle/repeat moved to queue pane.
+            TransportRow(now, connection, white, accent)
+
+            // Volume slider bound to STREAM_MUSIC, following hardware key changes.
+            VolumeControlRow(audioManager, white)
+
+            // Bottom row: lyrics, output device, queue. Active pane gets the grey disc.
+            BottomRow(pane, audioManager, white) { newPane -> pane = newPane }
         }
-
-        // Title row — only on the artwork pane; lyrics/queue carry their own mini header.
-        if (pane == PlayerPane.ARTWORK) {
-            TitleRow(now, liked == true, accent, white, onClose, onMenu = { menu = true }, onLike = {
-                connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
-            })
-        }
-
-        Scrubber(position, now.durationMs, white, onSeek = connection::seekTo, modifier = Modifier.padding(top = 10.dp), codecLabel = codecLabel)
-
-        // Up Next row: the next song's small cover, "Up Next", title, artist. Tap plays it.
-        if (nextItem != null) {
-            UpNextRow(nextItem, currentIndex, connection, white)
-        }
-
-        // Transport: previous, play/pause (~72 dp), next. Shuffle/repeat moved to queue pane.
-        TransportRow(now, connection, white, accent)
-
-        // Volume slider bound to STREAM_MUSIC, following hardware key changes.
-        VolumeControlRow(audioManager, white)
-
-        // Bottom row: lyrics, output device, queue. Active pane gets the grey disc.
-        BottomRow(pane, audioManager, white) { newPane -> pane = newPane }
     }
 
     if (menu) {
@@ -305,26 +332,49 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 }
 
 /** Big cover that eases back when paused: the record is resting. Full-bleed (no card/rounded frame);
- *  the fade to black is in the ambience backdrop, baked once per track. */
+ *  the fade to black is baked into the ambience backdrop once per track. The gradient overlay at
+ *  its bottom blends the art into the dark controls below. */
 @Composable
-private fun BigArtwork(now: NowPlaying) {
+private fun BigArtwork(now: NowPlaying, modifier: Modifier = Modifier) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
     // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
     val letterboxed = dev.musicforge.playback.isLetterboxedThumbnail(now.metadata.artworkUri?.toString().orEmpty())
-    val tile = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color.White.copy(alpha = 0.08f)) }
+    val title = now.metadata.title?.toString().orEmpty()
+    val artist = now.metadata.artist?.toString().orEmpty()
+    // Album art is the screen's primary graphic, not decorative — describe it for TalkBack.
+    val contentDescription = when {
+        title.isNotEmpty() && artist.isNotEmpty() -> "Album art, $title by $artist"
+        title.isNotEmpty() -> "Album art, $title"
+        artist.isNotEmpty() -> "Album art, $artist"
+        else -> null
+    }
+    val placeholder = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color.White.copy(alpha = 0.08f)) }
+    // A failed load draws a dim grey tile — not the same as the loading tile, so failures are visible.
+    val error = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFBBBBBB).copy(alpha = 0.4f)) }
     AsyncImage(
         model = now.metadata.artworkUri,
-        contentDescription = null,
-        placeholder = tile,
-        error = tile,
+        contentDescription = contentDescription,
+        placeholder = placeholder,
+        error = error,
         contentScale = if (letterboxed) dev.musicforge.ui.components.CropPastLetterbox else ContentScale.Crop,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                // No clip or shadow: full-bleed artwork, the fade lives in the ambience bitmap.
+                // No clip or shadow: full-bleed artwork.
+            }
+            // Fade the bottom edge of the art into the black background below,
+            // so the cover meets the controls without a hard cut.
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.65f to Color.Black.copy(alpha = 0.4f),
+                        1f to Color.Black,
+                    ),
+                )
             },
     )
 }
@@ -406,6 +456,7 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
             }
         }
         DiscButton(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (liked) "Unlike" else "Like", if (liked) accent else white) { onLike() }
+        Spacer(Modifier.width(12.dp))
         DiscButton(ForgeIcons.More, "More options", white) { onMenu() }
     }
 }
@@ -424,7 +475,7 @@ private fun UpNextRow(item: androidx.media3.common.MediaItem, index: Int, connec
             Text(item.mediaMetadata.title?.toString().orEmpty(), color = color, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(item.mediaMetadata.artist?.toString().orEmpty(), color = color.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Play next") { connection.skipTo(index + 1) }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Play next") { connection.skipTo(index + 1) }, contentAlignment = Alignment.Center) {
             Icon(ForgeIcons.Play, contentDescription = "Play next", tint = color, modifier = Modifier.size(20.dp))
         }
     }
@@ -449,7 +500,8 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
             }
         }
         val nextTint = if (now.hasNext) white else white.copy(alpha = 0.3f)
-        PlayerIcon(ForgeIcons.Next, "Next", nextTint, 40.dp) { connection.next() }
+        val nextLabel = if (now.hasNext) "Next" else "Next, unavailable"
+        PlayerIcon(ForgeIcons.Next, nextLabel, nextTint, 40.dp) { connection.next() }
     }
 }
 
