@@ -27,6 +27,12 @@ class LyricsTest {
         ).inOrder()
     }
 
+    @Test fun allowsLrcMinutesBeyondAnHour() {
+        assertThat(Lrc.parse("[100:01.00]Long recording")).containsExactly(
+            Lyrics.Line(6_001_000, "Long recording"),
+        )
+    }
+
     @Test fun unknownDurationPreservesProviderRelevanceOrder() {
         val first = JSONObject().put("duration", 0).put("syncedLyrics", "[00:01.00]First result")
         val second = JSONObject().put("duration", 210).put("syncedLyrics", "[00:02.00]Second result")
