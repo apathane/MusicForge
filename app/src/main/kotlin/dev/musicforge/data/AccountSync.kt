@@ -77,8 +77,8 @@ class AccountSync(
         if (YouTube.cookie == null) return@withContext
         if (!lock.tryLock()) return@withContext
         try {
-            step("History") { history() }
-            settings.edit { it[Keys.LastHistorySync] = System.currentTimeMillis() }
+            val synced = history()
+            if (synced != null) settings.edit { it[Keys.LastHistorySync] = System.currentTimeMillis() }
         } catch (e: Exception) {
             Timber.w(e, "history sync failed")
         } finally {
@@ -98,11 +98,17 @@ class AccountSync(
             step("Playlists") { playlists()?.let { counts += "$it playlists" } }
             // History syncs with the rest, so "Sync now" and pull-to-refresh bring remote plays too
             // (SONATA-SPEC §0). Called directly: syncHistory() would deadlock on this same lock.
-            step("History") { history()?.let { counts += "$it recent plays" } }
+            var historySynced = false
+            step("History") {
+                history()?.let {
+                    counts += "$it recent plays"
+                    historySynced = true
+                }
+            }
             val now = System.currentTimeMillis()
             settings.edit {
                 it[Keys.LastAccountSync] = now
-                it[Keys.LastHistorySync] = now
+                if (historySynced) it[Keys.LastHistorySync] = now
             }
             _status.value = Status.Done(now, counts.joinToString(", ").ifEmpty { "nothing to bring over" })
         } catch (e: Exception) {
@@ -248,7 +254,6 @@ class AccountSync(
     private suspend fun history(): Int? {
         val page = YouTube.musicHistory().getOrNull() ?: return null
         val songs = page.sections?.flatMap { it.songs } ?: emptyList()
-        if (songs.isEmpty()) return 0
         val now = System.currentTimeMillis()
         db.withTransaction {
             dao.clearRemoteHistory()
