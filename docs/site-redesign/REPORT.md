@@ -64,7 +64,7 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 ## Design Decisions
 
 - **Frosted Crayon stays distinct**: pre-blurred artwork slice, one bitmap draw, works on API 26+. Cheap on Honor X7b (Adreno 610).
-- **Liquid Glass is opt-in**: only API 31+, only when `isRenderEffectSupported()`, limited to nav pill + mini-player — never scrolling areas. Falls back to Frosted Crayon on older API.
+- **Liquid Glass is capability-gated**: it is the default only when API 31+ and `isRenderEffectSupported()` are available; it is limited to the nav pill + mini-player, never scrolling areas. Older APIs fall back to Frosted Crayon.
 - **No perpetual animation**: reveals use IntersectionObserver once, reduced-motion disables all transitions, no background animation loops.
 - **No fake stats**: benchmark numbers are historical recordings with disclosed methodology; no invented testimonials or live telemetry.
 - **Accessibility**: skip link, focus-visible outlines (2px accent), theme-toggle aria-label syncs, mobile nav keyboard-handled, screenshots have alt text.
