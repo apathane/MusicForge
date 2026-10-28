@@ -43,7 +43,7 @@ fun forgeMediaItem(
                 .setTitle(title)
                 .setArtist(credits.joinToString { it.name })
                 .setAlbumTitle(albumTitle)
-                .setArtworkUri(artworkUrl?.let(::hiResArtwork)?.toUri())
+                .setArtworkUri(fallbackArtwork(videoId, artworkUrl).toUri())
                 .setExtras(extras)
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
@@ -98,15 +98,29 @@ fun MediaItem.markedFrom(label: String): MediaItem = buildUpon()
 fun MediaItem.markedFromRadio(): MediaItem = markedFrom(FROM_RADIO)
 val MediaMetadata.durationSec: Int? get() = extras?.getInt(EXTRA_DURATION, -1)?.takeIf { it > 0 }
 
+/** A video id always has a thumbnail — use it when no artwork url was supplied. */
+fun fallbackArtwork(videoId: String, artworkUrl: String?): String =
+    artworkUrl?.takeIf { it.isNotBlank() }?.let(::hiResArtwork)
+        ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+
 /**
  * The same artwork at about [px] pixels: Google's image server resizes on request, so a 48 dp
  * row fetches and decodes a ~128 px file instead of the 544 px player cover. Steps keep the
  * number of cached variants small. Video thumbnails (i.ytimg.com) come in fixed sizes; unchanged.
+ *
+ * Google avatar/cover URLs (`lh3`, `yt3`) come in two size forms: `=wNNN-hNNN` and `=sNNN`.
+ * i.ytimg.com URLs with `?sqp=`/`&rs=` signatures are left untouched — see [hiResArtwork].
  */
 fun sizedArtwork(url: String, px: Int): String {
-    if (!Regex("=w\\d+-h\\d+").containsMatchIn(url)) return url
+    if ("i.ytimg.com" in url) return url
     val step = listOf(128, 256, 544).firstOrNull { it >= px } ?: 544
-    return url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w$step-h$step-l90-rj")
+    return when {
+        Regex("=w\\d+-h\\d+").containsMatchIn(url) ->
+            url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w$step-h$step-l90-rj")
+        Regex("=s\\d+").containsMatchIn(url) ->
+            url.replace(Regex("=s\\d+[^&/]*"), "=s$step-l90-rj")
+        else -> url
+    }
 }
 
 /**
@@ -119,10 +133,14 @@ fun isLetterboxedThumbnail(url: String): Boolean =
 /**
  * YouTube Music thumbnails come sized in the URL (`=w120-h120`). Ask for 544 px:
  * enough for the full-screen player at 1080p, and Coil downsamples for small slots.
+ *
+ * i.ytimg.com thumbnails come in fixed sizes; don't touch them. A URL with a signature
+ * (`?sqp=` or `&rs=`) must keep its path, because the signature is bound to that path —
+ * rewriting it to hqdefault.jpg would break the signature and 403.
  */
 fun hiResArtwork(url: String): String =
     when {
         Regex("=w\\d+-h\\d+").containsMatchIn(url) -> url.replace(Regex("=w\\d+-h\\d+[^&/]*"), "=w544-h544-l90-rj")
-        "i.ytimg.com" in url -> url.replace(Regex("/(default|mqdefault|hqdefault|sddefault)\\.jpg"), "/hqdefault.jpg")
+        "i.ytimg.com" in url && !url.contains("?sqp=") && !url.contains("&rs=") -> url.replace(Regex("/(default|mqdefault|hqdefault|sddefault)\\.jpg"), "/hqdefault.jpg")
         else -> url
     }
