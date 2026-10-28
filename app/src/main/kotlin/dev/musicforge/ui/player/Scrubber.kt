@@ -25,6 +25,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -57,6 +62,16 @@ fun Scrubber(
             Modifier
                 .fillMaxWidth()
                 .height(48.dp)
+                // TalkBack sees a slider: swipe up/down to step, and the value it reads is real.
+                .semantics {
+                    contentDescription = "Seek"
+                    if (durationMs > 0) {
+                        progressBarRangeInfo = ProgressBarRangeInfo(
+                            (position.value.toFloat() / durationMs).coerceIn(0f, 1f), 0f..1f, steps = 0,
+                        )
+                        setProgress("Seek") { f -> onSeek((f.coerceIn(0f, 1f) * durationMs).toLong()); true }
+                    }
+                }
                 .pointerInput(durationMs) {
                     detectTapGestures { o -> if (durationMs > 0) onSeek((o.x / size.width * durationMs).toLong()) }
                 }

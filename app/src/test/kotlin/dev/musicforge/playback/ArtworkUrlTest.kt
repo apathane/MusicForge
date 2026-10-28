@@ -20,4 +20,9 @@ class ArtworkUrlTest {
         assertThat(sizedArtwork("https://lh3.googleusercontent.com/x=w60-h60-l90-rj", 200)).endsWith("=w256-h256-l90-rj")
         assertThat(sizedArtwork("https://yt3.ggpht.com/x=s88", 100)).endsWith("=s128-l90-rj")
     }
+
+    @Test fun googleCoverQueryStringSurvivesTheResize() {
+        assertThat(sizedArtwork("https://lh3.googleusercontent.com/x=w60-h60-l90-rj?sqp=sig", 200))
+            .isEqualTo("https://lh3.googleusercontent.com/x=w256-h256-l90-rj?sqp=sig")
+    }
 }
