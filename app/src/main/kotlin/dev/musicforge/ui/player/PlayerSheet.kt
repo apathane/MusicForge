@@ -647,7 +647,7 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
     val scope = rememberCoroutineScope()
     // getDevices() is binder IPC — run the lookup off the main thread and post the result back;
     // the callbacks below refresh the same way on audio routing changes.
-    var deviceInfo by mutableStateOf<AudioDeviceInfo?>(null)
+    var deviceInfo by remember { mutableStateOf<AudioDeviceInfo?>(null) }
 
     fun refreshDevice() = scope.launch {
         deviceInfo = withContext(Dispatchers.Default) { activeOutputDevice(audioManager) }
