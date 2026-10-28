@@ -16,6 +16,21 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 - [ ] **Real-device updater test**: verify update discovery, checksum rejection, permission flow, and install over preview 3 on hardware.
 - [ ] **Identity (owner)**: the app still needs the owner's decision on its long-term name, colour, and signature element before a larger identity redesign.
 
+## Night shift (maintenance, branch `night/maintenance`)
+
+Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
+
+- [x] Updater: strip paths from asset names, clear old APKs, whole-percent progress
+- [ ] Redundancy scan (free model, read-only): dead code, unused resources, stale docs, unused deps;
+      every finding checked by hand before anything is deleted
+
+## Playground (branch `playground`, may never ship)
+
+Ideas agents think would be fun. Each one small, behind a setting or easy to drop. If one turns
+out good, it gets its own reviewed PR to main. Add yours with your agent name.
+
+- [ ] (open) your idea here
+
 ## Earlier: bug-fix release (0.14.0 previews 1–2)
 
 - [x] PR #2 merged (verification fixes; network security config fixed to the real schema)
@@ -23,8 +38,8 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 - [x] **One permanent release key**: CI and local builds sign with it, so updates install over
       each other (they failed because every machine and CI runner had its own debug key)
 - [x] Player: full-bleed artwork + button gap (OpenCode/Laguna), Material volume/headphone icons
-- [x] **PlayerPanes accessibility** (48 dp targets: lock, row menu, drag handle, mini like/more, Undo, Clear; now-playing row glyph; TogglePill icon verified, no change) — fix/fix-player-panes, commit 0008a1d, not pushed
-- [ ] **PlayerSheet accessibility (rest)**: volume slider ≥ 48 dp hit area + slider semantics (518-546), debounce `setStreamVolume` off drag frames (526, 535), output-device lookup off the main thread (554-577), MEDIA_OUTPUT intent guard for API 35+ (588), title clickable node (366)
+- [x] **PlayerPanes accessibility** (48 dp targets: lock, row menu, drag handle, mini like/more, Undo, Clear; now-playing row glyph); merged with preview 3
+- [x] **PlayerSheet accessibility (rest)** (merged with preview 3, commit 98d139f): volume slider ≥ 48 dp hit area + slider semantics (518-546), debounce `setStreamVolume` off drag frames (526, 535), output-device lookup off the main thread (554-577), MEDIA_OUTPUT intent guard for API 35+ (588), title clickable node (366)
 - [x] Released v0.14.0-preview.1 and v0.14.0-preview.2 (CI-built, permanent key, SHA256SUMS)
 
 ## Sonata roadmap (remaining work from docs/SONATA-SPEC)
