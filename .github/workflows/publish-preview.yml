@@ -95,7 +95,9 @@ jobs:
           test -n "$APK" || { echo "::error::Release APK was not produced."; exit 1; }
           mkdir -p dist
           cp "$APK" dist/MusicForge-0.14.0-preview.4.apk
-          apksigner verify --print-certs dist/MusicForge-0.14.0-preview.4.apk | tee dist/signature.txt
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -x "$SDK_ROOT/build-tools/36.0.0/apksigner" || { echo "::error::apksigner is missing from the Android SDK."; exit 1; }
+          "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --print-certs dist/MusicForge-0.14.0-preview.4.apk | tee dist/signature.txt
           grep -Eiq 'a42e05a0ad85843b0eb3fd6a845794b4fe48730a8791c8d3d7a100befefba469' dist/signature.txt || {
             echo "::error::APK signer does not match the permanent preview 3 signing certificate."; exit 1;
           }
