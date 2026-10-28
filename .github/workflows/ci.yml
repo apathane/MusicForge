@@ -36,7 +36,7 @@ jobs:
           gradle = Path("app/build.gradle.kts").read_text()
           site = Path("site/index.html").read_text()
           manifest = Path("app/src/main/AndroidManifest.xml").read_text()
-          phase = re.search(r'val phase = (\\d+)', gradle)
+          phase = re.search(r'val phase = (\d+)', gradle)
           codename = re.search(r'val codename = "([^"]+)"', gradle)
           assert phase and codename, "Could not read app version from Gradle"
           expected = f"0.{phase.group(1)} {codename.group(1)}"
