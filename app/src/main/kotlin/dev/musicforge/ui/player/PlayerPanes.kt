@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -265,37 +266,49 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
                     )
                 }
             }
+            // 48 dp touch target for the text button — fingers are not mouse pixels, 40 dp was audacious.
             AnimatedVisibility(removed != null || cleared != null) {
-                Text(
-                    "Undo",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = white,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.16f))
+                Box(
+                    Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                         .clickable(onClickLabel = "Put the removed songs back") {
                             removed?.let { (at, item) -> connection.insertAt(at, item) }
                             cleared?.sortedByDescending { it.first }?.forEach { (at, item) -> connection.insertAt(at, item) }
                             removed = null
                             cleared = null
+                        },
+                ) {
+                    Text(
+                        "Undo",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = white,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(white.copy(alpha = 0.16f)),
+                    )
+                }
+            }
+            // 48 dp touch target for the text button (the padded text was ~30 dp tall).
+            Box(
+                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .clickable(onClickLabel = "Clear the songs after this one") {
+                        val qNow = connection.queue.value
+                        val idx = connection.currentIndex.value
+                        val upcoming = qNow.drop(idx + 1).mapIndexed { i, item -> (idx + 1 + i) to item }
+                        if (upcoming.isNotEmpty()) {
+                            cleared = upcoming
+                            upcoming.sortedByDescending { it.first }.forEach { connection.removeAt(it.first) }
                         }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    },
+            ) {
+                Text(
+                    "Clear",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = white.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                 )
             }
-            Text(
-                "Clear",
-                style = MaterialTheme.typography.labelLarge,
-                color = white.copy(alpha = 0.8f),
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear the songs after this one") {
-                    val qNow = connection.queue.value
-                    val idx = connection.currentIndex.value
-                    val upcoming = qNow.drop(idx + 1).mapIndexed { i, item -> (idx + 1 + i) to item }
-                    if (upcoming.isNotEmpty()) {
-                        cleared = upcoming
-                        upcoming.sortedByDescending { it.first }.forEach { connection.removeAt(it.first) }
-                    }
-                }.padding(horizontal = 10.dp, vertical = 8.dp),
-            )
             Box(
-                Modifier.size(40.dp).clip(RoundedCornerShape(50))
+                Modifier.size(48.dp).clip(RoundedCornerShape(50))
                     .clickable(onClickLabel = if (locked) "Unlock queue" else "Lock queue") {
                         scope.launch { graph.settings.edit { it[Keys.QueueLocked] = !locked } }
                     },
@@ -352,15 +365,25 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
                                     Spacer(Modifier.width(6.dp))
                                     Text("E", color = white.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                 }
+                                // Non-colour "now playing" indicator: the row background alone is colour/opacity only.
+                                if (playing) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(
+                                        ForgeIcons.Play,
+                                        contentDescription = "Now playing",
+                                        tint = white.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
                             }
                             Text(queueSubtitle(item.mediaMetadata), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).clickable { rowMenu = item }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable { rowMenu = item }, contentAlignment = Alignment.Center) {
                             Text("⋯", color = white.copy(alpha = 0.5f), modifier = Modifier.semantics { contentDescription = "More options" })
                         }
                         if (!locked) {
                             Box(
-                                Modifier.size(36.dp).draggableHandle(
+                                Modifier.size(48.dp).draggableHandle(
                                     onDragStarted = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
                                 ),
                                 contentAlignment = Alignment.Center,
@@ -394,10 +417,10 @@ private fun MiniPlayerHeader(now: NowPlaying, liked: Boolean, onMore: () -> Unit
             Text(now.metadata.title?.toString().orEmpty(), color = white, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(now.metadata.artist?.toString().orEmpty(), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Box(Modifier.size(40.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = if (liked) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = if (liked) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
             Icon(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) accent else white, modifier = Modifier.size(20.dp))
         }
-        Box(Modifier.size(40.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "More options", onClick = onMore), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "More options", onClick = onMore), contentAlignment = Alignment.Center) {
             Icon(ForgeIcons.More, contentDescription = "More options", tint = white, modifier = Modifier.size(20.dp))
         }
     }
