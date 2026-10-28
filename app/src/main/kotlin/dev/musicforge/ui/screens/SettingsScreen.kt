@@ -491,7 +491,7 @@ private fun UpdateCheckRow(
         if (state is UpdateState.Downloading) {
             LinearProgressIndicator(
                 progress = { state.progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(4.dp).padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(4.dp),
             )
         }
     }
