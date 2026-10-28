@@ -1,22 +1,23 @@
-name: Publish preview release
+name: Publish release
 
+# Publishes whatever version app/build.gradle.kts declares, once: preview > 0 is a prerelease
+# tagged pN-0.<phase>.<patch>, preview = 0 a regular release tagged v0.<phase>.<patch>.
+# Title and notes come from .github/release-notes.md (first line is the title). Bump the
+# version and rewrite that file in the same commit; anything else on main publishes nothing new.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - "app/build.gradle.kts"
-      - "app/src/main/kotlin/dev/musicforge/update/**"
-      - "app/src/main/kotlin/dev/musicforge/AppGraph.kt"
-      - "app/src/main/kotlin/dev/musicforge/ui/screens/SettingsScreen.kt"
-      - "app/src/main/AndroidManifest.xml"
-      - "app/src/main/res/xml/file_paths.xml"
-      - ".github/workflows/publish-preview.yml"
+      - ".github/release-notes.md"
+      - ".github/workflows/publish-release.yml"
 
 permissions:
   contents: write
 
 concurrency:
-  group: musicforge-preview-publish
+  group: musicforge-release-publish
   cancel-in-progress: false
 
 jobs:
@@ -28,14 +29,27 @@ jobs:
       - name: Check out the merged source
         uses: actions/checkout@v7
 
-      - name: Check whether P4 is already published
+      - name: Read the version and check whether it is already published
         id: release_check
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          if gh release view p4-0.14.0 --json assets --jq '[.assets[].name] | contains(["MusicForge-p4-0.14.0.apk", "SHA256SUMS.txt"])' 2>/dev/null | grep -qx true; then
+          set -euo pipefail
+          num() { grep -Po "^val $1 = \\K[0-9]+$" app/build.gradle.kts; }
+          PHASE=$(num phase); PATCH=$(num patch); PREVIEW=$(num preview)
+          if [ "$PREVIEW" -gt 0 ]; then
+            TAG="p$PREVIEW-0.$PHASE.$PATCH"; CODE=$((PHASE * 100 + PATCH * 10 + PREVIEW)); PRE=--prerelease
+            VERSION="0.$PHASE.$PATCH-p$PREVIEW"
+          else
+            TAG="v0.$PHASE.$PATCH"; CODE=$((PHASE * 100 + PATCH * 10 + 9)); PRE=--latest
+            VERSION="0.$PHASE.$PATCH"
+          fi
+          APK_NAME="MusicForge-${TAG#v}.apk"
+          { echo "tag=$TAG"; echo "code=$CODE"; echo "pre=$PRE"; echo "version=$VERSION"; echo "apk=$APK_NAME"; } >> "$GITHUB_OUTPUT"
+          if gh release view "$TAG" --json assets --jq "[.assets[].name] | contains([\"$APK_NAME\", \"SHA256SUMS.txt\"])" 2>/dev/null | grep -qx true; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "P4 already has both required assets; remaining steps will be skipped."
+            echo "$TAG already has both required assets; remaining steps will be skipped."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -84,60 +98,46 @@ jobs:
             :innertube:testDebugUnitTest \
             :innertube:lintDebug
 
-      - name: Verify version and permanent signer, prepare release assets
+      - name: Verify the permanent signer, prepare release assets
         if: steps.release_check.outputs.exists != 'true'
+        env:
+          APK_NAME: ${{ steps.release_check.outputs.apk }}
+          VERSION: ${{ steps.release_check.outputs.version }}
+          CODE: ${{ steps.release_check.outputs.code }}
         shell: bash
         run: |
           set -euo pipefail
-          grep -Eq '^val phase = 14$' app/build.gradle.kts
-          grep -Eq '^val preview = 4$' app/build.gradle.kts
           APK="$(find /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK" || { echo "::error::Release APK was not produced."; exit 1; }
           mkdir -p dist
-          cp "$APK" dist/MusicForge-p4-0.14.0.apk
+          cp "$APK" "dist/$APK_NAME"
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           test -x "$SDK_ROOT/build-tools/36.0.0/apksigner" || { echo "::error::apksigner is missing from the Android SDK."; exit 1; }
-          "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --print-certs dist/MusicForge-p4-0.14.0.apk | tee dist/signature.txt
+          "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --print-certs "dist/$APK_NAME" | tee dist/signature.txt
           grep -Eiq 'a42e05a0ad85843b0eb3fd6a845794b4fe48730a8791c8d3d7a100befefba469' dist/signature.txt || {
             echo "::error::APK signer does not match the permanent preview 3 signing certificate."; exit 1;
           }
-          (cd dist && sha256sum MusicForge-p4-0.14.0.apk > SHA256SUMS.txt)
-          cat > dist/release-notes.md <<'NOTES'
-          MusicForge P4 · 0.14.0 · The Updater Has Entered the Chat
+          (cd dist && sha256sum "$APK_NAME" > SHA256SUMS.txt)
+          head -1 .github/release-notes.md > dist/title.txt
+          # The updater reads "code NNNN" from the notes to order releases.
+          { tail -n +2 .github/release-notes.md; echo; echo "Version $VERSION (code $CODE)."; } > dist/release-notes.md
 
-          Version 0.14.0-p4 (code 1404).
-
-          - Adds a Settings updater for GitHub Releases, including preview opt-in and download progress.
-          - Requires a valid SHA-256 entry before handing a downloaded APK to Android's installer.
-          - Fixes FileProvider metadata required by the installer handoff.
-          - Failed automatic update checks can retry on a later app launch.
-          - Includes the preview 3 sign-in, artwork, and player output-device fixes.
-
-          This is a prerelease. Back up your library before testing and report device-specific problems.
-          NOTES
-
-      - name: Publish GitHub prerelease
+      - name: Publish GitHub release
         if: steps.release_check.outputs.exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release_check.outputs.tag }}
+          PRE: ${{ steps.release_check.outputs.pre }}
+          APK_NAME: ${{ steps.release_check.outputs.apk }}
+        shell: bash
         run: |
           set -euo pipefail
-          if gh release view p4-0.14.0 >/dev/null 2>&1; then
+          TITLE="$(cat dist/title.txt)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
             # Recover a partially published release rather than silently skipping missing assets.
-            gh release upload p4-0.14.0 \
-              dist/MusicForge-p4-0.14.0.apk \
-              dist/SHA256SUMS.txt \
-              --clobber
-            gh release edit p4-0.14.0 \
-              --title "MusicForge P4 · 0.14.0 · The Updater Has Entered the Chat" \
-              --prerelease \
-              --notes-file dist/release-notes.md
+            gh release upload "$TAG" "dist/$APK_NAME" dist/SHA256SUMS.txt --clobber
+            gh release edit "$TAG" --title "$TITLE" "$PRE" --notes-file dist/release-notes.md
           else
-            gh release create p4-0.14.0 \
-              dist/MusicForge-p4-0.14.0.apk \
-              dist/SHA256SUMS.txt \
-              --title "MusicForge P4 · 0.14.0 · The Updater Has Entered the Chat" \
-              --prerelease \
-              --target "$GITHUB_SHA" \
-              --notes-file dist/release-notes.md
+            gh release create "$TAG" "dist/$APK_NAME" dist/SHA256SUMS.txt \
+              --title "$TITLE" "$PRE" --target "$GITHUB_SHA" --notes-file dist/release-notes.md
           fi

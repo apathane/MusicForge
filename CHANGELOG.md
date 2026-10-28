@@ -4,9 +4,23 @@ All notable changes to MusicForge. Newest phase first.
 
 ---
 
-## Sonata (phase 14) — *in progress*
+## Sonata (phase 14)
 
 Version 0.14.0, codename `Sonata`.
+
+### 0.14.0 — *S0nata*
+
+Tag: [`v0.14.0`](../../releases/tag/v0.14.0) · Version code `1409` · 2026-10-29
+
+The first regular Sonata release: everything in previews 1–4, plus:
+
+- Accessibility: the seek bar exposes slider semantics, so TalkBack can read and move it
+- Queue: rows keep their keys across queue changes (a swipe in progress is no longer reset)
+- Sign-in: account info is read off the main thread
+- Artwork: resizing a Google cover URL keeps any query string after the size token
+- Updater: asset names stripped of paths, previous update APKs cleared, progress emitted per whole percent
+- Releases: one workflow publishes whatever version `app/build.gradle.kts` declares, with notes from `.github/release-notes.md`
+- Repo: committed APKs and an unused backup-rules file removed
 
 ### P4 · 0.14.0 — *The Updater Has Entered the Chat*
 
