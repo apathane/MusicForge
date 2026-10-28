@@ -7,3 +7,6 @@ local.properties
 .kotlin/
 captures/
 *.keystore
+
+# Agent vault: machine/account-specific notes stay local (see .agent/README.md).
+.agent/private/

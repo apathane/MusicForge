@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MusicForge is a YouTube Music player for Android (Kotlin, Jetpack Compose, Media3, Room). It was built from scratch on ideas from Metrolist (download engine), ConvX (screens, features, backup format) and BitChord (bounded-range transfers, monochrome style). GPL-3.0. The target device is an Honor X7b (Snapdragon 680, Adreno 610, Android 14, MagicOS, locale `en-ZA`).
 
+## Shared vault
+
+Every agent (Claude and the rest) reads and writes `.agent/`: facts, gotchas, the task board, decisions and session handoffs. See `.agent/README.md`. It is public and CI-guarded (`scripts/vault-guard.sh`); private notes go in the gitignored `.agent/private/`.
+
 ## Commands
 
 JDK 21 and the Android SDK (compileSdk 37, minSdk 26, targetSdk 36).

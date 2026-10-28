@@ -1,0 +1,18 @@
+name: Vault guard
+
+# The .agent vault is written by many agents and is public: refuse anything that looks private.
+on:
+  push:
+    paths: [".agent/**", "scripts/vault-guard.sh"]
+  pull_request:
+    paths: [".agent/**", "scripts/vault-guard.sh"]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/vault-guard.sh
