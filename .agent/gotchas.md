@@ -5,3 +5,5 @@
 - **Agents forget to commit** (OpenCode finished its edits twice without committing). The coordinator commits after review, or the brief says "commit" in its last line.
 - **Free-model code compiles less often than it claims.** It's left missing imports and invented APIs. Every branch goes through CI (`scripts/ci-check.sh`) before merge.
 - **Don't run nine agents through fcc at once.** It allows 2 requests per provider: they queue, then time out.
+
+- **Free-model reviews over-call main-thread I/O.** innertube's suspend calls go through Ktor's OkHttp engine, which does the network on its own dispatcher, so they don't throw NetworkOnMainThreadException on Main. Check the call chain before "fixing" one.
