@@ -35,6 +35,8 @@ object Lrc {
             val words = raw.substring(stamps.last().range.last + 1).trim()
             for (m in stamps) {
                 val (min, sec, frac) = m.destructured
+                // LRC seconds are always 00–59. Some providers return malformed timestamps.
+                if (sec.toInt() !in 0..59) continue
                 val fracMs = when (frac.length) {
                     0 -> 0L
                     1 -> frac.toLong() * 100
@@ -52,6 +54,30 @@ object Lrc {
         val cs = line.timeMs / 10
         "[%02d:%02d.%02d]%s".format(java.util.Locale.ROOT, cs / 6000, (cs / 100) % 60, cs % 100, line.text)
     }
+}
+
+/**
+ * Chooses the best lyric-bearing LRCLIB search result without treating a missing duration as zero.
+ * When the track duration is unknown, preserve the provider's relevance order.
+ */
+internal fun chooseLyricsSearchResult(results: List<JSONObject>, durationSec: Int?): String? {
+    fun JSONObject.lyricsText(): String? =
+        optString("syncedLyrics").takeIf { it.isNotBlank() && it != "null" }
+            ?: optString("plainLyrics").takeIf { it.isNotBlank() && it != "null" }
+
+    val candidates = results.mapNotNull { json -> json.lyricsText()?.let { json to it } }
+    val targetDuration = durationSec?.takeIf { it > 0 }?.toDouble()
+    val selected = if (targetDuration == null) {
+        candidates.firstOrNull()
+    } else {
+        candidates
+            .filter { (json, _) ->
+                json.optDouble("duration", Double.NaN).let { it.isFinite() && it > 0.0 }
+            }
+            .minByOrNull { (json, _) -> abs(json.optDouble("duration") - targetDuration) }
+            ?: candidates.firstOrNull()
+    }
+    return selected?.second
 }
 
 /**
@@ -87,10 +113,10 @@ class LyricsRepository(private val dao: MusicDao, private val http: OkHttpClient
             .addQueryParameter("artist_name", artist)
             .build()
         val results = call(search.toString())?.let(::JSONArray) ?: return@runCatching null
-        (0 until results.length()).map { results.getJSONObject(it) }
-            .filter { it.best() != null }
-            .minByOrNull { abs(it.optDouble("duration", 0.0) - (durationSec ?: 0)) }
-            ?.best()
+        chooseLyricsSearchResult(
+            (0 until results.length()).map { results.getJSONObject(it) },
+            durationSec,
+        )
     }.onFailure { Timber.w(it, "LRCLIB lookup failed") }.getOrNull()
 
     private fun JSONObject.best(): String? =
