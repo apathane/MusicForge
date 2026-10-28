@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -268,7 +269,7 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
             // 48 dp touch target for the text button — fingers are not mouse pixels, 40 dp was audacious.
             AnimatedVisibility(removed != null || cleared != null) {
                 Box(
-                    Modifier.size(48.dp)
+                    Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                         .clickable(onClickLabel = "Put the removed songs back") {
                             removed?.let { (at, item) -> connection.insertAt(at, item) }
                             cleared?.sortedByDescending { it.first }?.forEach { (at, item) -> connection.insertAt(at, item) }
@@ -288,7 +289,7 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
             }
             // 48 dp touch target for the text button (the padded text was ~30 dp tall).
             Box(
-                Modifier.size(48.dp)
+                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                     .clickable(onClickLabel = "Clear the songs after this one") {
                         val qNow = connection.queue.value
                         val idx = connection.currentIndex.value
