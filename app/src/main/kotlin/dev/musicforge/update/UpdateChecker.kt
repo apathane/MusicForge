@@ -81,9 +81,8 @@ class UpdateChecker(
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
-    private fun includePreviewsDefault(): Boolean =
-        // 0.x is still experimental; opt into previews so users can flag bugs early.
-        BuildConfig.VERSION_NAME.startsWith("0.")
+    private fun includePreviewsDefault(): Boolean = false
+        // Preview releases are opt-in, even while the app is in the 0.x phase.
 
     /** Called from AppGraph at app start. Checks at most once per day. */
     suspend fun checkOnStart() {
@@ -174,7 +173,7 @@ class UpdateChecker(
                     data = Uri.parse("package:${context.packageName}")
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 })
-                _state.value = UpdateState.Failed("Grant install permission, then tap to install again")
+                _state.value = UpdateState.Failed("Grant install permission, then check for updates and tap install again")
                 return
             }
 
