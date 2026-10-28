@@ -25,7 +25,7 @@
 
 | Check | Blocker |
 |---|---|
-| `scripts/check.sh` (Gradle build + tests + lint) | LOCAL BLOCKED — Android SDK missing at `sdk.dir=/home/zanthee/Android/Sdk` (directory doesn't exist). PASS via GitHub Actions CI — run 40631400402, `completed success`, 3m22s (:app:assembleDebug :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37). To run locally, install Android SDK and set `sdk.dir` in `local.properties`. |
+| `scripts/check.sh` (Gradle build + tests + lint) | LOCAL BLOCKED — Android SDK missing at `sdk.dir` (local.properties) (directory doesn't exist). PASS via GitHub Actions CI — run 40631400402, `completed success`, 3m22s (:app:assembleDebug :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37). To run locally, install Android SDK and set `sdk.dir` in `local.properties`. |
 | Liquid Glass on real device | BLOCKED — no API 31+ device available in this environment. |
 | GitHub Pages deployment | NOT TRIGGERED — no push made per user instruction ("im cleaning up the repo, ill tell you pull it all when im done"). |
 | HTML validator | Not run; visual inspection only. |
