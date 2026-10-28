@@ -32,7 +32,7 @@ private const val GITHUB_RELEASES = "https://api.github.com/repos/apathane/Music
 
 /** DataStore keys this feature owns; kept here so Prefs.kt stays importable-only. */
 object UpdateKeys {
-    /** Whether prerelease/preview versions are offered. Default on while the app is 0.x. */
+    /** Whether prerelease/preview versions are offered. Default off; users opt in. */
     val includePreviews = booleanPreferencesKey("forge.includePreviews")
     /** Epoch ms of the last automatic check, to cap frequency at once per day. */
     val lastUpdateCheck = longPreferencesKey("forge.lastUpdateCheck")
