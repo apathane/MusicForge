@@ -81,10 +81,13 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 | SettingsScreen.kt patch — labels renamed | PASS |
 | Version naming consistent (build.gradle.kts + site + CHANGELOG) | PASS |
 | Screenshot assets exist (4 real JPEGs) | PASS |
-| `scripts/check.sh` via GitHub Actions CI | PASS — run 40631400402, `completed success`, 3m22s |
+| `scripts/check.sh` via GitHub Actions CI | PASS — run 40632526127, `completed success`, 5m57s (:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug on ubuntu-24.04, JDK 21, API 37) |
 | Local `scripts/check.sh` | BLOCKED — Android SDK missing at `sdk.dir=/home/zanthee/Android/Sdk` (directory doesn't exist). Requires Android SDK installation to run locally. |
-| GitHub Pages deploy | PASS — run 40631400520, `completed success`, 20s |
-| First Run workflow | PASS — run 40631400445, `completed success`, 8s |
+| GitHub Pages deploy | PASS — run 40632526071, `completed success`, 16s |
+| First Run workflow | PASS — run 40632526117, `completed success`, 10s |
+| Debug APK | `apk/app-debug.apk` — 24.5 MB, built by CI run 40632526127 |
+| Release APK | `apk/app-release.apk` — 5.6 MB, built by CI run 40632526127 |
+| Release signing | Signed with debug key (local-only project, per build.gradle.kts release config) |
 | Liquid Glass on real API 31+ device | NOT TESTED — no device available |
 | HTML validator | NOT RUN — visual inspection only |
 
@@ -94,7 +97,7 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 
 `.github/workflows/ci.yml` runs on push/PR to `main`:
 - `ubuntu-24.04`, JDK 21, API 37, Build Tools 36
-- Tasks: `:app:assembleDebug :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug`
+- Tasks: `:app:assembleDebug :app:assembleRelease :app:testDebugUnitTest :app:lintDebug :innertube:testDebugUnitTest :innertube:lintDebug`
 
 This was already wired — pushing triggers CI on GitHub's infrastructure. No self-hosted runner needed (and GitHub advises against self-hosted runners on public repos due to fork PR code-execution risk).
 
