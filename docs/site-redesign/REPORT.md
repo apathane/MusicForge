@@ -82,6 +82,7 @@ Caption explicitly states these are recorded measurements, not a promise for eve
 | Version naming consistent (build.gradle.kts + site + CHANGELOG) | PASS |
 | Screenshot assets exist (4 real JPEGs) | PASS |
 | `scripts/check.sh` via GitHub Actions CI | PASS — run 40631400402, `completed success`, 3m22s |
+| Local `scripts/check.sh` | BLOCKED — Android SDK missing at `sdk.dir=/home/zanthee/Android/Sdk` (directory doesn't exist). Requires Android SDK installation to run locally. |
 | GitHub Pages deploy | PASS — run 40631400520, `completed success`, 20s |
 | First Run workflow | PASS — run 40631400445, `completed success`, 8s |
 | Liquid Glass on real API 31+ device | NOT TESTED — no device available |
