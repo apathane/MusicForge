@@ -321,11 +321,11 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             val glass = prefs?.get(Keys.GlassTier) ?: GlassTier.Default.name
             ChoiceRow(
                 "Glass",
-                // Liquid needs RenderEffect; on Android 11 and older it isn't offered at all.
+                // Live glass needs RenderEffect; on Android 11 and older it isn't offered at all.
                 listOfNotNull(
                     GlassTier.SOLID.name to "Solid",
-                    GlassTier.ARTWORK.name to "Artwork",
-                    (GlassTier.LIQUID.name to "Liquid").takeIf { dev.musicforge.ui.backdrop.isRenderEffectSupported() },
+                    GlassTier.ARTWORK.name to "Frosted Crayon",
+                    (GlassTier.LIQUID.name to "Liquid Glass").takeIf { dev.musicforge.ui.backdrop.isRenderEffectSupported() },
                 ),
                 glass,
             ) { vm.set(Keys.GlassTier, it) }

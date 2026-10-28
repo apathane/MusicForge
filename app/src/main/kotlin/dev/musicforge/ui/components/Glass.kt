@@ -40,14 +40,14 @@ enum class GlassTier {
     /** Tinted translucent fill. Free. */
     SOLID,
 
-    /** A slice of one pre-blurred artwork image, aligned to the window. One bitmap draw. */
+    /** Frosted Crayon: a slice of one pre-blurred artwork image, aligned to the window. One bitmap draw. */
     ARTWORK,
 
     /**
-     * Liquid glass (API 31+): the screen behind is blurred, saturated and, from API 33, bent
-     * at the edges by a lens shader, with a specular rim. The content is recorded once into a
-     * layer the glass samples, so nothing is drawn twice. Only the nav pill and mini player use
-     * it: two small surfaces, never a scrolling area.
+     * Liquid Glass (API 31+): the screen behind is blurred, gently saturated and bent at the
+     * edges by a lens shader, with layered specular highlights. The content is recorded once
+     * into a layer the glass samples. Restrict this to the nav pill and mini player: two small
+     * surfaces, never a scrolling area, because live blur is expensive on mid-range GPUs.
      */
     LIQUID;
 
@@ -131,12 +131,12 @@ fun Modifier.glass(shape: Shape, tint: Color = Color.Unspecified): Modifier {
 private fun Modifier.liquid(backdrop: LayerBackdrop, shape: Shape, fill: Color, rim: Color, dark: Boolean): Modifier {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val scale = LiquidScale
-    val blurPx = with(density) { 7.dp.toPx() } * scale
-    val lensHeight = with(density) { (0.60f * 48).dp.toPx() } * scale
-    val lensAmount = with(density) { (0.69f * 48).dp.toPx() } * scale
-    // Thin enough to read as glass, thick enough that labels stay legible over busy artwork.
-    val tint = fill.copy(alpha = if (dark) 0.50f else 0.58f)
-    val rimColor = Color.White.copy(alpha = if (dark) 0.45f else 0.7f)
+    val blurPx = with(density) { 11.dp.toPx() } * scale
+    val lensHeight = with(density) { (0.76f * 48).dp.toPx() } * scale
+    val lensAmount = with(density) { (0.92f * 48).dp.toPx() } * scale
+    // Keep the material transparent enough to reveal the live backdrop, while preserving label contrast.
+    val tint = fill.copy(alpha = if (dark) 0.31f else 0.40f)
+    val rimColor = Color.White.copy(alpha = if (dark) 0.72f else 0.82f)
     val shapeBlock = remember(shape) { { shape } }
     val effects: dev.musicforge.ui.backdrop.BackdropEffectScope.() -> Unit = remember(blurPx, lensHeight, lensAmount) {
         {
@@ -145,8 +145,8 @@ private fun Modifier.liquid(backdrop: LayerBackdrop, shape: Shape, fill: Color, 
             lens(lensHeight, lensAmount)
         }
     }
-    val highlight = remember(rimColor) { { Highlight(width = 0.8.dp, style = HighlightStyle.Default(color = rimColor, angle = 45f)) } }
-    val shadow = remember(dark) { { Shadow(radius = 18.dp, color = Color.Black.copy(alpha = if (dark) 0.35f else 0.12f)) } }
+    val highlight = remember(rimColor) { { Highlight(width = 1.15.dp, style = HighlightStyle.Default(color = rimColor, angle = 38f)) } }
+    val shadow = remember(dark) { { Shadow(radius = 22.dp, color = Color.Black.copy(alpha = if (dark) 0.38f else 0.16f)) } }
     val surface: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = remember(tint) { { drawRect(tint) } }
     return this
         .drawBackdrop(
@@ -158,7 +158,17 @@ private fun Modifier.liquid(backdrop: LayerBackdrop, shape: Shape, fill: Color, 
             onDrawSurface = surface,
             backdropScale = scale,
         )
-        .border(0.5.dp, rim.copy(alpha = if (dark) 0.10f else 0.08f), shape)
+        .border(
+            width = 0.8.dp,
+            brush = Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = if (dark) 0.48f else 0.62f),
+                    rim.copy(alpha = 0.16f),
+                    rim.copy(alpha = if (dark) 0.07f else 0.10f),
+                ),
+            ),
+            shape = shape,
+        )
 }
 
-private const val LiquidScale = 0.5f
+private const val LiquidScale = 0.65f
