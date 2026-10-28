@@ -140,8 +140,10 @@ class UpdateChecker(
 
     private suspend fun downloadAndInstall(release: ReleaseInfo) {
         try {
-            val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val apkFile = File(dir, release.apkAssetName)
+            // Old APKs are dead weight once installed; keep only the one being fetched.
+            val dir = File(context.cacheDir, "updates").apply { deleteRecursively(); mkdirs() }
+            // The asset name comes from the network: strip any path from it.
+            val apkFile = File(dir, File(release.apkAssetName).name)
 
             _state.value = UpdateState.Downloading(0f)
             downloadApk(release, apkFile)
@@ -153,7 +155,7 @@ class UpdateChecker(
                 _state.value = UpdateState.Failed("Release has no SHA-256 manifest; refusing to install")
                 return
             }
-            val expected = parseSha256Sums(fetchText(sumsUrl), release.apkAssetName)
+            val expected = parseSha256Sums(fetchText(sumsUrl), apkFile.name)
             if (expected == null) {
                 apkFile.delete()
                 _state.value = UpdateState.Failed("SHA-256 entry is missing or invalid; refusing to install")
@@ -204,8 +206,12 @@ class UpdateChecker(
                     while (input.read(buffer).also { read = it } != -1) {
                         output.write(buffer, 0, read)
                         downloaded += read
+                        // Whole percents only: one state per 8 KB buffer redraws Settings ~800 times.
                         if (total > 0) {
-                            _state.value = UpdateState.Downloading((downloaded.toFloat() / total).coerceIn(0f, 1f))
+                            val p = (downloaded * 100 / total).coerceIn(0, 100) / 100f
+                            if (p != (_state.value as? UpdateState.Downloading)?.progress) {
+                                _state.value = UpdateState.Downloading(p)
+                            }
                         }
                     }
                 }
