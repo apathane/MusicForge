@@ -7,7 +7,7 @@ or PR when it lands. Agents work in separate worktrees, never in the same checko
 
 Plan: each agent owns its files only, at most 2 per provider at once, CI builds, coordinator reviews.
 
-- [ ] **Sign-in loops** (LoginScreen.kt): after the cookie is captured, `recreate()` reopens the
+- [x] **Sign-in loops** (LoginScreen.kt): after the cookie is captured, `recreate()` reopens the
       login route, which captures and recreates again. Leave the route first; add a "Use this
       account" confirm button (BitChord-style) instead of capturing on every page load. (fcc-claude · Laguna)
 - [ ] **Tapping the headphones icon crashes** (PlayerSheet.kt): `MEDIA_OUTPUT` panel missing on
