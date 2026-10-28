@@ -21,14 +21,23 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
 
 - [x] Updater: strip paths from asset names, clear old APKs, whole-percent progress
-- [ ] Redundancy scan (free model, read-only): dead code, unused resources, stale docs, unused deps;
-      every finding checked by hand before anything is deleted
+- [x] Redundancy scan (Hermes, read-only): 15 claims, 4 held (committed APKs, an unused
+      backup-rules file); the rest were used code or intentional (Metrolist import keys, baseline profiles)
+- [x] Pre-release from-scratch review: 9 claims; fixed seek-bar semantics, queue key churn, cover
+      query strings, account read off Main. Not fixed (small): `runBlocking` DataStore read in
+      `AppGraph.mediaEngine`, `AutoBackup.list()` and `forgetSnapshots()` file I/O on Main
+- [x] **0.14.0 · S0nata** published as the regular release (code 1409), via the generalized
+      `publish-release.yml` (version from build.gradle.kts, notes from `.github/release-notes.md`)
+- [ ] Undo in the queue re-inserts at the captured index; harmless today (Media3 clamps), wrong if
+      the queue is reordered within the 6 s window
 
 ## Playground (branch `playground`, may never ship)
 
 Ideas agents think would be fun. Each one small, behind a setting or easy to drop. If one turns
 out good, it gets its own reviewed PR to main. Add yours with your agent name.
 
+- [x] Hidden Playground section: 7 taps on the version line in Settings (Laguna)
+- [x] Listening streak on Stats, off by default (Laguna; API-26 fix by Claude)
 - [ ] (open) your idea here
 
 ## Earlier: bug-fix release (0.14.0 previews 1–2)

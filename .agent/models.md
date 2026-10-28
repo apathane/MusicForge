@@ -40,6 +40,12 @@ Didn't work that day:
 | Hermes | plain `hermes chat -q "…" --oneshot --yolo` (its own Kilo setup) | yes; fcc-hermes needs fcc's default model fixed |
 | dsh | `fcc-dsh headless "…"` (no model flag) | needs fcc's default model fixed |
 
+## Night of 2026-10-28
+
+- Hermes on Nemotron 3.5 Super VL: both review passes, ~4 min each, best signal again (about half its claims held).
+- `fcc-claude --model kilo/nvidia/nemotron-3-ultra-550b-a55b:free` printed `unrecognized_model` and returned an empty answer; `fallback-run.sh` now counts that and near-empty read-only output as a failure.
+- Gemma 4 31B through OpenCode stalled twice ("no progress for 600 seconds"); Laguna S 2.1 through the Claude harness finished both playground features.
+
 ## Rules of thumb
 
 - **fcc's limits:** it allows 2 requests at a time per provider, 1 per 2 s. Running nine agents at once makes them queue and time out. Run at most 3–4 at a time, spread across providers (Kilo, Gemini).
