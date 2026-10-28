@@ -2,7 +2,6 @@ package dev.musicforge.update
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
@@ -81,8 +80,8 @@ class UpdateChecker(
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
+    // Preview releases are opt-in, even while the app is in the 0.x phase.
     private fun includePreviewsDefault(): Boolean = false
-        // Preview releases are opt-in, even while the app is in the 0.x phase.
 
     /** Called from AppGraph at app start. Checks at most once per day. */
     suspend fun checkOnStart() {
