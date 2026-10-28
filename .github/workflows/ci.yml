@@ -102,8 +102,23 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      # The permanent release key (repository secrets). Absent on forks' PRs: the release APK
+      # is then debug-signed, which is fine for a check but never for publishing.
+      - name: Restore release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.MUSICFORGE_KEYSTORE_B64 }}
+        shell: bash
+        run: |
+          # A step's own env isn't visible to its `if:`, so the empty case is handled here.
+          [ -n "$KEYSTORE_B64" ] || { echo "No signing secret (fork PR?): release stays debug-signed."; exit 0; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/musicforge-release.jks"
+          echo "MUSICFORGE_KEYSTORE=$RUNNER_TEMP/musicforge-release.jks" >> "$GITHUB_ENV"
+
       - name: Build, test and lint
         shell: bash
+        env:
+          MUSICFORGE_KEYSTORE_PASSWORD: ${{ secrets.MUSICFORGE_KEYSTORE_PASSWORD }}
+          MUSICFORGE_KEY_ALIAS: ${{ secrets.MUSICFORGE_KEY_ALIAS }}
         run: |
           set -euo pipefail
 

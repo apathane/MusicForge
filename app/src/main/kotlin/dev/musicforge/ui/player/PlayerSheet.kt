@@ -507,7 +507,7 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         onDispose { context.unregisterReceiver(receiver) }
     }
 
-    val icon = if (fraction <= 0f) PlayerIcons.VolumeOff else PlayerIcons.VolumeUp
+    val icon = when { fraction <= 0f -> PlayerIcons.VolumeOff; fraction < 0.5f -> PlayerIcons.VolumeDown; else -> PlayerIcons.VolumeUp }
     val iconLabel = if (fraction <= 0f) "Volume muted" else "Volume on"
     Row(
         Modifier.fillMaxWidth().padding(vertical = 10.dp),

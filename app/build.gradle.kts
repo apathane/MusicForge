@@ -27,6 +27,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // One permanent release key, or Android refuses to update one build over another: the old
+    // laptop, this one and every CI runner each had their own debug key, so updates failed at
+    // random. The key comes from the environment (CI secrets, or keys/signing.env locally);
+    // without it a release build falls back to the debug key, fine for testing, never published.
+    val releaseKeystore = System.getenv("MUSICFORGE_KEYSTORE")?.let(::file)?.takeIf { it.isFile }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("MUSICFORGE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("MUSICFORGE_KEY_ALIAS") ?: "musicforge"
+                keyPassword = System.getenv("MUSICFORGE_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -35,8 +51,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Local-only project: release builds are signed with the debug key.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
