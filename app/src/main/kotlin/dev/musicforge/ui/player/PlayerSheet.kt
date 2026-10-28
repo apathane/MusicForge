@@ -1,5 +1,6 @@
 package dev.musicforge.ui.player
 
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
@@ -56,7 +58,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -83,6 +84,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,7 +112,11 @@ import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -532,10 +541,11 @@ private fun SmallPaneButton(icon: ImageVector, label: String, active: Boolean, w
 @Composable
 private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val max = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     var fraction by remember { mutableStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()) }
 
-    // A hardware volume key presses the STREAM_MUSIC stream and broadcasts the change.
+    // A hardware volume key presses the STREAM_MUSIC stream and broadcasts it.
     // VOLUME_CHANGED_ACTION and the EXTRA_* keys were removed from the SDK in API 37,
     // so we use the string values directly; the system still sends this broadcast.
     DisposableEffect(Unit) {
@@ -553,6 +563,29 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         onDispose { context.unregisterReceiver(receiver) }
     }
 
+    // setStreamVolume is binder IPC: flush the local fraction once, off the main thread.
+    // Taps apply at once; drags debounce (~120 ms) and apply again when the finger lifts.
+    var flushJob by remember { mutableStateOf<Job?>(null) }
+    fun flushVolume() {
+        flushJob?.cancel()
+        flushJob = scope.launch {
+            val index = (fraction * max).roundToInt()
+            withContext(Dispatchers.Default) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+            }
+        }
+    }
+    fun flushVolumeDebounced() {
+        flushJob?.cancel()
+        flushJob = scope.launch {
+            delay(120)
+            val index = (fraction * max).roundToInt()
+            withContext(Dispatchers.Default) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+            }
+        }
+    }
+
     val icon = when { fraction <= 0f -> PlayerIcons.VolumeOff; fraction < 0.5f -> PlayerIcons.VolumeDown; else -> PlayerIcons.VolumeUp }
     val iconLabel = if (fraction <= 0f) "Volume muted" else "Volume on"
     Row(
@@ -565,23 +598,37 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
             Modifier
                 .weight(1f)
                 .height(6.dp)
+                // 6 dp track with padding above and below = a 48 dp touch target.
+                .padding(vertical = 21.dp)
+                .semantics {
+                    // TalkBack reads the range and current value, and adjusts via the setProgress
+                    // action (this Compose version exposes no Role.Slider).
+                    progressBarRangeInfo = ProgressBarRangeInfo(
+                        (fraction * max).coerceIn(0f, max.toFloat()),
+                        0f..max.toFloat(),
+                        max,
+                    )
+                    setProgress("Adjust volume") { newFraction ->
+                        fraction = newFraction.coerceIn(0f, 1f)
+                        flushVolume()
+                        true
+                    }
+                }
                 .pointerInput(Unit) {
                     detectTapGestures { o ->
                         val f = (o.x / size.width).coerceIn(0f, 1f)
                         fraction = f
-                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (f * max).roundToInt(), 0)
+                        flushVolume()
                     }
-                }
-                .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragStart = {},
                         onHorizontalDrag = { change, _ ->
                             val f = (change.position.x / size.width).coerceIn(0f, 1f)
                             fraction = f
-                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (f * max).roundToInt(), 0)
+                            flushVolumeDebounced()
                         },
-                        onDragEnd = {},
-                        onDragCancel = {},
+                        onDragEnd = { flushVolume() },
+                        onDragCancel = { flushVolume() },
                     )
                 },
         ) {
@@ -597,18 +644,31 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
 @Composable
 private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
     val context = LocalContext.current
-    val deviceInfo by produceState(initialValue = activeOutputDevice(audioManager), audioManager) {
+    val scope = rememberCoroutineScope()
+    // getDevices() is binder IPC — run the lookup off the main thread and post the result back;
+    // the callbacks below refresh the same way on audio routing changes.
+    var deviceInfo by mutableStateOf<AudioDeviceInfo?>(null)
+
+    fun refreshDevice() = scope.launch {
+        deviceInfo = withContext(Dispatchers.Default) { activeOutputDevice(audioManager) }
+    }
+
+    // Initial lookup once the button enters composition (getDevices() is binder IPC, so it runs
+    // off the main thread via refreshDevice — running it synchronously here would block composition).
+    androidx.compose.runtime.LaunchedEffect(Unit) { refreshDevice() }
+
+    DisposableEffect(Unit) {
         val callback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             object : AudioDeviceCallback() {
-                override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) { value = activeOutputDevice(audioManager) }
-                override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) { value = activeOutputDevice(audioManager) }
+                override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) { refreshDevice() }
+                override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) { refreshDevice() }
             }
         } else null
         if (callback != null) {
             audioManager.registerAudioDeviceCallback(callback, Handler(Looper.getMainLooper()))
         }
         val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) { value = activeOutputDevice(audioManager) }
+            override fun onReceive(context: Context, intent: Intent) { refreshDevice() }
         }
         context.registerReceiver(receiver, IntentFilter().apply {
             addAction(AudioManager.ACTION_HEADSET_PLUG)
@@ -617,7 +677,7 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
             addAction("android.bluetooth.device.action.ACL_CONNECTED")
             addAction("android.bluetooth.device.action.ACL_DISCONNECTED")
         }, Context.RECEIVER_NOT_EXPORTED)
-        awaitDispose {
+        onDispose {
             context.unregisterReceiver(receiver)
             if (callback != null) audioManager.unregisterAudioDeviceCallback(callback)
         }
@@ -629,14 +689,7 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
         Box(
             Modifier.size(56.dp).clip(RoundedCornerShape(50)).clickable(
                 onClickLabel = "Output device: $label",
-                onClick = {
-                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        Intent("android.settings.panel.action.MEDIA_OUTPUT")
-                    } else {
-                        Intent(Settings.ACTION_SOUND_SETTINGS)
-                    }
-                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                },
+                onClick = { openOutputSettings(context) },
             ),
             contentAlignment = Alignment.Center,
         ) {
@@ -653,3 +706,25 @@ private fun activeOutputDevice(audioManager: AudioManager): AudioDeviceInfo? {
     return devices.firstOrNull { it.type != AudioDeviceInfo.TYPE_BUILTIN_SPEAKER && it.type != AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
         ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
 }
+
+/** Open the system output switcher. The MEDIA_OUTPUT panel is missing on some builds
+ *  (MagicOS) and gone entirely on API 35+, so fall back to sound settings — and never crash. */
+private fun openOutputSettings(context: Context) {
+    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Intent("android.settings.panel.action.MEDIA_OUTPUT")
+    } else {
+        Intent(Settings.ACTION_SOUND_SETTINGS)
+    }
+    // The output panel is missing on MagicOS and gone on API 35+ — this
+    // phone loves taking things away. Try both intents, then fess up.
+    if (context.startActivitySilently(intent)) return
+    if (context.startActivitySilently(Intent(Settings.ACTION_SOUND_SETTINGS))) return
+    Toast.makeText(context, "Can't open output settings on this phone", Toast.LENGTH_SHORT).show()
+}
+
+/** Start `intent` as a new task unless nothing on the phone can handle it. */
+private fun Context.startActivitySilently(intent: Intent): Boolean =
+    try {
+        startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (e: RuntimeException) { false }
