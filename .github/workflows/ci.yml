@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # agent/** : branches pushed by scripts/ci-check.sh, so agents build here instead of locally.
+    branches: [main, "agent/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
