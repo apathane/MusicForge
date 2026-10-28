@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -103,5 +104,17 @@ class AppGraph(val app: Application) {
             CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             player.nowPlaying.map { it?.metadata?.artworkUri?.toString() },
         )
+    }
+ 
+    val updater by lazy {
+        dev.musicforge.update.UpdateChecker(app, settings, http, scope)
+    }
+
+    init {
+        // Avoid network traffic from debug builds and Robolectric tests. Release builds check daily;
+        // users can still trigger a manual check from Settings in debug builds.
+        if (!BuildConfig.DEBUG) {
+            scope.launch { updater.checkOnStart() }
+        }
     }
 }

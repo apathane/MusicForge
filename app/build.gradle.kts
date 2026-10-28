@@ -7,12 +7,12 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-// Phase codename doubles as the launcher label until the app gets a real name. The version moves
-// with the phase: phase 14 Sonata is 0.14.0-sonata, code 1400. `build` counts the releases within
-// a phase (preview 3 = 1403), so every published APK has a higher code than the last, which
-// Android and the in-app updater both rely on.
+// Numeric versions describe compatibility; preview numbers describe milestones. Patch releases
+// reserve the final slot in each patch band, so 0.14.0-p4 (1404) can update to 0.14.0 (1409),
+// then 0.14.1 (1419). Keep preview numbers from 1 through 8.
 val phase = 14
-val build = 3
+val patch = 0
+val preview = 4
 val codename = "Sonata"
 
 android {
@@ -23,8 +23,8 @@ android {
         applicationId = "dev.musicforge.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = phase * 100 + build
-        versionName = "0.$phase.0-${codename.lowercase()}.$build"
+        versionCode = phase * 100 + patch * 10 + if (preview > 0) preview else 9
+        versionName = "0.$phase.$patch" + if (preview > 0) "-p$preview" else ""
         resValue("string", "app_name", codename)
         buildConfigField("String", "CODENAME", "\"$codename\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

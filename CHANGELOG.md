@@ -8,14 +8,14 @@ All notable changes to MusicForge. Newest phase first.
 
 Version 0.14.0, codename `Sonata`.
 
-### Unreleased (preview 3)
+### P4 · 0.14.0 — *The Updater Has Entered the Chat*
 
-Planned for preview 3:
-- Sign-in loop fix: leave route before recreate, add an explicit account confirmation button
-- Player sheet: handle missing MEDIA_OUTPUT panel on MagicOS, volume slider accessibility and debounce, background output-device lookup
-- Artwork: fix missing cover art in Up Next and queue items
-- In-app updater: check GitHub Releases, verify SHA256SUMS, and hand APK to installer
-- Docs and versions: changelog entries, README status, and version alignment across repo and site
+- In-app updater: daily background check, manual check, preview opt-in, download progress, and Android installer handoff
+- Update integrity: require a valid SHA-256 manifest entry before installing; fail closed when the manifest or entry is missing
+- Release selection: use the explicit Android versionCode in release notes so a future stable release can supersede preview builds
+- Reliability: failed automatic checks do not suppress retries for the next 24 hours
+- Installer wiring: declare FileProvider paths metadata and increment the app to version code 1404
+- Preview 3 fixes: sign-in confirmation, MagicOS output-device fallback, safer volume control, and artwork URL repairs
 
 ### v0.14.0-preview.2 — 2026-10-28
 
@@ -154,4 +154,4 @@ Tag `phase-8-reprise`.
 
 ---
 
-*See [Releases](../../releases) for APKs. Each phase is tagged `phase-N-<codename>`; releases are tagged `v<version>-<codename>`.*
+*See [Releases](../../releases) for APKs. Previews use `pN-0.x.y` tags (for example, `p4-0.14.0`). Small fixes increment the patch version (`0.14.1`, `0.14.2`) and use a short, code-appropriate subtitle. Android version codes keep previews ordered before the completed patch release.*
