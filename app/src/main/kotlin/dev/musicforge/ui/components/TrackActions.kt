@@ -108,6 +108,8 @@ fun TrackActionsSheet(
                 return@Column
             }
             Action(ForgeIcons.Next, "Play next") { graph.player.playNext(item); onDismiss() }
+            // Radio: seed a new station from this song's RDAMVM playlist. Ported from Metrolist's queue-on-related.
+            Action(ForgeIcons.Radio, "Start radio") { graph.player.startRadio(item); onDismiss() }
             if (liked == true) {
                 Action(ForgeIcons.Heart, "Unlike") { graph.library.setLiked(item, false); onDismiss() }
             } else {

@@ -60,6 +60,7 @@ object ForgeIcons {
         "M15,6H3v2h12V6zM15,10H3v2h12v-2zM3,16h8v-2H3v2zM17,6v8.18c-0.31,-0.11 -0.65,-0.18 -1,-0.18 -1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3V8h3V6h-5z",
     )
     val Sleep = icon("Sleep", "M12.34,2.02C6.59,1.82 2,6.42 2,12c0,5.52 4.48,10 10,10 3.71,0 6.93,-2.02 8.66,-5.02 -7.51,-0.25 -12.09,-8.43 -8.32,-14.96z")
+    val Radio = icon("Radio", "M6,9h12v2H6V9zm6-8l2,2h-4l2-2zm-6,10.5v2h12v-2h-5.5l-2-2H14l2,2H9.5v2z")
     val ChevronRight = icon("ChevronRight", "M10,6L8.59,7.41 13.17,12l-4.58,4.59L10,18l6,-6z")
 
     private fun icon(name: String, path: String) = ImageVector.Builder(
