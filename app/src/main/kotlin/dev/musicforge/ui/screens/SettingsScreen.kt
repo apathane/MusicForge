@@ -49,13 +49,12 @@ import dev.musicforge.BuildConfig
 import dev.musicforge.data.backup.BackupImporter
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
-import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.GlassTier
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.update.ReleaseInfo
 import dev.musicforge.update.UpdateKeys
 import dev.musicforge.update.UpdateState
-import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.theme.DarkMode
@@ -187,7 +186,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
-        Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) }
+        BackRow(onBack)
         ScreenHeader("Settings", belowBackRow = true)
 
         SectionTitle("Account")
@@ -344,6 +343,11 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 ),
                 glass,
             ) { vm.set(Keys.GlassTier, it) }
+            ToggleRow(
+                "Hide top bar",
+                prefs?.get(Keys.HideTopBar) ?: false,
+                subtitle = "Collapse the status bar scrim and screen headers for an edge-to-edge canvas",
+            ) { vm.set(Keys.HideTopBar, it) }
         }
 
         SectionTitle("About")
