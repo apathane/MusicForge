@@ -102,6 +102,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
 import coil3.compose.AsyncImage
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.playback.NowPlaying
 import dev.musicforge.playback.PlayerConnection
@@ -223,6 +224,9 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     val graph = context.graph
     val connection = graph.player
     val position: State<Long> = remember(connection) { connection.position(200) }.collectAsStateWithLifecycle(0L)
+    val prefs by graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val doubleTapSeek = prefs?.get(Keys.DoubleTapSeek) ?: true
+    val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
     var pane by rememberSaveable { mutableStateOf(PlayerPane.ARTWORK) }
     var menu by remember { mutableStateOf(false) }
     var sleepMenu by remember { mutableStateOf(false) }
@@ -256,9 +260,19 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
         // Full-bleed cover, edge to edge, no card frame.
         if (pane == PlayerPane.ARTWORK) {
-            BigArtwork(now, ambient, Modifier
-                .fillMaxWidth()
-                .height(artHeight)
+            BigArtwork(
+                now, ambient, Modifier
+                    .fillMaxWidth()
+                    .height(artHeight),
+                doubleTap = doubleTapSeek,
+                onDoubleTap = {
+                    val ms = position.value
+                    val duration = now.durationMs
+                    if (duration > 0) {
+                        val delta = if (ms < duration / 2) 10_000L else -10_000L
+                        connection.seekTo((ms + delta).coerceIn(0L, duration))
+                    }
+                },
             )
         }
 
@@ -293,7 +307,7 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
             // Title row — only on the artwork pane.
             if (pane == PlayerPane.ARTWORK) {
-                TitleRow(now, liked == true, accent, white, onClose, onMenu = { menu = true }, onLike = {
+                TitleRow(now, liked == true, accent, white, onClose, hapticsEnabled, onMenu = { menu = true }, onLike = {
                     connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
                 })
             }
@@ -312,7 +326,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             VolumeControlRow(audioManager, white)
 
             // Bottom row: lyrics, output device, queue. Active pane gets the grey disc.
-            BottomRow(pane, audioManager, white) { newPane -> pane = newPane }
+            val showLyrics = prefs?.get(Keys.ShowLyrics) != false
+            BottomRow(pane, audioManager, white, showLyrics) { newPane -> pane = newPane }
         }
     }
 
@@ -345,7 +360,13 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
  *  the fade to the canvas colour is baked into the ambience backdrop once per track. The gradient
  *  overlay at its bottom blends the art into the ambience background below, so there is no dark band. */
 @Composable
-private fun BigArtwork(now: NowPlaying, ambient: Color, modifier: Modifier = Modifier) {
+private fun BigArtwork(
+    now: NowPlaying,
+    ambient: Color,
+    modifier: Modifier = Modifier,
+    doubleTap: Boolean = false,
+    onDoubleTap: (() -> Unit)? = null,
+) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
     // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
     val letterboxed = dev.musicforge.playback.isLetterboxedThumbnail(now.metadata.artworkUri?.toString().orEmpty())
@@ -364,6 +385,13 @@ private fun BigArtwork(now: NowPlaying, ambient: Color, modifier: Modifier = Mod
     // Fade the bottom edge of the art into the canvas (ambient) colour, not into black, so the
     // cover meets the controls without a visible dark band where two different gradients meet.
     val canvas = ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114)
+    val doubleTapModifier = if (doubleTap && onDoubleTap != null) {
+        Modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onDoubleTap = { onDoubleTap() },
+            )
+        }
+    } else Modifier
     AsyncImage(
         model = now.metadata.artworkUri,
         contentDescription = contentDescription,
@@ -386,7 +414,8 @@ private fun BigArtwork(now: NowPlaying, ambient: Color, modifier: Modifier = Mod
                         1f to canvas,
                     ),
                 )
-            },
+            }
+            .then(doubleTapModifier),
     )
 }
 
@@ -417,7 +446,7 @@ private fun DiscButton(icon: ImageVector, label: String, tint: Color, iconSize: 
 
 /** Title / artist on the left (tap artist to open them, long-press to copy), ★ and ⋯ discs on the right. */
 @Composable
-private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Color, onClose: () -> Unit, onMenu: () -> Unit, onLike: () -> Unit) {
+private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Color, onClose: () -> Unit, hapticsEnabled: Boolean, onMenu: () -> Unit, onLike: () -> Unit) {
     val title = now.metadata.title?.toString().orEmpty()
     val artist = now.metadata.artist?.toString().orEmpty()
     val clipboard = LocalClipboardManager.current
@@ -439,7 +468,7 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                         onClick = {},
                         onLongClickLabel = "Copy title and artist",
                         onLongClick = {
-                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            if (hapticsEnabled) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             clipboard.setText(AnnotatedString(listOf(title, artist).filter { it.isNotEmpty() }.joinToString(" – ")))
                         },
                     )
@@ -534,13 +563,13 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
 
 /** Bottom row: lyrics, output device, queue. Active pane gets the grey disc. */
 @Composable
-private fun BottomRow(pane: PlayerPane, audioManager: AudioManager, white: Color, onSwitch: (PlayerPane) -> Unit) {
+private fun BottomRow(pane: PlayerPane, audioManager: AudioManager, white: Color, showLyrics: Boolean, onSwitch: (PlayerPane) -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SmallPaneButton(ForgeIcons.Lyrics, "Lyrics", pane == PlayerPane.LYRICS, white) { onSwitch(PlayerPane.LYRICS) }
+        if (showLyrics) SmallPaneButton(ForgeIcons.Lyrics, "Lyrics", pane == PlayerPane.LYRICS, white) { onSwitch(PlayerPane.LYRICS) }
         OutputDeviceButton(audioManager, white)
         SmallPaneButton(ForgeIcons.Queue, "Queue", pane == PlayerPane.QUEUE, white) { onSwitch(PlayerPane.QUEUE) }
     }

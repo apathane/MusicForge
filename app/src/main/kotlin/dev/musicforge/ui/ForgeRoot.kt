@@ -46,10 +46,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.player.MiniPlayer
 import dev.musicforge.ui.player.PlayerSheet
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -111,16 +114,39 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
         backdropScale = (ambience.backdrop?.width ?: 54).toFloat() / windowWidth,
         live = live,
     )
-    val connection = LocalContext.current.graph.player
+    val context = LocalContext.current
+    val connection = context.graph.player
     val now by connection.nowPlaying.collectAsStateWithLifecycle()
     val inset = PaddingValues(bottom = if (now != null) 172.dp else 96.dp)
     var playerOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var covered by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    // Which tab the nav host opens on (Metrolist's defaultOpenTab key).
+    val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
+    // The start tab is applied once, by navigating like a tab tap: changing NavHost's
+    // startDestination after the first frame would rebuild the graph and drop the back stack.
+    // Metrolist stores the tab as its enum name ("LIBRARY"), we as the route ("library"): take both.
+    var startApplied by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(prefs != null) {
+        val raw = prefs?.get(Keys.StartScreen) ?: return@LaunchedEffect
+        if (startApplied) return@LaunchedEffect
+        startApplied = true
+        val tab = Tab.entries.firstOrNull { it.route.equals(raw, true) || it.name.equals(raw, true) } ?: return@LaunchedEffect
+        if (tab != Tab.Home) nav.navigate(tab.route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
     // enableEdgeToEdge picks icon colours from the *system* theme; follow what we paint instead.
     val lightContent = MaterialTheme.colorScheme.background.luminance() > 0.5f && !playerOpen
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+        // FLAG_KEEP_SCREEN_ON is window-scoped: it follows the sheet open/close automatically,
+        // no need to toggle in onStart/onStop.
+        if (keepScreenOn && playerOpen) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = lightContent
             isAppearanceLightNavigationBars = lightContent

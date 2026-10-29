@@ -69,6 +69,14 @@ object Keys {
     val ListenBrainzEnabled = bool("listenbrainz_enabled")
     val ListenBrainzUser = str("forge.listenBrainzUser")
 
+    // General
+    /** Metrolist's key: which tab opens first. "defaultOpenTab" → Tab.route. */
+    val StartScreen = str("defaultOpenTab")
+    /** Metrolist's key: keep the screen on while the player is open. */
+    val KeepScreenOn = bool("keepScreenOn")
+    /** Local: haptics on toggle, long-press, swipe-to-skip. */
+    val HapticsEnabled = bool("forge.hapticsEnabled")
+
     // Playback
     val AudioQuality = str("audioQuality") // AUTO / HIGH / LOW / ...
     val SkipSilence = bool("skipSilence")
@@ -83,6 +91,10 @@ object Keys {
     val CrossfadeGapless = bool("crossfadeGapless")
     val MaxSongCacheSizeMb = int("maxSongCacheSize")
     val MaxImageCacheSizeMb = int("maxImageCacheSize")
+    /** Local: double-tap the cover to seek ±10 s. */
+    val DoubleTapSeek = bool("forge.doubleTapSeek")
+    /** Local: swipe the mini player to skip. */
+    val SwipeMiniToSkip = bool("forge.swipeMiniToSkip")
 
     // Network
     val ProxyEnabled = bool("proxyEnabled")
@@ -91,6 +103,12 @@ object Keys {
     val ProxyUsername = str("proxyUsername")
     val ProxyPassword = str("proxyPassword")
 
+    // Lyrics
+    /** Metrolist's key: show lyrics in the player. */
+    val ShowLyrics = bool("showLyrics")
+    /** Metrolist's key: lyrics text size in sp. Default 24f. */
+    val LyricsTextSize = float("lyricsTextSize")
+
     /** Upstream key name → our key, for settings that import across. */
     val importable: Map<String, Preferences.Key<*>> = listOf(
         InnerTubeCookie, VisitorData, DataSyncId, InnerTubeAuthUser, AccountName, AccountEmail,
@@ -98,7 +116,7 @@ object Keys {
         SkipSilence, AudioNormalization, PersistentQueue, CrossfadeEnabled, CrossfadeSeconds,
         CrossfadeGapless, MaxSongCacheSizeMb, MaxImageCacheSizeMb, ProxyEnabled, ProxyType, ProxyUrl,
         ProxyUsername, ProxyPassword, ListenBrainzToken, ListenBrainzEnabled, AutoDownloadOnLike, Autoplay, UseLoginForBrowse,
-        PauseSearchHistory, PauseListenHistory,
+        PauseSearchHistory, PauseListenHistory, StartScreen, KeepScreenOn, ShowLyrics, LyricsTextSize,
     ).associateBy { it.name } + mapOf(
         // Metrolist renamed its crossfade duration key when it moved to a float.
         "crossfadeDurationFloat" to CrossfadeSeconds,

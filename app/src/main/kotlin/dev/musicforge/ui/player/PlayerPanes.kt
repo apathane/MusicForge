@@ -60,6 +60,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
@@ -93,6 +94,10 @@ fun LyricsPane(now: NowPlaying, position: State<Long>, accent: Color, onSeek: (L
     val currentId = now.mediaId
     val liked by remember(currentId) { graph.database.dao().isLiked(currentId) }.collectAsStateWithLifecycle(null)
     val white = Color.White
+    val prefs by graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    // Metrolist's lyricsTextSize key; default 24f (sp).
+    val textSize = prefs?.get(Keys.LyricsTextSize) ?: 24f
+    val textSizeSp = textSize.sp
     Column(Modifier.fillMaxSize()) {
         MiniPlayerHeader(now, liked == true, onMore, onLike = {
             connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
@@ -117,16 +122,16 @@ fun LyricsPane(now: NowPlaying, position: State<Long>, accent: Color, onSeek: (L
             is Lyrics.Plain -> Text(
                 l.text,
                 color = white.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.titleMedium.copy(lineHeight = 30.sp),
+                style = MaterialTheme.typography.titleMedium.copy(lineHeight = textSizeSp * 1.2f, fontSize = textSizeSp),
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
             )
-            is Lyrics.Synced -> SyncedLyrics(l.lines, position, onSeek)
+            is Lyrics.Synced -> SyncedLyrics(l.lines, position, onSeek, textSizeSp)
         }
     }
 }
 
 @Composable
-private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek: (Long) -> Unit) {
+private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek: (Long) -> Unit, textSize: TextUnit = 24.sp) {
     val list = rememberLazyListState()
     val current by remember(lines) {
         derivedStateOf {
@@ -161,8 +166,8 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
                 line.text.ifEmpty { "♪" },
                 color = color,
                 style = MaterialTheme.typography.headlineSmall.copy(
-                    fontSize = 25.sp,
-                    lineHeight = 32.sp,
+                    fontSize = textSize,
+                    lineHeight = textSize * 1.28f,
                     fontWeight = if (active) FontWeight.W800 else FontWeight.W700,
                 ),
                 modifier = Modifier.fillMaxWidth().clickable { onSeek(line.timeMs) }.padding(vertical = 9.dp),
@@ -194,6 +199,7 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
     val prefs by graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
     val locked = prefs?.get(Keys.QueueLocked) == true
     val autoplay = prefs?.get(Keys.Autoplay) == true
+    val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
 
     val nextKey = remember { mutableLongStateOf(0L) }
     val rows = remember { androidx.compose.runtime.mutableStateListOf<Pair<Long, androidx.media3.common.MediaItem>>() }
@@ -342,7 +348,7 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
                     LaunchedEffect(dismiss.currentValue) {
                         if (dismiss.currentValue != androidx.compose.material3.SwipeToDismissBoxValue.Settled) {
                             if (playing || locked) return@LaunchedEffect
-                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            if (hapticsEnabled) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             removed = i to item
                             connection.removeAt(i)
                         }
@@ -395,7 +401,7 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
                         if (!locked) {
                             Box(
                                 Modifier.size(48.dp).draggableHandle(
-                                    onDragStarted = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
+                                    onDragStarted = { if (hapticsEnabled) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
                                 ),
                                 contentAlignment = Alignment.Center,
                             ) {

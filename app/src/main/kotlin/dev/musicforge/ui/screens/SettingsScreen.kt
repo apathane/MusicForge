@@ -30,6 +30,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,6 +59,7 @@ import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.theme.DarkMode
+import dev.musicforge.ui.Tab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -65,6 +67,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+
+/** Human-readable byte count, as Metrolist and ConvX do. */
+private fun formatBytes(bytes: Long?): String = when {
+    bytes == null -> "—"
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+    bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+    else -> "${bytes / (1024 * 1024 * 1024)} GB"
+}
 
 class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     sealed interface RestoreState {
@@ -156,6 +167,28 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.widget.Toast.makeText(graph.app, "Home reset: every suggestion is back", android.widget.Toast.LENGTH_SHORT).show()
     }
 
+    fun clearSearchHistory() = viewModelScope.launch {
+        graph.database.dao().clearSearchHistory()
+        android.widget.Toast.makeText(graph.app, "Search history cleared", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    fun clearImageCache() = viewModelScope.launch {
+        val ctx = graph.app
+        val loader = coil3.SingletonImageLoader.get(ctx)
+        loader.memoryCache?.clear()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { loader.diskCache?.clear() }
+        android.widget.Toast.makeText(ctx, "Image cache cleared", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    suspend fun songCacheBytes(): Long = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.mediaEngine.playerCacheSizeBytes }
+
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    fun clearSongCache() = viewModelScope.launch {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.mediaEngine.clearPlayerCache() }
+        android.widget.Toast.makeText(graph.app, "Song cache cleared", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     fun dismiss() {
         _restore.value = RestoreState.Idle
     }
@@ -223,6 +256,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                     prefs?.get(Keys.PauseListenHistory) ?: false,
                     subtitle = "Plays here won't be added to your YouTube Music history",
                 ) { vm.set(Keys.PauseListenHistory, it) }
+                ActionRow("Clear search history", "Remove your recent searches from this phone") { vm.clearSearchHistory() }
                 ActionRow("Switch account", "Sign in with a different Google account", onSignIn)
                 ActionRow("Sign out", "Keeps your library on this phone", vm::signOut)
             }
@@ -269,6 +303,14 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             )
         }
 
+        SectionTitle("General")
+        Group {
+            val start = prefs?.get(Keys.StartScreen)?.let { raw -> Tab.entries.firstOrNull { it.route.equals(raw, true) || it.name.equals(raw, true) }?.route } ?: Tab.Home.route
+            ChoiceRow("Start screen", Tab.entries.map { it.route to it.label }, start) { vm.set(Keys.StartScreen, it) }
+            ToggleRow("Keep screen on", prefs?.get(Keys.KeepScreenOn) ?: false) { vm.set(Keys.KeepScreenOn, it) }
+            ToggleRow("Haptics", prefs?.get(Keys.HapticsEnabled) ?: true, subtitle = "Button presses, long-presses and swipe-to-skip") { vm.set(Keys.HapticsEnabled, it) }
+        }
+
         SectionTitle("Playback")
         Group {
             val quality = prefs?.get(Keys.AudioQuality) ?: "AUTO"
@@ -277,7 +319,56 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow("Skip silence", prefs?.get(Keys.SkipSilence) ?: false) { vm.set(Keys.SkipSilence, it) }
             ToggleRow("Remember queue", prefs?.get(Keys.PersistentQueue) ?: true) { vm.set(Keys.PersistentQueue, it) }
             ToggleRow("Keep playing similar songs", prefs?.get(Keys.Autoplay) ?: true) { vm.set(Keys.Autoplay, it) }
+            ToggleRow("Double-tap cover to seek", prefs?.get(Keys.DoubleTapSeek) ?: true, subtitle = "Rewind or skip 10 seconds") { vm.set(Keys.DoubleTapSeek, it) }
+            ToggleRow("Swipe mini player to skip", prefs?.get(Keys.SwipeMiniToSkip) ?: true) { vm.set(Keys.SwipeMiniToSkip, it) }
             ActionRow("Equalizer", "Bands and presets, on any phone", onEqualizer)
+        }
+
+        SectionTitle("Lyrics")
+        Group {
+            ToggleRow("Show lyrics", prefs?.get(Keys.ShowLyrics) ?: true) { vm.set(Keys.ShowLyrics, it) }
+            val size = prefs?.get(Keys.LyricsTextSize) ?: 24f
+            // A slider dialog so you can nudge the size without hunting a number.
+            val sizeOptions = listOf(16f to "Small", 20f to "Medium", 24f to "Default", 28f to "Large", 32f to "Extra large")
+            val label = sizeOptions.find { it.first == size }?.second ?: "$size sp"
+            var showSizeDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            ActionRow("Lyrics text size", label) { showSizeDialog = true }
+            if (showSizeDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showSizeDialog = false },
+                    title = { Text("Lyrics text size") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            sizeOptions.forEach { (v, l) ->
+                                Text(
+                                    l,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { vm.set(Keys.LyricsTextSize, v); showSizeDialog = false }
+                                        .padding(vertical = 8.dp),
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = { TextButton({ showSizeDialog = false }) { Text("Cancel") } },
+                )
+            }
+        }
+
+        SectionTitle("Storage")
+        Group {
+            // Cache so big it has its own gravitational pull? Tap to clear.
+            var imgSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+            LaunchedEffect(Unit) {
+                imgSize = coil3.SingletonImageLoader.get(context).diskCache?.size ?: 0L
+            }
+            ActionRow("Clear image cache", "${formatBytes(imgSize)} · tap to clear") { vm.clearImageCache() }
+            var songSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+            LaunchedEffect(Unit) {
+                songSize = vm.songCacheBytes()
+            }
+            ActionRow("Clear song cache", "${formatBytes(songSize)} · tap to clear") { vm.clearSongCache() }
         }
 
         SectionTitle("Scrobbling")

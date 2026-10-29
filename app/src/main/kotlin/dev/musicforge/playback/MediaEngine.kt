@@ -101,6 +101,14 @@ class MediaEngine(
                     .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
             )
 
+    /** Bytes the stream cache (playerCache) is currently using. */
+    val playerCacheSizeBytes: Long get() = playerCache.cacheSpace
+
+    /** Wipe the stream cache so the next play re-fetches from the network. */
+    fun clearPlayerCache() {
+        playerCache.keys.forEach { playerCache.removeResource(it) }
+    }
+
     companion object {
         val REFUSED = setOf(403, 410, 416)
     }
