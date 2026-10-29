@@ -25,7 +25,6 @@ import org.json.JSONArray
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
-import java.security.MessageDigest
 
 private const val DAY_MS = 24 * 3600 * 1000L
 private const val GITHUB_RELEASES = "https://api.github.com/repos/apathane/MusicForge/releases"
@@ -140,56 +139,82 @@ class UpdateChecker(
 
     private suspend fun downloadAndInstall(release: ReleaseInfo) {
         try {
-            // Old APKs are dead weight once installed; keep only the one being fetched.
-            val dir = File(context.cacheDir, "updates").apply { deleteRecursively(); mkdirs() }
+            val dir = File(context.cacheDir, "updates").apply { mkdirs() }
             // The asset name comes from the network: strip any path from it.
-            val apkFile = File(dir, File(release.apkAssetName).name)
+            val apkName = File(release.apkAssetName).name
+            val apkFile = File(dir, apkName)
+
+            // Reuse a cached APK that still verifies; otherwise fall through and re-fetch.
+            // A cached copy that fails verification is overwritten by downloadApk below.
+            if (isCachedApkValid(apkFile, release)) {
+                proceedToInstall(apkFile, release)
+                return
+            }
+
+            // Delete only other APKs: keep the one we're fetching so a retry after the
+            // permission screen skips a second download.
+            dir.listFiles()?.filter { it.name != apkName }?.forEach { it.delete() }
 
             _state.value = UpdateState.Downloading(0f)
             downloadApk(release, apkFile)
 
-            // Never install an APK without a matching checksum entry in the release manifest.
-            val sumsUrl = release.sha256SumsUrl
-            if (sumsUrl == null) {
+            // Fail-closed: never hand an unsigned/mismatched APK to the installer.
+            val expected = expectedChecksum(release, apkName) ?: run {
                 apkFile.delete()
-                _state.value = UpdateState.Failed("Release has no SHA-256 manifest; refusing to install")
+                _state.value = UpdateState.Failed("SHA-256 manifest missing or entry not found; refusing to install")
                 return
             }
-            val expected = parseSha256Sums(fetchText(sumsUrl), apkFile.name)
-            if (expected == null) {
-                apkFile.delete()
-                _state.value = UpdateState.Failed("SHA-256 entry is missing or invalid; refusing to install")
-                return
-            }
-            val actual = sha256Hex(apkFile)
-            if (!expected.equals(actual, ignoreCase = true)) {
+            if (!shouldReuseCachedApk(apkFile, expected)) {
                 apkFile.delete()
                 _state.value = UpdateState.Failed("SHA-256 mismatch; download is corrupt or does not match the release manifest")
                 return
             }
 
-            // Android 8+: apps must ask the user to grant "install unknown apps" for this package.
-            if (!context.packageManager.canRequestPackageInstalls()) {
-                context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                    data = Uri.parse("package:${context.packageName}")
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-                _state.value = UpdateState.Failed("Grant install permission, then check for updates and tap install again")
-                return
-            }
-
-            _state.value = UpdateState.Installing
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apkFile)
-            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
-            })
-            // Leave state as Available so the user can retry if the installer rejects the APK.
-            _state.value = UpdateState.Available(release)
+            proceedToInstall(apkFile, release)
         } catch (e: Exception) {
             _state.value = UpdateState.Failed(e.message ?: "Download or install failed")
             Timber.w(e, "Update install failed")
         }
+    }
+
+    /** Fetches the release manifest and resolves the expected SHA-256 for [apkName], or null if absent. */
+    private suspend fun expectedChecksum(release: ReleaseInfo, apkName: String): String? = withContext(Dispatchers.IO) {
+        val sumsUrl = release.sha256SumsUrl ?: return@withContext null
+        parseSha256Sums(fetchText(sumsUrl), apkName)
+    }
+
+    /**
+     * Reuse decision over cached bytes: true when the APK exists on disk and its SHA-256
+     * matches the release manifest, so the download can be skipped.
+     */
+    private suspend fun isCachedApkValid(apkFile: File, release: ReleaseInfo): Boolean = withContext(Dispatchers.IO) {
+        val expected = expectedChecksum(release, apkFile.name) ?: return@withContext false
+        shouldReuseCachedApk(apkFile, expected)
+    }
+
+    /**
+     * Shared verification and install handoff logic.
+     * Why separate: keeps the retry path (cached APK) and the fresh-download path identical.
+     */
+    private fun proceedToInstall(apkFile: File, release: ReleaseInfo) {
+        // Android 8+: apps must ask the user to grant "install unknown apps" for this package.
+        if (!context.packageManager.canRequestPackageInstalls()) {
+            context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+            _state.value = UpdateState.Failed("Grant install permission, then check for updates and tap install again")
+            return
+        }
+
+        _state.value = UpdateState.Installing
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apkFile)
+        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+        })
+        // Leave state as Available so the user can retry if the installer rejects the APK.
+        _state.value = UpdateState.Available(release)
     }
 
     private suspend fun downloadApk(release: ReleaseInfo, dest: File) = withContext(Dispatchers.IO) {
@@ -275,16 +300,4 @@ class UpdateChecker(
         sha256SumsUrl = sha256SumsUrl,
         notes = body,
     )
-
-    private fun sha256Hex(file: File): String = run {
-        val md = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(8192)
-            var read: Int
-            while (input.read(buffer).also { read = it } != -1) {
-                md.update(buffer, 0, read)
-            }
-        }
-        md.digest().joinToString("") { "%02x".format(it) }
-    }
 }

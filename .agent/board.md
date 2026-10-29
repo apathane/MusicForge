@@ -19,7 +19,8 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 ## Now: Toccata · phase 15 (see decisions/0001-phase-15-toccata.md)
 
 Wave 1
-- [ ] **T1 updater reuse**: don't re-download an APK that is already in cache and verified · `toccata/updater-reuse`
+- [x] **T1 updater reuse**: don't re-download an APK that is already in cache and verified · `toccata/updater-reuse`
+  claimed: kilo · toccata/updater-reuse
 - [ ] **T2 motion**: route transitions with predictive back, sheets/menus/dialogs enter and exit, press and list motion · `toccata/motion`
 - [ ] **T3 radio & streaming basics**: endless play, audio quality, skip silence, crossfade groundwork · `toccata/radio`
 

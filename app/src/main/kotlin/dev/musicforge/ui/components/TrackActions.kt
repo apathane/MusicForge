@@ -115,6 +115,8 @@ fun TrackActionsSheet(
                 return@Column
             }
             Action(ForgeIcons.Next, "Play next") { graph.player.playNext(item); onDismiss() }
+            // Radio: a station seeded from this song (endless play takes it from there).
+            Action(ForgeIcons.Radio, "Start radio") { graph.player.startRadio(item); onDismiss() }
             // A heart that's full needs a moment to decide it's hollow — 140 in, 120 out,
             // because breaking up is harder than making up (and the colour fades faster than the shape).
             AnimatedContent(
