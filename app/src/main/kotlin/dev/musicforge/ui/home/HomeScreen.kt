@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +59,7 @@ import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
 import dev.musicforge.ui.components.TrackActionsSheet
+import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.SectionHeader
 import dev.musicforge.ui.designsystem.Signal
 import dev.musicforge.ui.designsystem.SignalChip
@@ -377,6 +377,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
     }
     when {
         remote.isLoading -> item(key = "remote-loading", contentType = "loading") {
+            LoadingBar(visible = true)
             dev.musicforge.ui.components.SkeletonRows()
         }
         // With nothing of your own to fall back on, the failure gets the whole screen and a way out.

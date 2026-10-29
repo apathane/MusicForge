@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -173,8 +174,14 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
         return
     }
     Action(ForgeIcons.PlaylistAdd, "New playlist") { naming = true }
-    androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
-        items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
+    if (playlists.isEmpty()) {
+        // First DB read; the bar bridges the gap before the list fills in.
+        Box(Modifier.fillMaxWidth().height(320.dp)) {
+            LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().height(3.dp))
+        }
+    } else {
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
+            items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
             Row(
                 Modifier.fillMaxWidth().animateItem(tween(220)).clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
                     .padding(horizontal = 24.dp, vertical = 10.dp),

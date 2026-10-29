@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.pressScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
@@ -67,6 +68,7 @@ fun DownloadsScreen() {
     dev.musicforge.ui.ScrollToTopOnReselect(list)
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item { ScreenHeader("Downloads") { dev.musicforge.ui.SettingsAction() } }
+        if (active.isNotEmpty()) item { LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) }
         pending?.let { p -> item(key = "redownload") { BringBackCard(p) } }
         if (active.isEmpty() && done.isEmpty()) {
             item { EmptyState("Nothing downloaded yet", "Long-press any song and choose Download. Downloads play offline and pick up where they left off if the phone kills the app.") }

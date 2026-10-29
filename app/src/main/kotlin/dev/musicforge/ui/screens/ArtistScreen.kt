@@ -3,6 +3,7 @@ package dev.musicforge.ui.screens
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.map
+import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.designsystem.Signal
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,7 +50,6 @@ import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
-import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.openItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -99,6 +98,7 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
         item { BackRow(onBack) }
         when (val s = state) {
             ArtistViewModel.State.Loading -> item {
+                LoadingBar(visible = true)
                 dev.musicforge.ui.components.SkeletonRows()
             }
             is ArtistViewModel.State.Failed -> item { EmptyState("Couldn't load", s.message) }

@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,6 +62,7 @@ import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.SongRow
 import dev.musicforge.ui.components.askToRunInBackground
+import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.pressScale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -136,6 +136,7 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
                     .joinToString(" · "),
                 artwork = listOf(page.album.thumbnail),
                 tracks = page.songs.map { it.track() },
+                loading = false,  // BUGFIX: was never cleared on success, so the spinner + SkeletonRows stuck around after content appeared.
             )
         }.onFailure { e ->
             // Offline: show what we know locally about this album.
@@ -159,6 +160,7 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
                 subtitle = listOfNotNull(page.playlist.author?.name, page.playlist.songCountText).joinToString(" · "),
                 artwork = listOfNotNull(page.playlist.thumbnail),
                 tracks = page.songs.map { it.track() },
+                loading = false,
                 hasMore = continuation != null,
             )
         }.onFailure { e ->
@@ -267,6 +269,7 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
         }) }
         when {
             ui.loading -> item {
+                LoadingBar(visible = true)
                 dev.musicforge.ui.components.SkeletonRows()
             }
             ui.error != null -> item { EmptyState("Couldn't load", ui.error!!) }

@@ -32,6 +32,8 @@ import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
+import dev.musicforge.ui.designsystem.LoadingBar
+import dev.musicforge.ui.components.SkeletonRows
 
 @Composable
 fun LibraryAlbumsScreen(onBack: () -> Unit) {
@@ -39,9 +41,16 @@ fun LibraryAlbumsScreen(onBack: () -> Unit) {
     val albums by remember { dao.libraryAlbums() }.collectAsStateWithLifecycle(emptyList())
     val nav = LocalNavController.current
     CoverGrid("Albums", onBack, empty = albums.isEmpty(), emptyTitle = "No saved albums", emptyBody = "Albums you save, or restore from a backup, appear here.") { side ->
-        items(albums, key = { it.id }, contentType = { "album" }) { a ->
-            GridCell(a.thumbnailUrl, a.title, a.year?.toString().orEmpty(), round = false, side = side) {
-                nav.navigate(Routes.collection(CollectionKind.ALBUM, a.id))
+        if (albums.isEmpty()) {
+            item(span = full) {
+                LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
+                SkeletonRows(count = 6)
+            }
+        } else {
+            items(albums, key = { it.id }, contentType = { "album" }) { a ->
+                GridCell(a.thumbnailUrl, a.title, a.year?.toString().orEmpty(), round = false, side = side) {
+                    nav.navigate(Routes.collection(CollectionKind.ALBUM, a.id))
+                }
             }
         }
     }
@@ -53,10 +62,17 @@ fun LibraryArtistsScreen(onBack: () -> Unit) {
     val artists by remember { dao.libraryArtists() }.collectAsStateWithLifecycle(emptyList())
     val nav = LocalNavController.current
     CoverGrid("Artists", onBack, empty = artists.isEmpty(), emptyTitle = "No followed artists", emptyBody = "Artists you follow, or restore from a backup, appear here.") { side ->
-        items(artists, key = { it.id }, contentType = { "artist" }) { a ->
-            // Artists we only know by name (from local files) have no page to open.
-            val openable = !a.id.startsWith("name:") && !a.isLocal
-            GridCell(a.thumbnailUrl, a.name, "", round = true, side = side) { if (openable) nav.navigate(Routes.artist(a.channelId ?: a.id)) }
+        if (artists.isEmpty()) {
+            item(span = full) {
+                LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
+                SkeletonRows(count = 6)
+            }
+        } else {
+            items(artists, key = { it.id }, contentType = { "artist" }) { a ->
+                // Artists we only know by name (from local files) have no page to open.
+                val openable = !a.id.startsWith("name:") && !a.isLocal
+                GridCell(a.thumbnailUrl, a.name, "", round = true, side = side) { if (openable) nav.navigate(Routes.artist(a.channelId ?: a.id)) }
+            }
         }
     }
 }
