@@ -71,14 +71,16 @@ fun Modifier.signalSurface(color: androidx.compose.ui.graphics.Color, radius: an
     clip(RoundedCornerShape(radius)).background(color)
 
 /**
- * Pressed things give way a little (0.97), so a tap is felt before anything else happens. Read
- * in the draw phase on one layer: no recomposition per frame.
+ * Pressed things give way a little (0.96), so a tap is felt before anything else happens — 2 px down
+ * and a tenth of the glyph's opacity, like the ghost's icon buttons. Springs follow the duration
+ * scale, so reduced motion still snaps to target. Read in the draw phase on one layer: no
+ * recomposition per frame.
  */
 fun Modifier.pressScale(interaction: androidx.compose.foundation.interaction.InteractionSource): Modifier = composed {
     val pressed by interaction.collectIsPressedAsState()
     val scale by androidx.compose.animation.core.animateFloatAsState(
-        if (pressed) 0.97f else 1f,
-        androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 900f),
+        if (pressed) 0.96f else 1f,
+        Motion.Press,
         label = "press",
     )
     graphicsLayer { scaleX = scale; scaleY = scale }
