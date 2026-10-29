@@ -113,6 +113,15 @@ class MediaEngine(
         playerCache.keys.toList().forEach { playerCache.removeResource(it) }
     }
 
+    /**
+     * Drops this track's bytes from the LRU stream cache, so the next play re-fetches them.
+     * Only playerCache — a finished download's bytes live in downloadCache and are left alone;
+     * the caller guards this row with the download state.
+     */
+    fun removeFromCache(videoId: String) {
+        playerCache.removeResource(storageKey(videoId))
+    }
+
     companion object {
         val REFUSED = setOf(403, 410, 416)
     }

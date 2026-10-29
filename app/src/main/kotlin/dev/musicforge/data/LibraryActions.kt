@@ -83,6 +83,9 @@ class LibraryActions(
     /** The playlist goes; the songs stay in the library (their map rows cascade away). */
     fun deletePlaylist(id: String) = scope.launch { db.dao().deletePlaylist(id) }
 
+    /** Drops every play checkpoint for this track — the "Remove from history" row. */
+    fun removeFromHistory(item: MediaItem) = scope.launch { db.dao().deleteEvents(item.mediaId) }
+
     /** Same id style as Metrolist's local playlists (a UUID), so our backups read back there too. */
     fun createPlaylist(name: String, firstSong: MediaItem? = null) = scope.launch {
         val id = UUID.randomUUID().toString()
