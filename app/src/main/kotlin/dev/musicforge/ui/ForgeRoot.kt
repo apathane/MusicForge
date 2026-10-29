@@ -74,6 +74,8 @@ import dev.musicforge.ui.screens.DownloadsScreen
 import dev.musicforge.ui.screens.LibraryAlbumsScreen
 import dev.musicforge.ui.screens.LoginScreen
 import dev.musicforge.ui.screens.LibraryArtistsScreen
+import dev.musicforge.ui.LocalSort
+import dev.musicforge.ui.screens.LocalMusicScreen
 import dev.musicforge.ui.home.HomeRoot
 import dev.musicforge.ui.screens.LibraryScreen
 import dev.musicforge.ui.screens.SearchScreen
@@ -215,6 +217,10 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 }
                 page(Routes.ALBUMS) { LibraryAlbumsScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.ARTISTS) { LibraryArtistsScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.LOCAL_MUSIC, arguments = listOf(navArgument("sort") { type = NavType.StringType })) { entry ->
+                    val sort = runCatching { LocalSort.valueOf(entry.arguments!!.getString("sort")!!) }.getOrDefault(LocalSort.TITLE)
+                    LocalMusicScreen(sort, onBack = { nav.popBackStack() })
+                }
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route

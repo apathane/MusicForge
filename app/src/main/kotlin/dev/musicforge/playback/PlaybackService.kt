@@ -288,10 +288,17 @@ class PlaybackService : MediaLibraryService() {
             mediaItems.map { item ->
                 // Cars and watches send back only the id: restore title, artists and artwork.
                 val full = if (item.mediaMetadata.title == null) withContext(Dispatchers.IO) { tree.song(item.mediaId) } ?: item else item
-                full.buildUpon()
-                    .setUri("https://music.youtube.com/watch?v=${item.mediaId}")
-                    .setCustomCacheKey(item.mediaId)
-                    .build()
+                // Restore path can be reached with a stale item whose URI was already rewritten;
+                // keep local files (mediaId is a content:// URI) intact so the player reads the
+                // on-device file straight from MediaStore.
+                if (item.mediaId.startsWith("content://")) {
+                    full.buildUpon().setCustomCacheKey(item.mediaId).build()
+                } else {
+                    full.buildUpon()
+                        .setUri("https://music.youtube.com/watch?v=${item.mediaId}")
+                        .setCustomCacheKey(item.mediaId)
+                        .build()
+                }
             }.toMutableList()
         }
     }

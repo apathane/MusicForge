@@ -255,6 +255,7 @@ interface MusicDao {
     @Upsert suspend fun upsert(artist: ArtistEntity)
     @Upsert suspend fun upsert(album: AlbumEntity)
     @Upsert suspend fun upsert(map: SongArtistMap)
+    @Upsert suspend fun upsert(map: SongAlbumMap)
     @Upsert suspend fun upsert(format: FormatEntity)
     @Upsert suspend fun upsert(lyrics: LyricsEntity)
 
@@ -449,4 +450,65 @@ interface MusicDao {
 
     @Insert
     suspend fun insert(history: RemoteHistoryEntity)
+
+    // ---- local music (files on the device) ----
+
+    @Query("SELECT id FROM song WHERE isLocal")
+    suspend fun localSongIds(): List<String>
+
+    @Query("SELECT COALESCE(MAX(dateModified), 0) FROM song WHERE isLocal AND dateModified > 0")
+    suspend fun maxLocalDateModified(): Long?
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal ORDER BY title ASC")
+    fun localSongsByNameAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal ORDER BY title ASC")
+    fun localSongsByTitleAsc() = localSongsByNameAsc()
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal ORDER BY inLibrary ASC NULLS FIRST")
+    fun localSongsByDateAddedDesc(): Flow<List<Song>>
+
+    @Query("SELECT COUNT(*) FROM song WHERE isLocal")
+    fun localSongsCount(): Flow<Int>
+
+    /** Local songs grouped to a single artist, then by title — for album/artist list screens. */
+    @Transaction
+    @Query(
+        """
+        SELECT song.* FROM song JOIN song_artist_map m ON m.songId = song.id JOIN artist ON artist.id = m.artistId
+        WHERE song.isLocal AND artist.id = :artistId ORDER BY song.title ASC
+        """,
+    )
+    fun localSongsByArtist(artistId: String): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal AND albumId = :albumId ORDER BY title ASC")
+    fun localSongsByAlbum(albumId: String): Flow<List<Song>>
+
+    /** Local songs ordered by album then title — used by the album-sorted list view. */
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal ORDER BY albumName ASC NULLS LAST, title ASC")
+    fun localSongsByAlbumSort(): Flow<List<Song>>
+
+    /** Local songs ordered by primary artist then title — used by the artist-sorted list view. */
+    @Transaction
+    @Query(
+        """
+        SELECT song.* FROM song JOIN song_artist_map m ON m.songId = song.id JOIN artist ON artist.id = m.artistId
+        WHERE song.isLocal ORDER BY artist.name ASC, song.title ASC
+        """,
+    )
+    fun localSongsByArtistSort(): Flow<List<Song>>
+
+    @Query("UPDATE song SET dateModified = :dateModified, inLibrary = :dateAdded WHERE id = :id")
+    suspend fun backfillLocalSongDates(id: String, dateAdded: Long, dateModified: Long)
+
+    @Query("DELETE FROM song WHERE isLocal AND id NOT IN (:keptIds)")
+    suspend fun deleteLocalSongsNotIn(keptIds: Set<String>)
+
+    @Query("SELECT dateModified FROM song WHERE id = :id")
+    suspend fun localSongDateModified(id: String): Long?
 }

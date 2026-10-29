@@ -3,6 +3,10 @@ package dev.musicforge.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import dev.musicforge.data.local.LocalAudioScanner
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -61,7 +65,9 @@ import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.theme.DarkMode
 import dev.musicforge.ui.Tab
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -189,6 +195,41 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.widget.Toast.makeText(graph.app, "Song cache cleared", android.widget.Toast.LENGTH_SHORT).show()
     }
 
+    fun setLocalFolder(uri: String?) = viewModelScope.launch {
+        graph.settings.edit {
+            if (uri == null) {
+                it.remove(Keys.LocalMusicFolderUri)
+                it[Keys.LocalMusicAll] = true
+            } else {
+                it[Keys.LocalMusicFolderUri] = uri
+                it[Keys.LocalMusicAll] = false
+            }
+        }
+    }
+
+    fun scanLocalMusic() = viewModelScope.launch {
+        val folderAll = graph.settings.data.first()[Keys.LocalMusicAll] ?: true
+        val folderUri = graph.settings.data.first()[Keys.LocalMusicFolderUri]
+        val mode = if (folderAll || folderUri.isNullOrBlank()) {
+            LocalAudioScanner.FolderMode.All
+        } else {
+            LocalAudioScanner.FolderMode.Folder(android.net.Uri.parse(folderUri))
+        }
+        val dao = graph.database.dao()
+        val before = dao.localSongsCount().first()
+        val res = dev.musicforge.data.local.LocalAudioScanner.scanAndInsert(graph.app, graph.database, mode)
+        val after = dao.localSongsCount().first()
+        android.widget.Toast.makeText(
+            graph.app,
+            "Scanned ${res.totalFound} files: +${res.newSongs} new, ${res.updated} updated, ${res.removed} removed. ${after - before} total now.",
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    val localFolderUri: Flow<String?> = graph.settings.data.map { it[Keys.LocalMusicFolderUri] }
+    val localMusicCount = graph.database.dao().localSongsCount()
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), 0)
+
     fun dismiss() {
         _restore.value = RestoreState.Idle
     }
@@ -307,6 +348,36 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ChoiceRow("Start screen", Tab.entries.map { it.route to it.label }, start) { vm.set(Keys.StartScreen, it) }
             ToggleRow("Keep screen on", prefs?.get(Keys.KeepScreenOn) ?: false) { vm.set(Keys.KeepScreenOn, it) }
             ToggleRow("Haptics", prefs?.get(Keys.HapticsEnabled) ?: true, subtitle = "Button presses, long-presses and swipe-to-skip") { vm.set(Keys.HapticsEnabled, it) }
+        }
+
+        SectionTitle("Local music")
+        Group {
+            val folderAll = prefs?.get(Keys.LocalMusicAll) ?: true
+            val folderUri = prefs?.get(Keys.LocalMusicFolderUri)
+            val count by remember { vm.localMusicCount }.collectAsStateWithLifecycle(0)
+            ToggleRow(
+                "Scan all music",
+                folderAll,
+                subtitle = if (folderAll) "Files from any folder" else folderUri?.takeIf { it.isNotBlank() }?.let { Uri.parse(it) }?.let { "Folder picked" } ?: "Off",
+            ) { vm.set(Keys.LocalMusicAll, it); if (it) vm.setLocalFolder(null) }
+            val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+                uri?.let {
+                    context.applicationContext.contentResolver.takePersistableUriPermission(
+                        it,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                    vm.setLocalFolder(it.toString())
+                }
+            }
+            // OpenDocumentTree wants a starting location; point it at external storage so the
+            // picker opens in the shared music folder rather than the app's private docs.
+            val start = android.net.Uri.parse("content://com.android.externalstorage.documents/root/primary")
+            ActionRow(
+                if (folderAll) "Pick a folder" else "Change folder",
+                if (count == 0) "No local songs found" else "$count songs on this phone",
+                onClick = { pickFolder.launch(start) },
+            )
+            ActionRow("Rescan", "Re-check every file since the last scan", { vm.scanLocalMusic() })
         }
 
         SectionTitle("Playback")
