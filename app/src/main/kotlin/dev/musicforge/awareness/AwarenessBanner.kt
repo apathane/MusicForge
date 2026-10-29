@@ -86,7 +86,7 @@ fun AwarenessBanner(
                     translationY = (1f - alpha) * -20f
                 }
                 .clip(RoundedCornerShape(0.dp, 0.dp, Signal.radiusSurface, Signal.radiusSurface))
-                .background(MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.95f))
+                .background(Color(0xFF1C1B1F, name = "inverseSurface95").copy(alpha = 0.95f))
                 .padding(horizontal = Signal.gutter)
         ) {
             Row(
@@ -97,7 +97,7 @@ fun AwarenessBanner(
                 Text(
                     text = currentMessage,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onInverseSurface,
+                    color = Color.White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
@@ -108,7 +108,7 @@ fun AwarenessBanner(
                     Icon(
                         imageVector = Close,
                         contentDescription = context.getString(android.R.string.cancel),
-                        tint = MaterialTheme.colorScheme.onInverseSurface.copy(alpha = 0.7f),
+                        tint = Color.White.copy(alpha = 0.7f),
                         modifier = Modifier.size(24.dp),
                     )
                 }
