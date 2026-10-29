@@ -131,7 +131,7 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
                     if (songs.size == section.items.size && songs.isNotEmpty()) {
                         // "Songs" sections read best as a list you can play straight away.
                         item(key = "t:${section.title}") { SectionTitle(section.title) }
-                        items(songs, key = { "s:${section.title}:${it.id}" }) { song ->
+                        items(songs, key = { "s:${section.title}:${it.id}" }, contentType = { "song" }) { song ->
                             val mediaItem = remember(song.id) { song.toMediaItem() }
                             SongRow(mediaItem, song.album?.name ?: song.artists.joinToString { it.name }) {
                                 player.play(songs.map { it.toMediaItem() }, songs.indexOf(song))

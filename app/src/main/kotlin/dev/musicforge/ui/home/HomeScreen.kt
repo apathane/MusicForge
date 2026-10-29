@@ -192,21 +192,14 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
             }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                itemsIndexed(section.items, key = { _, it -> it.key }) { i, item ->
-                    (item as? HomeItem.Track)?.let {
-                        Box(Modifier.animateItem()) {
-                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
-                        }
-                    }
-                }
-            }
+                itemsIndexed(section.items, key = { _, it -> it.key }, contentType = { "track" }) { i, item ->
         }
         HomeLayout.ARTISTS -> Column {
             ShelfHeader(section.title, section.reason) {
                 haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
             }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(section.items, key = { it.key }) { item ->
+                items(section.items, key = { it.key }, contentType = { it::class }) { item ->
                     val artist = item as? HomeItem.Artist ?: return@items
                     val isTop = section.items.indexOfFirst { it is HomeItem.Artist } == section.items.indexOf(item)
                     ArtistCard(artist.artist, { onAction(HomeAction.OpenArtist(artist.artist.channelId ?: artist.artist.id)) }, isTop = isTop)
@@ -236,7 +229,7 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
             }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(section.items, key = { it.key }) { item ->
+                items(section.items, key = { it.key }, contentType = { it::class }) { item ->
                     (item as? HomeItem.Playlist)?.let { PlaylistCard(it.playlist) { onAction(HomeAction.OpenPlaylist(it.playlist.playlist.id)) } }
                 }
             }
@@ -514,7 +507,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
     if (remote.chips.isNotEmpty()) {
         item(key = "remote-chips", contentType = "chips") {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(remote.chips, key = { it.title }) { chip ->
+                items(remote.chips, key = { it.title }, contentType = { "chip" }) { chip ->
                     val on = chip.title == remote.selected
                     SignalChip(chip.title, on) { onAction(HomeAction.SelectChip(if (on) null else chip)) }
                 }

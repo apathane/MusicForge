@@ -40,7 +40,7 @@ fun Shelf(title: String, items: List<YTItem>, onClick: (YTItem) -> Unit) {
         // YouTube sometimes lists an item twice in one shelf; keys must be unique, so the repeat goes.
         val unique = androidx.compose.runtime.remember(items) { items.distinctBy { it.id } }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            items(unique, key = { it.id }) { item -> Box(Modifier.animateItem()) { Card(item, onClick) } }
+            items(unique, key = { it.id }, contentType = { it::class }) { item -> Box(Modifier.animateItem()) { Card(item, onClick) } }
         }
     }
 }

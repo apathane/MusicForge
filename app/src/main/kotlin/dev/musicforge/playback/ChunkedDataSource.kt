@@ -73,6 +73,8 @@ class ChunkedDataSource(
         if (remaining == 0L) return C.RESULT_END_OF_INPUT
         // A range that ends early is re-opened for the missing part; that's also how we
         // step to the next range. The attempt cap stops a server that sends nothing.
+        // A short backoff between retries gives a stalling server time to recover
+        // without blocking the whole pipeline (the Adreno 610's load thread is shared).
         repeat(MAX_EMPTY_RANGES) {
             if (chunkRemaining == 0L) {
                 closeChunk()
@@ -86,6 +88,7 @@ class ChunkedDataSource(
                 return n
             }
             chunkRemaining = 0
+            if (it < MAX_EMPTY_RANGES - 1) Thread.sleep(EMPTY_RANGE_BACKOFF_MS)
         }
         // Never report a short stream as complete: a truncated file in the cache is worse
         // than an error, which Media3 retries from the current position.
@@ -123,5 +126,7 @@ class ChunkedDataSource(
 
     private companion object {
         const val MAX_EMPTY_RANGES = 3
+        /** Brief backoff between empty-range retries: gives a stalling server time to recover. */
+        const val EMPTY_RANGE_BACKOFF_MS = 150L
     }
 }

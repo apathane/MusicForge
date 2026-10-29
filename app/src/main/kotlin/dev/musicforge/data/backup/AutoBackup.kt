@@ -23,9 +23,11 @@ class AutoBackup(
     val dir: File get() = File(context.filesDir, "auto-backups").apply { mkdirs() }
 
     /** Newest first: daily copies and pre-restore snapshots together. */
-    fun list(): List<File> = dir.listFiles { f -> f.name.endsWith(".backup") }.orEmpty().sortedByDescending { it.lastModified() }
+    suspend fun list(): List<File> = withContext(Dispatchers.IO) {
+        dir.listFiles { f -> f.name.endsWith(".backup") }.orEmpty().sortedByDescending { it.lastModified() }
+    }
 
-    private fun daily() = list().filter { it.name.startsWith("auto-") }
+    private suspend fun daily(): List<File> = list().filter { it.name.startsWith("auto-") }
 
     /**
      * Taken right before a restore replaces the library, so picking the wrong backup is never

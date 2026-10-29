@@ -249,7 +249,8 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
         item {
             val hideTopBar = LocalHideTopBar.current
             val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180), label = "topRow")
-            if (alpha > 0.01f) {
+            val visible by androidx.compose.runtime.derivedStateOf { alpha > 0.01f }
+            if (visible) {
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -281,7 +282,7 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
             }
             return@LazyColumn
         }
-        itemsIndexed(ui.tracks, key = { i, t -> "$i:${t.item.mediaId}" }) { index, track ->
+        itemsIndexed(ui.tracks, key = { i, t -> "$i:${t.item.mediaId}" }, contentType = { "track" }) { index, track ->
             SongRow(
                 track.item,
                 track.subtitle,

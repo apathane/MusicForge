@@ -22,7 +22,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -64,10 +63,12 @@ class AppGraph(val app: Application) {
         )
     }
 
+    /** Pre-read on IO at startup so the lazy val doesn't block the first caller (which may be main). */
+    @Volatile var songCacheMb: Int = 0
+
     val mediaEngine by lazy {
         // Read once at first use; the cache is created with a fixed size.
-        val mb = runBlocking { settings.data.first()[Keys.MaxSongCacheSizeMb] }?.takeIf { it > 0 } ?: 1024
-        MediaEngine(app, database.dao(), resolver, http, mb * 1024L * 1024L)
+        MediaEngine(app, database.dao(), resolver, http, (songCacheMb.takeIf { it > 0 } ?: 1024) * 1024L * 1024L)
     }
 
     val recorder by lazy { PlayRecorder(database) }

@@ -155,7 +155,7 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
             }
         },
     ) {
-        itemsIndexed(lines, key = { i, l -> "$i:${l.timeMs}" }) { i, line ->
+        itemsIndexed(lines, key = { i, l -> "$i:${l.timeMs}" }, contentType = { "lyric" }) { i, line ->
             val active = i == current
             val color by animateColorAsState(
                 if (active) Color.White else Color.White.copy(alpha = if (i < current) 0.32f else 0.42f),
@@ -341,7 +341,7 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
         }
         Spacer(Modifier.height(4.dp))
         LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(rows, key = { _, row -> row.first }) { i, (key, item) ->
+            itemsIndexed(rows, key = { _, row -> row.first }, contentType = { "queue-row" }) { i, (key, item) ->
                 ReorderableItem(reorder, key = key) { dragging ->
                     val playing = i == current
                     val dismiss = androidx.compose.material3.rememberSwipeToDismissBoxState()

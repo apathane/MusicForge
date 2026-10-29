@@ -162,7 +162,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
         if (signedIn) {
             item { SectionTitle("From YouTube Music") }
             item { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
-            items(account, key = { "yt:" + it.id }) { p ->
+            items(account, key = { "yt:" + it.id }, contentType = { "playlist" }) { p ->
                 val press = remember { MutableInteractionSource() }
                 Row(
                     Modifier.fillMaxWidth()
@@ -183,7 +183,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
         }
         if (playlists.isNotEmpty()) {
             item { SectionTitle("Playlists") }
-            items(playlists, key = { it.playlist.id }) { p ->
+            items(playlists, key = { it.playlist.id }, contentType = { "playlist" }) { p ->
                 val press = remember { MutableInteractionSource() }
                 Row(
                     Modifier.fillMaxWidth()
