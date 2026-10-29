@@ -513,7 +513,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow(
                 "Hide top bar",
                 prefs?.get(Keys.HideTopBar) ?: false,
-                subtitle = "Collapse the status bar scrim and screen headers for an edge-to-edge canvas",
+                subtitle = "Hide the Android status bar; swipe down from the top to see it",
             ) { vm.set(Keys.HideTopBar, it) }
         }
 

@@ -55,7 +55,6 @@ import dev.musicforge.graph
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.LocalBottomInset
-import dev.musicforge.ui.LocalHideTopBar
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
@@ -247,20 +246,16 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
 
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item {
-            val hideTopBar = LocalHideTopBar.current
-            val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180), label = "topRow")
-            if (alpha > 0.01f) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(start = 4.dp, end = 4.dp, top = 4.dp)
-                        .graphicsLayer { this.alpha = alpha },
-                ) {
-                    IconAction(ForgeIcons.Back, "Back", onBack)
-                    Spacer(Modifier.weight(1f))
-                    if (kind == CollectionKind.LOCAL_PLAYLIST) IconAction(ForgeIcons.More, "Playlist options") { editing = true }
-                }
+            // The back row stays with "Hide top bar" on: it's navigation, not chrome.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 4.dp, end = 4.dp, top = 4.dp),
+            ) {
+                IconAction(ForgeIcons.Back, "Back", onBack)
+                Spacer(Modifier.weight(1f))
+                if (kind == CollectionKind.LOCAL_PLAYLIST) IconAction(ForgeIcons.More, "Playlist options") { editing = true }
             }
         }
         item { Header(ui, onPlay = { shuffle -> play(graph, ui, shuffle) }, onDownloadAll = {

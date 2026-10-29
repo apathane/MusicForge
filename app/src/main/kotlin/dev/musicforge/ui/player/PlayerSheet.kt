@@ -53,7 +53,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -117,6 +116,7 @@ import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
+import dev.musicforge.ui.designsystem.BufferingIndicator
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
@@ -250,6 +250,9 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     val doubleTapSeek = prefs?.get(Keys.DoubleTapSeek) ?: true
     val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
     var pane by rememberSaveable { mutableStateOf(PlayerPane.ARTWORK) }
+    // Back (and the chevron) leave lyrics or the queue for the cover first; only from the cover
+    // does back close the player. Registered after the sheet's own handler, so it wins.
+    BackHandler(enabled = pane != PlayerPane.ARTWORK) { pane = PlayerPane.ARTWORK }
     var menu by remember { mutableStateOf(false) }
     var sleepMenu by remember { mutableStateOf(false) }
     val liked by remember(now.mediaId) { graph.database.dao().isLiked(now.mediaId) }.collectAsStateWithLifecycle(null)
@@ -315,7 +318,11 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             contentAlignment = Alignment.Center,
         ) {
             Box(Modifier.size(width = 38.dp, height = 5.dp).clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.35f)))
-            Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(ForgeIcons.Collapse, "Close player", white, 30.dp, onClose) }
+            Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(
+                ForgeIcons.Collapse,
+                if (pane == PlayerPane.ARTWORK) "Close player" else "Back to the cover",
+                white, 30.dp,
+            ) { if (pane == PlayerPane.ARTWORK) onClose() else pane = PlayerPane.ARTWORK } }
         }
 
         // Controls below the artwork, with horizontal gutter and clear of the nav bar.
@@ -595,7 +602,7 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
                 label = "playPause",
             ) { (playing, buffering) ->
                 if (buffering && !playing) {
-                    CircularProgressIndicator(Modifier.size(40.dp), color = white, strokeWidth = 3.dp)
+                    BufferingIndicator(Modifier.size(40.dp), color = white)
                 } else {
                     PlayerIcon(if (playing) ForgeIcons.Pause else ForgeIcons.Play, if (playing) "Pause" else "Play", white, 56.dp) {
                         connection.togglePlay()

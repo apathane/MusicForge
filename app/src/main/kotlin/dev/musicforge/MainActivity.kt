@@ -55,6 +55,13 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+            // "Hide top bar" hides the system status bar (a swipe from the top shows it for a moment).
+            androidx.compose.runtime.LaunchedEffect(current.hideTopBar) {
+                val bars = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                bars.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                if (current.hideTopBar) bars.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                else bars.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+            }
             ForgeTheme(darkMode = current.darkMode, pureBlack = current.pureBlack, artwork = ambience.colors) {
                 ForgeRoot(glassTier = current.glass, hideTopBar = current.hideTopBar, ambience = ambience)
             }

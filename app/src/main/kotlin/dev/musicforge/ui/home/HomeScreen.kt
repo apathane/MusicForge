@@ -58,6 +58,7 @@ import dev.musicforge.recommendation.HomeComposer
 import dev.musicforge.recommendation.HomeItem
 import dev.musicforge.recommendation.HomeLayout
 import dev.musicforge.recommendation.HomeRepository
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.recommendation.HomeSection
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
@@ -591,8 +592,13 @@ private fun AwarenessLine(message: String?, onDismiss: () -> Unit) {
     if (message != null && message != shown) shown = message
     androidx.compose.animation.AnimatedVisibility(
         visible = message != null,
-        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) + androidx.compose.animation.expandVertically(),
-        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) + androidx.compose.animation.shrinkVertically(),
+        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(Motion.Fade)) + androidx.compose.animation.scaleIn(
+            animationSpec = androidx.compose.animation.core.tween(Motion.Fade, easing = Motion.EaseBackOut),
+            initialScale = 0.9f,
+        ) + androidx.compose.animation.expandVertically(),
+        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(Motion.Instant)) + androidx.compose.animation.shrinkVertically(
+            animationSpec = androidx.compose.animation.core.tween(Motion.Instant),
+        ),
     ) {
         Text(
             shown.orEmpty(),

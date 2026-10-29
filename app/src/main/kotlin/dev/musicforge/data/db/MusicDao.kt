@@ -37,6 +37,9 @@ data class SongStat(
     val timeMs: Long,
 )
 
+/** One song's play count and total listen time — surfaced by the song info sheet. */
+data class SongStats(val plays: Int, val timeMs: Long)
+
 data class ArtistStat(
     @Embedded val artist: ArtistEntity,
     val plays: Int,
@@ -281,6 +284,13 @@ interface MusicDao {
     suspend fun format(id: String): FormatEntity?
     @Query("SELECT * FROM format WHERE id = :id")
     fun formatFlow(id: String): Flow<FormatEntity?>
+
+    @Query("SELECT COUNT(*) AS plays, COALESCE(SUM(playTime), 0) AS timeMs FROM event WHERE songId = :songId")
+    suspend fun statsFor(songId: String): SongStats
+
+    /** Drops every play checkpoint for a song — the "Remove from history" row. */
+    @Query("DELETE FROM event WHERE songId = :songId")
+    suspend fun deleteEvents(songId: String)
 
     @Query("SELECT liked FROM song WHERE id = :id")
     fun isLiked(id: String): Flow<Boolean?>

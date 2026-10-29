@@ -165,6 +165,11 @@ class PlayerConnection(private val context: Context) {
         c.addMediaItem((c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount), item)
     }
 
+    /** Append [item] to the end of the current queue without starting it. */
+    fun addToQueue(item: MediaItem) = withController { c ->
+        c.addMediaItem(c.mediaItemCount, item)
+    }
+
     /**
      * Starts a station from [item]: it plays alone, and the service's endless play (radio
      * continuation when 3 or fewer songs remain) seeds RDAMVM<id> from it. Same idea as
