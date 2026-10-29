@@ -22,13 +22,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +84,7 @@ fun HomeRoot() {
         HomeViewModel(
             HomeRepository(graph.database.dao(), graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.SuggestionsPaused] == true }.distinctUntilChanged()),
             graph.player,
+            graph.settings,
             welcomeDismissed = once.getBoolean("welcomeDismissed", false),
             onWelcomeDismissed = { once.edit().putBoolean("welcomeDismissed", true).apply() },
             // Does nothing when signed out (AccountSync checks the cookie).
@@ -158,6 +163,8 @@ fun HomeScreen(
 
 @Composable
 private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
+    var menuExpanded by rememberSaveable { mutableStateOf(false) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     when (section.layout) {
         // The first shelf leads with a hero: the song you were last on, big, with its cover as the room.
         HomeLayout.SHELF if section.id == "jump-back-in" -> Column {
@@ -176,7 +183,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
         }
         HomeLayout.SHELF -> Column {
-            SectionHeader(section.title, section.reason)
+            ShelfHeader(section.title, section.reason) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+            }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(section.items, key = { _, it -> it.key }) { i, item ->
                     (item as? HomeItem.Track)?.let {
@@ -187,9 +196,21 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 }
             }
         }
+        HomeLayout.ARTISTS -> Column {
+            ShelfHeader(section.title, section.reason) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+            }
+            LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(section.items, key = { it.key }) { item ->
+                    (item as? HomeItem.Artist)?.let { ArtistCard(it.artist) { onAction(HomeAction.OpenArtist(it.artist.channelId ?: it.artist.id)) } }
+                }
+            }
+        }
         HomeLayout.ROWS -> Column {
             Row(verticalAlignment = Alignment.Bottom) {
-                SectionHeader(section.title, section.reason, Modifier.weight(1f))
+                ShelfHeader(section.title, section.reason, Modifier.weight(1f)) {
+                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+                }
                 Text(
                     "See all",
                     style = MaterialTheme.typography.labelLarge,
@@ -204,7 +225,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
         }
         HomeLayout.PLAYLISTS -> Column {
-            SectionHeader(section.title, section.reason)
+            ShelfHeader(section.title, section.reason) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+            }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(section.items, key = { it.key }) { item ->
                     (item as? HomeItem.Playlist)?.let { PlaylistCard(it.playlist) { onAction(HomeAction.OpenPlaylist(it.playlist.playlist.id)) } }
@@ -222,6 +245,46 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             Text(section.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(section.stat.orEmpty(), style = MaterialTheme.typography.headlineLarge)
             Text(section.reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (menuExpanded) {
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Hide this shelf") },
+                onClick = { onAction(HomeAction.HideShelf(section.id)); menuExpanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text("Move up") },
+                onClick = { onAction(HomeAction.MoveShelf(section.id, -1)); menuExpanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text("Move down") },
+                onClick = { onAction(HomeAction.MoveShelf(section.id, 1)); menuExpanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text("Customise Home") },
+                onClick = { onAction(HomeAction.CustomiseHome); menuExpanded = false },
+            )
+        }
+    }
+}
+
+/** Section header with a long-press to open the shelf menu. */
+@Composable
+private fun ShelfHeader(title: String, reason: String?, modifier: Modifier = Modifier, onLongPress: () -> Unit) {
+    Column(modifier.combinedClickable(onLongClick = { onLongPress() }, onClick = {}).padding(start = Signal.gutter, end = Signal.gutter, top = 22.dp, bottom = 10.dp)) {
+        Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (!reason.isNullOrEmpty()) {
+            Text(
+                reason,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -269,6 +332,25 @@ private fun PlaylistCard(p: PlaylistSummary, onClick: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(if (p.songCount == 1) "1 song" else "${p.songCount} songs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Artist portrait card: a large circle or squircle with the name over a soft ambience-coloured
+ * base. Staggered sizes for the top artist feel from BitChord and ConvX artist cards.
+ */
+@Composable
+private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit) {
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val staggered = artist.name.hashCode().mod(2) == 0
+    val size = if (staggered) 104.dp else 88.dp
+    Column(
+        Modifier.width(size).pressScale(press).combinedClickable(interactionSource = press, indication = null, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Artwork(artist.thumbnailUrl, size, corner = if (staggered) 48.dp else 24.dp)
+        Spacer(Modifier.height(8.dp))
+        Text(artist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

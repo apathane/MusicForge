@@ -67,6 +67,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import dev.musicforge.ui.screens.ArtistScreen
 import dev.musicforge.ui.screens.CollectionScreen
+import dev.musicforge.ui.screens.CustomiseHomeScreen
 import dev.musicforge.ui.screens.DownloadsScreen
 import dev.musicforge.ui.screens.LibraryAlbumsScreen
 import dev.musicforge.ui.screens.LoginScreen
@@ -167,7 +168,9 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                         onAbout = { nav.navigate(Routes.ABOUT) },
                         onEqualizer = { nav.navigate(Routes.EQUALIZER) },
                         onTaste = { nav.navigate(Routes.TASTE) },
+                        onCustomiseHome = { nav.navigate(Routes.CUSTOMISE_HOME) },
                     ) }
+                composable(Routes.CUSTOMISE_HOME) { CustomiseHomeScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
                 composable(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
                 composable(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }

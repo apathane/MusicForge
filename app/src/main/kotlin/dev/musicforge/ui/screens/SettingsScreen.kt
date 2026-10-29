@@ -172,7 +172,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit, onEqualizer: () -> Unit, onTaste: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit, onEqualizer: () -> Unit, onTaste: () -> Unit, onCustomiseHome: () -> Unit = {}) {
     val context = LocalContext.current
     val vm = viewModel { SettingsViewModel(context.graph) }
     val restore by vm.restore.collectAsStateWithLifecycle()
@@ -328,6 +328,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         SectionTitle("Home")
         Group {
             ActionRow("What shapes your Home", "When you listen, who you play most, and what you hid", onTaste)
+            ActionRow("Customise Home", "Hide or reorder Home shelves") { onCustomiseHome() }
             ActionRow("Reset Home", "Bring back songs you hid and artists you wanted less of") {
                 vm.resetHome()
             }
