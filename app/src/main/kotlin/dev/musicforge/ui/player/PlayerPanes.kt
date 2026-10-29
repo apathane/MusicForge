@@ -205,8 +205,9 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
     val list = rememberLazyListState(initialFirstVisibleItemIndex = current.coerceAtLeast(0))
     val reorder = rememberReorderableLazyListState(list) { from, to ->
         if (locked) return@rememberReorderableLazyListState
-        val f = from.index - 1
-        val t = (to.index - 1).coerceIn(0, rows.size - 1)
+        // The list holds only the rows now (the header moved out of it), so indexes map 1:1.
+        val f = from.index
+        val t = to.index.coerceIn(0, rows.size - 1)
         if (f in rows.indices) {
             rows.add(t, rows.removeAt(f))
             connection.move(f, t)

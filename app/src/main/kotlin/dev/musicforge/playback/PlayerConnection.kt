@@ -103,6 +103,12 @@ class PlayerConnection(private val context: Context) {
                         player.pause()
                         player.seekTo(0)
                     }
+                    // The last song ending has no transition to stop at; unarm "end of this song"
+                    // so it doesn't pause some later session at a random boundary.
+                    if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) && player.playbackState == Player.STATE_ENDED && sleepAtEnd) {
+                        sleepAtEnd = false
+                        _sleepAt.value = null
+                    }
                     _index.value = player.currentMediaItemIndex
                     publish(player)
                 }
