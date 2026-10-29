@@ -97,13 +97,17 @@ class HomeRepository(
             dao.playlists(),
             dao.listenedMs(week),
             dao.topArtists(week, 1),
+            dao.topArtists(week, 8),
+            kotlinx.coroutines.flow.flow { emit(kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { dao.playDays(14) }) },
             withCredits(dao.songsAtHours(hours)),
             dao.forgottenLikes(likedBefore = start - 45 * DAY_MS, notPlayedSince = start - 30 * DAY_MS, seed = daySeed),
             dao.activeFeedback(start),
         ) { values ->
             val (recent, remoteOnly) = values[0] as Pair<List<Song>, Boolean>
-            val feedback = values[9] as List<RecommendationFeedback>
+            val feedback = values[11] as List<RecommendationFeedback>
             val counts = values[3] as LibraryCounts
+            val playDays = values[8] as List<String>
+            val streak = computeStreak(playDays, start)
             LocalSignals(
                 recent = recent,
                 recentReason = if (remoteOnly) "Played on another device" else "Recently played",
@@ -115,9 +119,11 @@ class HomeRepository(
                 playlists = values[4] as List<PlaylistSummary>,
                 weekMs = values[5] as Long,
                 topArtistThisWeek = (values[6] as List<ArtistStat>).firstOrNull()?.artist?.name,
-                aroundNow = values[7] as List<Pair<Song, Int>>,
+                topArtists = values[7] as List<ArtistStat>,
+                streakDays = streak,
+                aroundNow = values[9] as List<Pair<Song, Int>>,
                 hour = hour,
-                forgotten = values[8] as List<Song>,
+                forgotten = values[10] as List<Song>,
                 daySeed = daySeed,
                 hidden = feedback.mapNotNullTo(HashSet()) { f -> f.mediaId.takeIf { f.action == RecommendationFeedback.Action.HIDE.name } },
                 lessOf = feedback.mapNotNullTo(HashSet()) { f -> f.artistId.takeIf { f.action == RecommendationFeedback.Action.LESS_OF_ARTIST.name } },
@@ -155,5 +161,20 @@ class HomeRepository(
         const val HOUR_MS = 60 * 60 * 1000L
         const val DAY_MS = 24 * HOUR_MS
         const val LESS_OF_DAYS = 30L
+
+        /** Consecutive days with at least one play, counting back from today. */
+        fun computeStreak(playDays: List<String>, now: Long): Int {
+            if (playDays.isEmpty()) return 0
+            val set = playDays.toSet()
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = now }
+            var streak = 0
+            while (streak < playDays.size) {
+                val day = fmt.format(cal.time)
+                if (day in set) { streak++; cal.add(java.util.Calendar.DAY_OF_YEAR, -1) }
+                else break
+            }
+            return streak
+        }
     }
 }
