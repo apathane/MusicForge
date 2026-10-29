@@ -247,17 +247,13 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 }
             }
             // Content scrolls under a transparent status bar; a scrim keeps the clock readable.
-            // When hideTopBar is on the scrim collapses to the status-bar inset with an animated transition.
-            val scrimAlpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180), label = "scrimAlpha")
-            if (scrimAlpha > 0.01f) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .windowInsetsTopHeight(WindowInsets.statusBars)
-                        .graphicsLayer { this.alpha = scrimAlpha }
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
-                )
-            }
+            // It stays with "Hide top bar" on: without it scrolling text runs through the clock.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
+            )
             now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
     }

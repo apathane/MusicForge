@@ -47,43 +47,37 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 
 /** Big, heavy page title in the BitChord style, with an optional trailing action.
- *  Collapses (fades out) when hideTopBar is on — see ForgeRoot's LocalHideTopBar. */
+ *  With "Hide top bar" on, only the big title collapses: the status-bar inset and the action
+ *  (often the only way into Settings) stay, so nothing slides under the clock. */
 @Composable
 fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composable () -> Unit)? = null) {
     val hideTopBar = LocalHideTopBar.current
-    val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
-    if (alpha > 0.01f) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                // Under a back-button row the status bar is already accounted for.
-                .then(if (belowBackRow) Modifier else Modifier.statusBarsPadding())
-                .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow) 0.dp else 16.dp, bottom = 8.dp)
-                .graphicsLayer { this.alpha = alpha },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
-            action?.invoke()
+    val titleAlpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
+    Row(
+        Modifier
+            .fillMaxWidth()
+            // Under a back-button row the status bar is already accounted for.
+            .then(if (belowBackRow) Modifier else Modifier.statusBarsPadding())
+            .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow || hideTopBar) 0.dp else 16.dp, bottom = if (hideTopBar) 0.dp else 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (titleAlpha > 0.01f) {
+            Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha })
+        } else {
+            Spacer(Modifier.weight(1f))
         }
+        action?.invoke()
     }
 }
 
-/**
- * Back-button row that collapses (fades out) when hideTopBar is on.
- * Replace inline `Row(Modifier.statusBarsPadding()...) { IconAction(...) }` patterns with this.
- */
+/** Back-button row. Always shown: hiding it would hide the way back. */
 @Composable
 fun BackRow(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    val hideTopBar = LocalHideTopBar.current
-    val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
-    if (alpha > 0.01f) {
-        Row(
-            modifier
-                .statusBarsPadding()
-                .padding(start = 4.dp, top = 4.dp)
-                .graphicsLayer { this.alpha = alpha },
-        ) { IconAction(ForgeIcons.Back, "Back", onBack) }
-    }
+    Row(
+        modifier
+            .statusBarsPadding()
+            .padding(start = 4.dp, top = 4.dp),
+    ) { IconAction(ForgeIcons.Back, "Back", onBack) }
 }
 
 @Composable
