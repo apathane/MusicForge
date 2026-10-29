@@ -37,6 +37,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.LocalHideTopBar
@@ -192,6 +194,9 @@ fun TrackRow(
     interactionSource: MutableInteractionSource? = null,
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val context = LocalContext.current
+    val hapticsEnabled by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val hapticsOn = hapticsEnabled?.get(Keys.HapticsEnabled) ?: true
     val press = interactionSource ?: remember { MutableInteractionSource() }
     Row(
         Modifier
@@ -202,7 +207,7 @@ fun TrackRow(
                 indication = null,
                 onClick = onClick,
                 // The tick says the menu came from the long press, not a slipped tap.
-                onLongClick = onLongClick?.let { { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); it() } },
+                onLongClick = onLongClick?.let { { if (hapticsOn) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); it() } },
                 onLongClickLabel = "More options",
             )
             .padding(horizontal = 20.dp, vertical = 8.dp),
