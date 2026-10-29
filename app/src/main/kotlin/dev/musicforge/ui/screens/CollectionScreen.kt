@@ -273,7 +273,10 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
                 dev.musicforge.ui.components.SkeletonRows()
             }
             ui.error != null -> item { EmptyState("Couldn't load", ui.error!!) }
-            ui.tracks.isEmpty() -> item { EmptyState("Nothing here yet", "Songs you add will show up here.") }
+            ui.tracks.isEmpty() -> item {
+                val (title, body) = collectionEmptyCopy(kind)
+                EmptyState(title, body)
+            }
         }
         if (kind == CollectionKind.LOCAL_PLAYLIST && ui.tracks.isNotEmpty()) {
             reorderableTracks(rows, reorder, onPlay = { i -> graph.player.play(rows.map { it.second.item }, i) }) { track ->
@@ -397,6 +400,20 @@ private fun PlaylistEditDialog(name: String, onRename: (String) -> Unit, onDelet
 
 /** Back row + header come before the tracks in the list. */
 private const val HEADER_ITEMS = 2
+
+/**
+ * Empty copy per collection. "Songs you add will show up here" on the downloads page sent people
+ * looking for an add button that has never existed; each kind now says what actually fills it.
+ */
+internal fun collectionEmptyCopy(kind: CollectionKind): Pair<String, String> = when (kind) {
+    CollectionKind.LIKED -> "No liked songs yet" to "Tap the heart on a song and it waits here."
+    CollectionKind.SONGS -> "No songs yet" to "Songs you play, save or restore show up here."
+    CollectionKind.DOWNLOADED -> "Nothing downloaded yet" to "Download songs to play them offline."
+    CollectionKind.HISTORY -> "Nothing played yet" to "Play something and it shows up here."
+    CollectionKind.LOCAL_PLAYLIST -> "Nothing here yet" to "Add songs from any song's menu."
+    CollectionKind.ALBUM -> "No songs here" to "This album has no tracks we can play."
+    CollectionKind.REMOTE_PLAYLIST -> "Nothing here yet" to "This playlist has no songs we can play."
+}
 
 private fun androidx.compose.foundation.lazy.LazyListScope.reorderableTracks(
     rows: List<Pair<Long, Track>>,

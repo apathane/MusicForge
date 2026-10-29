@@ -90,6 +90,8 @@ class LibraryViewModel(graph: AppGraph) : ViewModel() {
                     com.metrolist.innertube.YouTube.library("FEmusic_liked_playlists").completed().getOrNull()?.items
                         ?.filterIsInstance<com.metrolist.innertube.models.PlaylistItem>()
                         ?.filterNot { it.id == "LM" || it.id == "SE" }
+                        // YouTube repeats a playlist now and then; one id is one row, always.
+                        ?.distinctBy { it.id }
                         .orEmpty()
             }
         }
@@ -111,15 +113,30 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
 
     // Signed in, pulling the library down syncs it with your account now.
     val sync by context.graph.accountSync.status.collectAsStateWithLifecycle()
+    val refreshing = sync is dev.musicforge.data.AccountSync.Status.Running
+    val refresh = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+    val pulling by remember { androidx.compose.runtime.derivedStateOf { refresh.distanceFraction > 0f } }
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
-        isRefreshing = sync is dev.musicforge.data.AccountSync.Status.Running,
+        isRefreshing = refreshing,
         onRefresh = { if (signedIn) context.graph.scope.launch { context.graph.accountSync.sync() } },
+        state = refresh,
         modifier = Modifier.fillMaxSize(),
+        indicator = {
+            // At rest the stock indicator left a grey circle peeking over "Library". It earns its
+            // place only while you pull or while the sync runs.
+            if (refreshing || pulling) {
+                androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                    state = refresh,
+                    isRefreshing = refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            }
+        },
     ) {
     val list = androidx.compose.foundation.lazy.rememberLazyListState()
     dev.musicforge.ui.ScrollToTopOnReselect(list)
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item {
+        item(key = "header") {
             ScreenHeader("Library") { IconAction(ForgeIcons.Settings, "Settings", onOpenSettings) }
         }
         if (!empty) {
@@ -142,7 +159,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             return@LazyColumn
         }
         if (empty) {
-            item {
+            item(key = "empty") {
                 EmptyState(
                     title = "Your library is empty",
                     body = "Sign in with Google to bring your YouTube Music likes, playlists, albums and artists, kept in sync. Or restore a backup from Settings.",
@@ -151,62 +168,56 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             return@LazyColumn
         }
         counts?.let { c ->
-            item { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) { nav.navigate(Routes.collection(CollectionKind.LIKED)) } }
-            item { ShelfRow(ForgeIcons.Library, "Songs", c.songs) { nav.navigate(Routes.collection(CollectionKind.SONGS)) } }
-            item { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) { nav.navigate(Routes.collection(CollectionKind.DOWNLOADED)) } }
-            item { ShelfRow(ForgeIcons.Library, "Albums", c.albums) { nav.navigate(Routes.ALBUMS) } }
-            item { ShelfRow(ForgeIcons.Library, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
-            item { ShelfRow(ForgeIcons.Previous, "Recently played", -1) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
-            item { ShelfRow(ForgeIcons.Heart, "Your listening", -1) { nav.navigate(Routes.STATS) } }
+            item(key = "shelf-liked") { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) { nav.navigate(Routes.collection(CollectionKind.LIKED)) } }
+            item(key = "shelf-songs") { ShelfRow(ForgeIcons.MusicNote, "Songs", c.songs) { nav.navigate(Routes.collection(CollectionKind.SONGS)) } }
+            item(key = "shelf-downloaded") { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) { nav.navigate(Routes.collection(CollectionKind.DOWNLOADED)) } }
+            item(key = "shelf-albums") { ShelfRow(ForgeIcons.Album, "Albums", c.albums) { nav.navigate(Routes.ALBUMS) } }
+            item(key = "shelf-artists") { ShelfRow(ForgeIcons.Person, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
+            item(key = "shelf-history") { ShelfRow(ForgeIcons.History, "Recently played", -1) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
+            item(key = "shelf-listening") { ShelfRow(ForgeIcons.BarChart, "Your listening", -1) { nav.navigate(Routes.STATS) } }
         }
         if (signedIn) {
-            item { SectionTitle("From YouTube Music") }
-            item { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
-            items(account, key = { "yt:" + it.id }) { p ->
-                val press = remember { MutableInteractionSource() }
-                Row(
-                    Modifier.fillMaxWidth()
-                        .animateItem()
-                        .pressScale(press)
-                        .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Artwork(p.thumbnail, 56.dp, corner = 8.dp)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(p.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                        p.songCountText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    }
+            item(key = "yt-header") { SectionTitle("From YouTube Music") }
+            item(key = "yt-liked") { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
+            items(account, key = { "yt:" + it.id }, contentType = { "playlist" }) { p ->
+                PlaylistRow(p.title, p.thumbnail, p.songCountText) {
+                    nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id))
                 }
             }
         }
         if (playlists.isNotEmpty()) {
-            item { SectionTitle("Playlists") }
-            items(playlists, key = { it.playlist.id }) { p ->
-                val press = remember { MutableInteractionSource() }
-                Row(
-                    Modifier.fillMaxWidth()
-                        .animateItem()
-                        .pressScale(press)
-                        .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Artwork(p.playlist.thumbnailUrl, 56.dp, corner = 8.dp)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                        Text(
-                            "${p.songCount} songs",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+            item(key = "local-header") { SectionTitle("Playlists") }
+            items(playlists, key = { "local:" + it.playlist.id }, contentType = { "playlist" }) { p ->
+                PlaylistRow(p.playlist.name, p.playlist.thumbnailUrl, "${p.songCount} songs") {
+                    nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id))
                 }
             }
         }
     }
+    }
+}
+
+/**
+ * One playlist row, shared by the account and local lists. No `animateItem()` here: a replaced
+ * account list faded old rows out over new ones and the list haunted itself, Victorian style.
+ * Rows are keyed by list + id and carry one content type, so two rows cannot share a slot.
+ */
+@Composable
+private fun PlaylistRow(title: String, artwork: String?, subtitle: String?, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
+    Row(
+        Modifier.fillMaxWidth()
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Artwork(artwork, 56.dp, corner = 8.dp, fallbackLetter = title)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
     }
 }
 

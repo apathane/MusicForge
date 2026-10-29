@@ -221,9 +221,6 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
         BackRow(onBack)
         ScreenHeader("Settings", belowBackRow = true)
-        if (restore is SettingsViewModel.RestoreState.Working) {
-            LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().height(3.dp))
-        }
 
         SectionTitle("Account")
         Group {
@@ -499,12 +496,12 @@ private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsVi
             val from = when (p.origin) {
                 BackupImporter.Origin.METROLIST -> "Metrolist"
                 BackupImporter.Origin.CONVX -> "ConvX"
-                BackupImporter.Origin.MUSICFORGE -> "this app"
+                BackupImporter.Origin.MUSICFORGE -> "a MusicForge backup"
                 BackupImporter.Origin.UNKNOWN -> "Metrolist/ConvX (older version)"
             }
             AlertDialog(
                 onDismissRequest = vm::dismiss,
-                title = { Text("Restore from $from?") },
+                title = { Text(if (from == "a MusicForge backup") "Restore $from?" else "Restore from $from?") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${plural(p.rowCounts["song"] ?: 0, "song")} · ${plural(p.rowCounts["playlist"] ?: 0, "playlist")} · ${plural(p.rowCounts["event"] ?: 0, "play")}")
