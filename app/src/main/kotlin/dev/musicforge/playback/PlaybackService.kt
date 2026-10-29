@@ -36,7 +36,7 @@ import timber.log.Timber
 
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaLibraryService() {
-    private companion object {
+    companion object {
         const val CHECKPOINT_MS = 30_000L
         const val TARGET_LUFS = -14.0
         const val ACTION_LIKE = "dev.musicforge.LIKE"
