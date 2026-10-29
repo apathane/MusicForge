@@ -3,6 +3,7 @@ package dev.musicforge.ui.screens
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import dev.musicforge.ui.designsystem.pressScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
@@ -142,10 +144,11 @@ private fun BringBackCard(pending: dev.musicforge.download.Redownloads.Pending) 
                     graph.redownloads.clear()
                 }
             }, enabled = songs.isNotEmpty())
+            val press = remember { MutableInteractionSource() }
             Text(
                 "Not now",
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50)).clickable { scope.launch { graph.redownloads.clear() } }.padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50)).pressScale(press).clickable(interactionSource = press, indication = null) { scope.launch { graph.redownloads.clear() } }.padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
     }

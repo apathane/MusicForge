@@ -23,13 +23,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -108,12 +115,20 @@ fun TrackActionsSheet(
                 return@Column
             }
             Action(ForgeIcons.Next, "Play next") { graph.player.playNext(item); onDismiss() }
-            // Radio: seed a new station from this song's RDAMVM playlist. Ported from Metrolist's queue-on-related.
+            // Radio: a station seeded from this song (endless play takes it from there).
             Action(ForgeIcons.Radio, "Start radio") { graph.player.startRadio(item); onDismiss() }
-            if (liked == true) {
-                Action(ForgeIcons.Heart, "Unlike") { graph.library.setLiked(item, false); onDismiss() }
-            } else {
-                Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
+            // A heart that's full needs a moment to decide it's hollow — 140 in, 120 out,
+            // because breaking up is harder than making up (and the colour fades faster than the shape).
+            AnimatedContent(
+                targetState = liked == true,
+                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                label = "like",
+            ) { l ->
+                if (l) {
+                    Action(ForgeIcons.Heart, "Unlike") { graph.library.setLiked(item, false); onDismiss() }
+                } else {
+                    Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
+                }
             }
             Action(ForgeIcons.PlaylistAdd, "Add to playlist") { picking = true }
             extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
@@ -161,7 +176,7 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
     androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
         items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
             Row(
-                Modifier.fillMaxWidth().clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
+                Modifier.fillMaxWidth().animateItem(tween(220)).clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
                     .padding(horizontal = 24.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -178,8 +193,9 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
 
 @Composable
 private fun Action(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))

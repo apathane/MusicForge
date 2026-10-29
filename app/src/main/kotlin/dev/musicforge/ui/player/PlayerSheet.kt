@@ -32,6 +32,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -110,6 +111,7 @@ import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
+import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
 import kotlinx.coroutines.Dispatchers
@@ -384,8 +386,9 @@ private fun BigArtwork(now: NowPlaying, modifier: Modifier = Modifier) {
 
 @Composable
 private fun PlayerIcon(icon: ImageVector, label: String, tint: Color, size: Dp, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Box(
-        Modifier.size(maxOf(size + 20.dp, 48.dp)).clip(RoundedCornerShape(50)).clickable(onClickLabel = label, onClick = onClick),
+        Modifier.size(maxOf(size + 20.dp, 48.dp)).clip(RoundedCornerShape(50)).pressScale(press).clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(size))
@@ -395,9 +398,11 @@ private fun PlayerIcon(icon: ImageVector, label: String, tint: Color, size: Dp, 
 /** 56 dp grey circular button (like ★ and ⋯ on the right of the title row). */
 @Composable
 private fun DiscButton(icon: ImageVector, label: String, tint: Color, iconSize: Dp = 26.dp, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Box(
         Modifier.size(56.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.12f))
-            .clickable(onClickLabel = label, onClick = onClick),
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(iconSize))
@@ -458,7 +463,13 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                 )
             }
         }
-        DiscButton(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (liked) "Unlike" else "Like", if (liked) accent else white) { onLike() }
+        AnimatedContent(
+            targetState = liked to accent,
+            transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+            label = "like",
+        ) { (l, a) ->
+            DiscButton(if (l) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (l) "Unlike" else "Like", if (l) a else white) { onLike() }
+        }
         Spacer(Modifier.width(12.dp))
         DiscButton(ForgeIcons.More, "More options", white) { onMenu() }
     }
@@ -478,7 +489,8 @@ private fun UpNextRow(item: androidx.media3.common.MediaItem, index: Int, connec
             Text(item.mediaMetadata.title?.toString().orEmpty(), color = color, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(item.mediaMetadata.artist?.toString().orEmpty(), color = color.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Play next") { connection.skipTo(index + 1) }, contentAlignment = Alignment.Center) {
+        val press = remember { MutableInteractionSource() }
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(press).clickable(interactionSource = press, indication = null, onClickLabel = "Play next") { connection.skipTo(index + 1) }, contentAlignment = Alignment.Center) {
             Icon(ForgeIcons.Play, contentDescription = "Play next", tint = color, modifier = Modifier.size(20.dp))
         }
     }
@@ -494,11 +506,17 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
     ) {
         PlayerIcon(ForgeIcons.Previous, "Previous", white, 40.dp) { connection.previous() }
         Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
-            if (now.isBuffering && !now.isPlaying) {
-                CircularProgressIndicator(Modifier.size(40.dp), color = white, strokeWidth = 3.dp)
-            } else {
-                PlayerIcon(if (now.isPlaying) ForgeIcons.Pause else ForgeIcons.Play, if (now.isPlaying) "Pause" else "Play", white, 56.dp) {
-                    connection.togglePlay()
+            AnimatedContent(
+                targetState = now.isPlaying to now.isBuffering,
+                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                label = "playPause",
+            ) { (playing, buffering) ->
+                if (buffering && !playing) {
+                    CircularProgressIndicator(Modifier.size(40.dp), color = white, strokeWidth = 3.dp)
+                } else {
+                    PlayerIcon(if (playing) ForgeIcons.Pause else ForgeIcons.Play, if (playing) "Pause" else "Play", white, 56.dp) {
+                        connection.togglePlay()
+                    }
                 }
             }
         }
@@ -525,12 +543,14 @@ private fun BottomRow(pane: PlayerPane, audioManager: AudioManager, white: Color
 /** Small circular button for the bottom row (lyrics, queue); active gets a grey disc. */
 @Composable
 private fun SmallPaneButton(icon: ImageVector, label: String, active: Boolean, white: Color, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Box(
         Modifier
             .size(56.dp)
             .clip(RoundedCornerShape(50))
+            .pressScale(press)
             .background(if (active) white.copy(alpha = 0.18f) else Color.Transparent)
-            .clickable(onClickLabel = label, onClick = onClick),
+            .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, label, tint = if (active) white else white.copy(alpha = 0.55f), modifier = Modifier.size(22.dp))
@@ -586,13 +606,15 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         }
     }
 
-    val icon = when { fraction <= 0f -> PlayerIcons.VolumeOff; fraction < 0.5f -> PlayerIcons.VolumeDown; else -> PlayerIcons.VolumeUp }
+    val iconState = when { fraction <= 0f -> PlayerIcons.VolumeOff; fraction < 0.5f -> PlayerIcons.VolumeDown; else -> PlayerIcons.VolumeUp }
     val iconLabel = if (fraction <= 0f) "Volume muted" else "Volume on"
     Row(
         Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, iconLabel, tint = color, modifier = Modifier.size(20.dp))
+        AnimatedContent(iconState, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(100)) }, label = "volume") {
+            Icon(it, iconLabel, tint = color, modifier = Modifier.size(20.dp))
+        }
         Spacer(Modifier.width(10.dp))
         Canvas(
             Modifier

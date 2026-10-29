@@ -65,6 +65,7 @@ import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SongRow
+import dev.musicforge.ui.designsystem.pressScale
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -279,8 +280,9 @@ fun SearchScreen() {
 
 @Composable
 private fun IconText(glyph: String, label: String, onClick: () -> Unit) {
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
-        Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = label, onClick = onClick),
+        Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(press).clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(glyph, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { contentDescription = label })

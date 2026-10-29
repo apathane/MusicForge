@@ -1,8 +1,12 @@
 package dev.musicforge.ui.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.getValue
@@ -88,12 +92,20 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (now.isBuffering && !now.isPlaying) {
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(20.dp), color = track, strokeWidth = 2.dp)
+            // Play, pause, buffer — three states, one button, 140 ms to decide which it is today.
+            // The spinner only shows when the music's pretending to be ready.
+            AnimatedContent(
+                targetState = now.isPlaying to now.isBuffering,
+                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                label = "playPause",
+            ) { (playing, buffering) ->
+                if (buffering && !playing) {
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(20.dp), color = track, strokeWidth = 2.dp)
+                    }
+                } else {
+                    ControlButton(if (playing) ForgeIcons.Pause else ForgeIcons.Play, if (playing) "Pause" else "Play") { connection.togglePlay() }
                 }
-            } else {
-                ControlButton(if (now.isPlaying) ForgeIcons.Pause else ForgeIcons.Play, if (now.isPlaying) "Pause" else "Play") { connection.togglePlay() }
             }
             ControlButton(ForgeIcons.Next, "Next", enabled = now.hasNext) { connection.next() }
         }

@@ -3,6 +3,9 @@ package dev.musicforge.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.musicforge.graph
+import dev.musicforge.ui.designsystem.pressScale
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -64,11 +68,13 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Box(
         Modifier
             .size(48.dp)
             .clip(RoundedCornerShape(percent = 50))
-            .clickable(onClickLabel = label, onClick = onClick),
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(24.dp))
@@ -156,12 +162,17 @@ fun TrackRow(
     trailing: (@Composable () -> Unit)? = null,
     /** Album track lists show the track number instead of repeating the same cover. */
     number: Int? = null,
+    interactionSource: MutableInteractionSource? = null,
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val press = interactionSource ?: remember { MutableInteractionSource() }
     Row(
         Modifier
             .fillMaxWidth()
+            .pressScale(press)
             .combinedClickable(
+                interactionSource = press,
+                indication = null,
                 onClick = onClick,
                 // The tick says the menu came from the long press, not a slipped tap.
                 onLongClick = onLongClick?.let { { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); it() } },
@@ -220,11 +231,13 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actio
 /** Pill button: black on white / white on black. */
 @Composable
 fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val press = remember { MutableInteractionSource() }
     Box(
         modifier
             .clip(RoundedCornerShape(percent = 50))
+            .pressScale(press)
             .background(MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else 0.4f))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(interactionSource = press, indication = null, enabled = enabled, onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {

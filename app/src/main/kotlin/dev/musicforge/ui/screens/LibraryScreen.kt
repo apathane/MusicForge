@@ -1,6 +1,9 @@
 package dev.musicforge.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -160,9 +163,12 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             item { SectionTitle("From YouTube Music") }
             item { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
             items(account, key = { "yt:" + it.id }) { p ->
+                val press = remember { MutableInteractionSource() }
                 Row(
                     Modifier.fillMaxWidth()
-                        .clickable { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
+                        .animateItem()
+                        .pressScale(press)
+                        .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
                         .padding(horizontal = 20.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -178,9 +184,12 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
         if (playlists.isNotEmpty()) {
             item { SectionTitle("Playlists") }
             items(playlists, key = { it.playlist.id }) { p ->
+                val press = remember { MutableInteractionSource() }
                 Row(
                     Modifier.fillMaxWidth()
-                        .clickable { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
+                        .animateItem()
+                        .pressScale(press)
+                        .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
                         .padding(horizontal = 20.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -203,9 +212,10 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
 
 @Composable
 private fun ShelfRow(icon: ImageVector, title: String, count: Int, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Column {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {

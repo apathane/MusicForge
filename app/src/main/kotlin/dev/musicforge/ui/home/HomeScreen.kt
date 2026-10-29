@@ -155,7 +155,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     itemsIndexed(section.items.drop(1), key = { _, it -> it.key }) { i, item ->
                         (item as? HomeItem.Track)?.let {
-                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i + 1)) }
+                            Box(Modifier.animateItem()) {
+                                SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i + 1)) }
+                            }
                         }
                     }
                 }
@@ -166,7 +168,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(section.items, key = { _, it -> it.key }) { i, item ->
                     (item as? HomeItem.Track)?.let {
-                        SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
+                        Box(Modifier.animateItem()) {
+                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
+                        }
                     }
                 }
             }

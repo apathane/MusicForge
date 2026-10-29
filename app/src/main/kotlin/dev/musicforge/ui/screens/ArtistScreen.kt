@@ -52,6 +52,7 @@ import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
+import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.openItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -173,11 +174,13 @@ private fun PillButton(label: String, filled: Boolean = false, selected: Boolean
 @Composable
 private fun About(text: String) {
     var open by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(Signal.radiusSurface))
+            .pressScale(press)
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .clickable(onClickLabel = if (open) "Show less" else "Read more") { open = !open }
+            .clickable(interactionSource = press, indication = null, onClickLabel = if (open) "Show less" else "Read more") { open = !open }
             .animateContentSize()
             .padding(18.dp),
     ) {

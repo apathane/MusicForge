@@ -1,7 +1,11 @@
 package dev.musicforge.ui.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -44,6 +49,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +75,7 @@ import dev.musicforge.playback.isFromRadio
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
+import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.LocalArtworkColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -421,10 +428,18 @@ private fun MiniPlayerHeader(now: NowPlaying, liked: Boolean, onMore: () -> Unit
             Text(now.metadata.title?.toString().orEmpty(), color = white, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(now.metadata.artist?.toString().orEmpty(), color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = if (liked) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
-            Icon(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) accent else white, modifier = Modifier.size(20.dp))
+        val likePress = remember { MutableInteractionSource() }
+        val morePress = remember { MutableInteractionSource() }
+        AnimatedContent(
+            targetState = liked to accent,
+            transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+            label = "like",
+        ) { (l, a) ->
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(likePress).clickable(interactionSource = likePress, indication = null, onClickLabel = if (l) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
+                Icon(if (l) ForgeIcons.Heart else ForgeIcons.HeartOutline, contentDescription = if (l) "Unlike" else "Like", tint = if (l) a else white, modifier = Modifier.size(20.dp))
+            }
         }
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "More options", onClick = onMore), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(morePress).clickable(interactionSource = morePress, indication = null, onClickLabel = "More options", onClick = onMore), contentAlignment = Alignment.Center) {
             Icon(ForgeIcons.More, contentDescription = "More options", tint = white, modifier = Modifier.size(20.dp))
         }
     }
@@ -433,11 +448,13 @@ private fun MiniPlayerHeader(now: NowPlaying, liked: Boolean, onMore: () -> Unit
 @Composable
 private fun TogglePill(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val white = Color.White
+    val press = remember { MutableInteractionSource() }
     Row(
         modifier
             .clip(RoundedCornerShape(50))
+            .pressScale(press)
             .background(if (on) white else white.copy(alpha = 0.12f))
-            .clickable(onClickLabel = if (on) "$label on" else "$label off", onClick = onClick)
+            .clickable(interactionSource = press, indication = null, onClickLabel = if (on) "$label on" else "$label off", onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
@@ -469,7 +486,8 @@ fun SleepSheet(sleepAt: Long?, onPick: (minutes: Int?) -> Unit) {
 
 @Composable
 private fun SheetRow(label: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    val press = remember { MutableInteractionSource() }
+    Row(Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(ForgeIcons.Sleep, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(16.dp))
         Text(label, style = MaterialTheme.typography.titleSmall)
