@@ -313,6 +313,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) graph.awareness.streamRecovered()
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
                 // listened_at is when the song actually started playing, not when it was queued.
@@ -368,6 +369,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Timber.e(error, "playback error on %s", player.currentMediaItem?.mediaId)
+            graph.awareness.streamFailed()
             // One bad track (removed, region-locked, offline and not cached) shouldn't end the
             // music: move on, but stop after a few failures in a row instead of chewing the queue.
             val now = android.os.SystemClock.elapsedRealtime()

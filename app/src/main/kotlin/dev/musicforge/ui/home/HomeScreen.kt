@@ -98,7 +98,16 @@ fun HomeRoot() {
         }
     }
     // Remote items open through the shared router, the same as Search and artist pages.
-    HomeScreen(state, vm::onAction, signedIn = signedIn, onRemoteItem = { item, siblings -> openItem(item, siblings, nav, graph.player) })
+    val situation by graph.awareness.situation.collectAsStateWithLifecycle()
+    val awareness = dev.musicforge.awareness.Awareness.message(situation)
+    // Dismissed per message: a new situation gets said once, an old one stays quiet.
+    var dismissed by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    HomeScreen(
+        state, vm::onAction, signedIn = signedIn,
+        onRemoteItem = { item, siblings -> openItem(item, siblings, nav, graph.player) },
+        awarenessMessage = awareness?.takeIf { it != dismissed },
+        onDismissAwareness = { dismissed = awareness },
+    )
 }
 
 private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
@@ -114,6 +123,8 @@ fun HomeScreen(
     onAction: (HomeAction) -> Unit,
     signedIn: Boolean = false,
     onRemoteItem: (com.metrolist.innertube.models.YTItem, List<com.metrolist.innertube.models.YTItem>) -> Unit = { _, _ -> },
+    awarenessMessage: String? = null,
+    onDismissAwareness: () -> Unit = {},
 ) {
     val list = rememberLazyListState()
     dev.musicforge.ui.ScrollToTopOnReselect(list)
@@ -133,6 +144,7 @@ fun HomeScreen(
     ) {
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
         item(key = "header", contentType = "header") { ScreenHeader(greeting()) { dev.musicforge.ui.SettingsAction() } }
+        item(key = "awareness", contentType = "awareness") { AwarenessLine(awarenessMessage, onDismissAwareness) }
         if (state.isColdStart && !state.isWelcomeDismissed) {
             item(key = "welcome", contentType = "welcome") { WelcomeCard(onAction) }
         }
@@ -426,6 +438,30 @@ private fun HomeScreenPreview() {
                 remote = RemoteFeed(isLoading = false),
             ),
             onAction = {},
+        )
+    }
+}
+
+
+/** One plain line about the app's situation; tap it to dismiss until the situation changes. */
+@Composable
+private fun AwarenessLine(message: String?, onDismiss: () -> Unit) {
+    // Holds the last text while it animates out, so the line doesn't go blank mid-exit.
+    var shown by remember { androidx.compose.runtime.mutableStateOf(message) }
+    if (message != null && message != shown) shown = message
+    androidx.compose.animation.AnimatedVisibility(
+        visible = message != null,
+        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) + androidx.compose.animation.expandVertically(),
+        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) + androidx.compose.animation.shrinkVertically(),
+    ) {
+        Text(
+            shown.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClickLabel = "Dismiss") { onDismiss() }
+                .padding(horizontal = 20.dp, vertical = 10.dp),
         )
     }
 }
