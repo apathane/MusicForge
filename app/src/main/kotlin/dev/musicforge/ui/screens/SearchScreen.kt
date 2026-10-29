@@ -45,6 +45,8 @@ import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.components.CollectionTarget
+import dev.musicforge.ui.components.CollectionActionsSheet
 import dev.musicforge.ui.components.TrackRow
 import dev.musicforge.ui.openItem
 import dev.musicforge.AppGraph
@@ -174,6 +176,11 @@ fun SearchScreen() {
     LaunchedEffect(list) {
         androidx.compose.runtime.snapshotFlow { list.isScrollInProgress }.collect { if (it) focus.clearFocus() }
     }
+    // Collection long-press menu for albums, artists, playlists
+    var collectionTarget by remember { androidx.compose.runtime.mutableStateOf<CollectionTarget?>(null) }
+    if (collectionTarget != null) {
+        CollectionActionsSheet(collectionTarget!!) { collectionTarget = null }
+    }
     val submit: (String) -> Unit = { text ->
         focus.clearFocus()
         when (val link = dev.musicforge.ui.YouTubeLink.parse(text)) {
@@ -272,6 +279,33 @@ fun SearchScreen() {
                             },
                             artworkUrl = result.thumbnail,
                             onClick = { openItem(result, r.items, nav, player) },
+                            onLongClick = { 
+                                collectionTarget = when (result) {
+                                    is AlbumItem -> CollectionTarget.Album(
+                                        id = result.id,
+                                        title = result.title,
+                                        thumbnail = result.thumbnail,
+                                        artists = result.artists?.map { it.name } ?: emptyList(),
+                                        year = result.year,
+                                        artistId = result.artists?.firstOrNull()?.id,
+                                    )
+                                    is ArtistItem -> CollectionTarget.Artist(
+                                        id = result.id,
+                                        title = result.title,
+                                        thumbnail = result.thumbnail,
+                                        channelId = result.channelId,
+                                    )
+                                    is PlaylistItem -> CollectionTarget.Playlist(
+                                        id = result.id,
+                                        title = result.title,
+                                        thumbnail = result.thumbnail,
+                                        owner = result.author?.name,
+                                        songCount = result.songCountText?.removeSuffix(" songs")?.substringAfter(" ")?.toIntOrNull() ?: 0,
+                                        isLocal = false,
+                                    )
+                                    else -> null
+                                }
+                            },
                         )
                     }
                 }
