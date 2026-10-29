@@ -158,15 +158,11 @@ class PlayerConnection(private val context: Context) {
     }
 
     /**
-     * Starts a radio station rooted at [item]: seeds the service's RDAMVM radio continuation from
-     * this song's video id. Ported from Metrolist's queue-on-related behaviour.
+     * Starts a station from [item]: it plays alone, and the service's endless play (radio
+     * continuation when 3 or fewer songs remain) seeds RDAMVM<id> from it. Same idea as
+     * Metrolist's "Start radio", without a second code path.
      */
-    fun startRadio(item: MediaItem) {
-        val keys = android.os.Bundle().apply { putString(PlaybackService.EXTRA_MEDIA_ID, "") }
-        val cmd = androidx.media3.session.SessionCommand(PlaybackService.ACTION_START_RADIO, keys)
-        val args = android.os.Bundle().apply { putString(PlaybackService.EXTRA_MEDIA_ID, item.mediaId) }
-        withController { c -> c.sendCustomCommand(cmd, args) }
-    }
+    fun startRadio(item: MediaItem) = play(listOf(item))
 
     fun togglePlay() {
         val c = controller ?: return

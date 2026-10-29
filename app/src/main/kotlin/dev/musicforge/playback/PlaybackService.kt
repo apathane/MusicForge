@@ -36,12 +36,10 @@ import timber.log.Timber
 
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaLibraryService() {
-    companion object {
+    private companion object {
         const val CHECKPOINT_MS = 30_000L
         const val TARGET_LUFS = -14.0
         const val ACTION_LIKE = "dev.musicforge.LIKE"
-    const val ACTION_START_RADIO = "dev.musicforge.START_RADIO"
-    const val EXTRA_MEDIA_ID = "mediaId"
         const val WIDGET_ART_PX = 168
     }
 
@@ -157,9 +155,6 @@ class PlaybackService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session
 
     private val likeCommand = androidx.media3.session.SessionCommand(ACTION_LIKE, android.os.Bundle.EMPTY)
-    private val startRadioCommand = androidx.media3.session.SessionCommand(
-        ACTION_START_RADIO, android.os.Bundle().apply { putString(EXTRA_MEDIA_ID, "") },
-    )
 
     private fun likeButton(liked: Boolean) =
         androidx.media3.session.CommandButton.Builder(
@@ -245,7 +240,7 @@ class PlaybackService : MediaLibraryService() {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
             MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(
-                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(likeCommand).add(startRadioCommand).build(),
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(likeCommand).build(),
                 )
                 .build()
 
@@ -262,16 +257,6 @@ class PlaybackService : MediaLibraryService() {
                         val liked = withContext(Dispatchers.IO) { graph.database.dao().songEntity(item.mediaId)?.liked == true }
                         graph.library.setLiked(item, !liked)
                     }
-                }
-            }
-            if (customCommand.customAction == ACTION_START_RADIO) {
-                val seed = args.getString(EXTRA_MEDIA_ID)
-                if (seed != null) {
-                    // Start radio rooted at [seed]: wipe any stale continuation so the first fetch
-                    // begins fresh from this station's RDAMVM playlist.
-                    radioSeed = seed
-                    radioContinuation = null
-                    maybeExtendRadio()
                 }
             }
             return Futures.immediateFuture(androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS))
