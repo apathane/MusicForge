@@ -8,6 +8,17 @@ All notable changes to MusicForge. Newest phase first.
 
 Version 0.15.0, codename `Toccata`. Plan: `.agent/decisions/0001-phase-15-toccata.md`.
 
+### P3 · 0.15.0
+
+Tag: [`p3-0.15.0`](../../releases/tag/p3-0.15.0) · Version code `1503` · 2026-10-29
+
+- Motion language from OpenGhost: tokens, springs, typing reveal, ambient load and buffering patterns, pop-in overshoot
+- Long-press collection menus for albums, artists and playlists (Home and Library)
+- Song menu: share, go to album/artist, song info, remove from history and cache
+- Local music library: MediaStore scan, "On this phone" shelf, sort
+- Opaque pages during transitions; haptics through the Vibrator; Hide top bar hides the status bar; player panes back out to the cover
+- Search-results long-press menu was reverted (not reviewed); it returns in a later update
+
 ### P2 · 0.15.0
 
 Tag: [`p2-0.15.0`](../../releases/tag/p2-0.15.0) · Version code `1502` · 2026-10-29

@@ -1,15 +1,13 @@
-MusicForge P2 · 0.15.0 · Toccata
-A pixel-by-pixel pass, from a walk through every screen on an Honor X7b-shaped emulator.
+MusicForge P3 · 0.15.0 · Toccata
+Motion, long-press menus, local music and the things the owner asked for on the phone.
 
-- Player: the cover runs edge to edge under the status bar again, and fades into the player in one smooth gradient (no more dark band)
-- Player: the volume slider is back, the output reads "This phone" on the speaker, the lock icon is a real lock, and long titles no longer slide under the heart
-- Player: a resumed song shows its length straight away instead of "-0:00"
-- Queue: dragging songs lands where you drop them (it was off by one), and "Up next" no longer repeats under the open queue
-- Library: rows no longer draw on top of each other; Songs, Albums, Artists, History and Stats each have their own icon; the refresh spinner only shows while syncing
-- Home: artist portraits load their pictures, the top artist's name is readable, the loading bar lines up with the page
-- Empty pages say what fills them ("Download songs to play them offline.")
-- Search keeps the same height when you tap into it
-- Restore: one progress bar instead of two, and the dialog says which app the backup is from
-- Sleep timer "end of this song" no longer stays armed after the last song
+- Motion: pages slide and fade with the same curves everywhere (from the OpenGhost spec); titles type in once per visit; list items, chips and the like heart pop with a small overshoot; loading and buffering breathe instead of flashing
+- Long-press an album, artist or playlist (Home and Library) for a menu: play, shuffle, play next, queue, download, share, follow, and rename or delete for your own playlists
+- Song menu: share, go to album or artist, song info, remove from history or cache
+- Local music: songs on the phone show up under "On this phone" in Library, with sorting
+- Pages paint their own background, so a leaving page no longer shows through the arriving one
+- Hide top bar hides the Android status bar; swipe down to see it
+- Haptics go through the vibrator, so they work on MagicOS phones where view haptics were ignored
+- Back from lyrics or the queue returns to the cover before closing the player
 
 This is a preview. Back up your library first, and report anything device-specific.
