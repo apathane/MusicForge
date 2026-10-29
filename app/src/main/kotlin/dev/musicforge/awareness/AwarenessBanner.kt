@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.musicforge.ui.designsystem.Signal
@@ -74,13 +77,13 @@ fun AwarenessBanner(
         }
     }
 
-    if (height.value > 0.dp || alpha.value > 0f) {
+    if (height.value > 0.dp || alpha > 0f) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .height(height)
                 .graphicsLayer {
-                    alpha = alpha
+                    this.alpha = alpha
                     translationY = (1f - alpha) * -20f
                 }
                 .clip(RoundedCornerShape(0.dp, 0.dp, Signal.radiusSurface, Signal.radiusSurface))
@@ -104,7 +107,7 @@ fun AwarenessBanner(
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                        imageVector = Icons.Default.Close,
                         contentDescription = context.getString(android.R.string.cancel),
                         tint = MaterialTheme.colorScheme.onInverseSurface.copy(alpha = 0.7f),
                         modifier = Modifier.size(24.dp),
@@ -117,6 +120,7 @@ fun AwarenessBanner(
 
 @Composable
 @Preview(widthDp = 360, heightDp = 100)
+@OptIn(androidx.compose.ui.tooling.preview.Preview::class)
 private fun AwarenessBannerPreview() {
     ForgeTheme {
         AwarenessBanner("You're offline. Showing what's downloaded.") {}
@@ -125,6 +129,7 @@ private fun AwarenessBannerPreview() {
 
 @Composable
 @Preview(widthDp = 360, heightDp = 100, name = "AwarenessBannerPreview_Long")
+@OptIn(androidx.compose.ui.tooling.preview.Preview::class)
 private fun AwarenessBannerPreviewLong() {
     ForgeTheme {
         AwarenessBanner("Battery saver is on, so artwork is lighter. Downloads may pause on metered networks.") {}
@@ -133,6 +138,7 @@ private fun AwarenessBannerPreviewLong() {
 
 @Composable
 @Preview(widthDp = 360, heightDp = 100, name = "AwarenessBannerPreview_None")
+@OptIn(androidx.compose.ui.tooling.preview.Preview::class)
 private fun AwarenessBannerPreviewNone() {
     ForgeTheme {
         AwarenessBanner(null) {}

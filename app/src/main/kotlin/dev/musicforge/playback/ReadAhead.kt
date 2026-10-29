@@ -16,6 +16,7 @@ import dev.musicforge.download.Downloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -37,7 +38,7 @@ class ReadAhead(
     private val engine: MediaEngine,
     private val downloads: Downloads,
     private val scope: CoroutineScope,
-    private val awareness: StateFlow<Awareness.Situation> = kotlinx.coroutines.flow.stateOf(Awareness.Situation.Unknown),
+    private val awareness: StateFlow<Awareness.Situation> = kotlinx.coroutines.flow.MutableStateFlow(Awareness.Situation.Unknown),
 ) {
     private val connectivity = context.getSystemService<ConnectivityManager>()
     private val power = context.getSystemService<PowerManager>()

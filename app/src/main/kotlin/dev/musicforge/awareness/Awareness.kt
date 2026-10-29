@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Environment
 import android.os.PowerManager
 import android.os.StatFs
@@ -166,15 +167,10 @@ class Awareness(
 
     /** The combined situation as a data class. */
     val situation: StateFlow<Situation> = combine(
-        _network.distinctUntilChanged(),
-        _metered.distinctUntilChanged(),
-        _validatedButSlow.distinctUntilChanged(),
-        _batterySaver.distinctUntilChanged(),
-        _lowStorage.distinctUntilChanged(),
-        _streamFailures.distinctUntilChanged(),
-        _syncStale.distinctUntilChanged(),
-        _syncFailing.distinctUntilChanged(),
-    ) { network, metered, slow, battery, storage, failures, syncStale, syncFailing ->
+        _network, _metered, _validatedButSlow, _batterySaver, _lowStorage,
+        _streamFailures, _syncStale, _syncFailing
+    ) { network: NetworkState, metered: Boolean?, slow: Boolean, battery: Boolean, storage: Boolean,
+        failures: Int, syncStale: Boolean, syncFailing: Boolean ->
         Situation(network, metered, slow, battery, storage, failures, syncStale, syncFailing)
     }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), Situation.Unknown)
 

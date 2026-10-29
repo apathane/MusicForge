@@ -85,7 +85,7 @@ class AppGraph(val app: Application) {
     }
 
     val readAhead by lazy {
-        ReadAhead(app, mediaEngine, downloads, scope, awareness)
+        ReadAhead(app, mediaEngine, downloads, scope, awareness.situation)
     }
 
     val musicExport by lazy { dev.musicforge.download.MusicExport(app, mediaEngine, database.dao(), "MusicForge", lyrics) }
