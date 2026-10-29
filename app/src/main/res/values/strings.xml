@@ -3,4 +3,5 @@
     <string name="downloads_channel">Downloads</string>
     <string name="widget_description">What\'s playing, with play, next and previous</string>
     <string name="widget_idle">Nothing playing</string>
+    <string name="song_info_copied">Video id copied</string>
 </resources>
