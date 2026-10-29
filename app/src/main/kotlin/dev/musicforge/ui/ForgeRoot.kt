@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.player.MiniPlayer
 import dev.musicforge.ui.player.PlayerSheet
@@ -111,16 +112,25 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
         backdropScale = (ambience.backdrop?.width ?: 54).toFloat() / windowWidth,
         live = live,
     )
-    val connection = LocalContext.current.graph.player
+    val context = LocalContext.current
+    val connection = context.graph.player
     val now by connection.nowPlaying.collectAsStateWithLifecycle()
     val inset = PaddingValues(bottom = if (now != null) 172.dp else 96.dp)
     var playerOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var covered by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    // Which tab the nav host opens on (Metrolist's defaultOpenTab key).
+    val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val startRoute = prefs?.get(Keys.StartScreen) ?: Tab.Home.route
+    val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
     // enableEdgeToEdge picks icon colours from the *system* theme; follow what we paint instead.
     val lightContent = MaterialTheme.colorScheme.background.luminance() > 0.5f && !playerOpen
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+        // FLAG_KEEP_SCREEN_ON is window-scoped: it follows the sheet open/close automatically,
+        // no need to toggle in onStart/onStop.
+        if (keepScreenOn && playerOpen) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = lightContent
             isAppearanceLightNavigationBars = lightContent
@@ -132,7 +142,7 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
             NavHost(
                 nav,
-                startDestination = Tab.Home.route,
+                startDestination = startRoute,
                 // Pages push in from the side a little; tabs, which aren't a hierarchy, only crossfade.
                 // Navigation's default is a 700 ms fade, slow enough to feel like lag.
                 // Spatial: forward pushes slide in from the right / slide out to the left,

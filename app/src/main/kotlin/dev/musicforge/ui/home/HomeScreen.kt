@@ -44,6 +44,7 @@ import dev.musicforge.data.db.PlaylistEntity
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.data.db.Song
 import dev.musicforge.data.db.SongEntity
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.recommendation.HomeComposer
@@ -237,9 +238,12 @@ private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) ->
     var menu by remember { androidx.compose.runtime.mutableStateOf(false) }
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val hapticsEnabled by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val hapticsOn = hapticsEnabled?.get(Keys.HapticsEnabled) ?: true
     Column(
         Modifier.width(CardSize).pressScale(press)
-            .combinedClickable(interactionSource = press, indication = null, onClick = onClick, onLongClick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "More options"),
+            .combinedClickable(interactionSource = press, indication = null, onClick = onClick, onLongClick = { if (hapticsOn) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "More options"),
     ) {
         Artwork(song.song.thumbnailUrl, CardSize, corner = Signal.radiusRow)
         Spacer(Modifier.height(6.dp))

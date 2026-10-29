@@ -1,8 +1,12 @@
 package dev.musicforge
 
 import android.app.Application
+import dev.musicforge.data.prefs.dataStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
 class ForgeApp : Application() {
@@ -12,11 +16,21 @@ class ForgeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
-        // Debug builds log every image request: a failed cover is otherwise just a grey tile.
-        if (BuildConfig.DEBUG) {
-            coil3.SingletonImageLoader.setSafe { ctx ->
-                coil3.ImageLoader.Builder(ctx).logger(coil3.util.DebugLogger()).build()
-            }
+        // Image cache: sized by the MaxImageCacheSize pref (Metrolist's key). Read it off the IO
+        // thread — first() blocks, but it's a single prefs read and we're still in onCreate.
+        val mb = runBlocking(Dispatchers.IO) { dataStore.data.first()[dev.musicforge.data.prefs.Keys.MaxImageCacheSizeMb] }
+            ?.takeIf { it > 0 } ?: 50
+        val bytes = mb.toLong() * 1024 * 1024
+        coil3.SingletonImageLoader.setSafe { ctx ->
+            coil3.ImageLoader.Builder(ctx)
+                .diskCache {
+                    coil3.disk.DiskCache.Builder()
+                        .directory(okio.Path.get(ctx.cacheDir.resolve("images").absolutePath, false))
+                        .maxSizeBytes(bytes)
+                        .build()
+                }
+                .logger(if (BuildConfig.DEBUG) coil3.util.DebugLogger() else null)
+                .build()
         }
         graph = AppGraph(this)
         graph.youTubeSession.start()

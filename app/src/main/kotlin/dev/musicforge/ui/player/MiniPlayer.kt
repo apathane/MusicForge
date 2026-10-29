@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.musicforge.data.prefs.Keys
+import dev.musicforge.graph
 import dev.musicforge.playback.NowPlaying
 import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.ui.components.Artwork
@@ -58,17 +61,21 @@ fun MiniPlayer(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val position: State<Long> = remember(connection) { connection.position() }.collectAsStateWithLifecycle(0L)
     val track = MaterialTheme.colorScheme.onBackground
     val shape = RoundedCornerShape(16.dp)
-    val swipe = rememberSkipSwipe(now, connection)
+    val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
+    val swipeEnabled = prefs?.get(Keys.SwipeMiniToSkip) ?: true
+    val swipe = rememberSkipSwipe(now, connection, hapticsEnabled)
     Column(
         modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
             .glass(shape)
             .clickable(onClick = onOpen)
-            .then(swipe.gesture),
+            .then(if (swipeEnabled) swipe.gesture else Modifier),
     ) {
         // The glass stays put; only its contents follow the finger, as on ConvX and Metrolist.
         Row(
@@ -133,7 +140,7 @@ private class SkipSwipe(val gesture: Modifier, val offset: () -> Float)
  * (velocity), or a drag past a quarter of the width. Released short of that, it springs back.
  */
 @Composable
-private fun rememberSkipSwipe(now: NowPlaying, connection: PlayerConnection): SkipSwipe {
+private fun rememberSkipSwipe(now: NowPlaying, connection: PlayerConnection, hapticsEnabled: Boolean): SkipSwipe {
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
@@ -156,7 +163,7 @@ private fun rememberSkipSwipe(now: NowPlaying, connection: PlayerConnection): Sk
                 val goPrev = latest.hasPrevious && (offset.value > width / 4 || v > FlingVelocity)
                 scope.launch {
                     if (goNext || goPrev) {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         if (goNext) connection.next() else connection.previous()
                         // Leave off the side it was thrown to and come back in from the other.
                         offset.animateTo(if (goNext) -width else width, tween(140))
