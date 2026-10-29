@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,9 +52,7 @@ import coil3.request.crossfade
 fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composable () -> Unit)? = null) {
     val hideTopBar = LocalHideTopBar.current
     val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
-    // derivedStateOf: defer the threshold read so the Row doesn't recompose every frame during the fade.
-    val visible by remember { derivedStateOf { alpha > 0.01f } }
-    if (visible) {
+    if (alpha > 0.01f) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -79,9 +76,7 @@ fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composa
 fun BackRow(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val hideTopBar = LocalHideTopBar.current
     val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
-    // derivedStateOf: defer the threshold read so the Row doesn't recompose every frame during the fade.
-    val visible by remember { derivedStateOf { alpha > 0.01f } }
-    if (visible) {
+    if (alpha > 0.01f) {
         Row(
             modifier
                 .statusBarsPadding()

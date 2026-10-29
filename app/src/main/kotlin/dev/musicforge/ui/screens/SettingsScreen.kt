@@ -270,9 +270,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 onClick = { openBackup.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
             )
             var autoList by androidx.compose.runtime.remember { mutableStateOf<List<java.io.File>?>(null) }
-            val scope = androidx.compose.runtime.rememberCoroutineScope()
             ActionRow("Restore an automatic backup", "Daily copies, plus a snapshot taken before every restore") {
-                scope.launch { autoList = context.graph.autoBackup.list() }
+                autoList = context.graph.autoBackup.list()
             }
             autoList?.let { files ->
                 AlertDialog(

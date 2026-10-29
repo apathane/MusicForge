@@ -58,7 +58,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -148,10 +147,7 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
         // Tell the host when the sheet fully covers the screen, so it can stop drawing what's behind.
         val covering by remember { androidx.compose.runtime.derivedStateOf { offset.value < 0.5f } }
         androidx.compose.runtime.LaunchedEffect(covering) { onCovering(covering) }
-        // derivedStateOf: defer the offset read so the sheet's content doesn't recompose every
-        // frame while the spring animates — only when it crosses the threshold.
-        val shouldDraw by remember { derivedStateOf { open || offset.value < heightPx - 1f } }
-        if (!shouldDraw) return@BoxWithConstraints
+        if (!open && offset.value >= heightPx - 1f)         return@BoxWithConstraints
 
         val dismissDrag = Modifier.pointerInput(Unit) {
             val tracker = VelocityTracker()

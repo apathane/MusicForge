@@ -34,7 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -250,9 +249,7 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
             // Content scrolls under a transparent status bar; a scrim keeps the clock readable.
             // When hideTopBar is on the scrim collapses to the status-bar inset with an animated transition.
             val scrimAlpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180), label = "scrimAlpha")
-            // derivedStateOf: defer the threshold read so composition doesn't run every frame during the fade.
-            val scrimVisible by remember { derivedStateOf { scrimAlpha > 0.01f } }
-            if (scrimVisible) {
+            if (scrimAlpha > 0.01f) {
                 Box(
                     Modifier
                         .fillMaxWidth()

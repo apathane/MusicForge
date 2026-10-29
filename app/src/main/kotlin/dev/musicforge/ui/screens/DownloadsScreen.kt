@@ -90,13 +90,13 @@ fun DownloadsScreen() {
         }
         if (active.isNotEmpty()) {
             item { SectionTitle("In progress") }
-            items(active, key = { "a:" + it.id }, contentType = { "download-active" }) { s ->
+            items(active, key = { "a:" + it.id }) { s ->
                 val item = remember(s.id) { s.toMediaItem() }
                 SongRow(item, s.artistLine, onPlay = { player.play(listOf(item)) })
             }
             if (done.isNotEmpty()) item { SectionTitle("Downloaded") }
         }
-        items(done, key = { "d:" + it.id }, contentType = { "download-done" }) { s ->
+        items(done, key = { "d:" + it.id }) { s ->
             val item = remember(s.id) { s.toMediaItem() }
             SongRow(item, s.artistLine, onPlay = {
                 player.play(done.map { it.toMediaItem() }, done.indexOf(s))

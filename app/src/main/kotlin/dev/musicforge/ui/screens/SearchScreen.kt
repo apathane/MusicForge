@@ -243,14 +243,14 @@ fun SearchScreen() {
                 r.offline?.let { note -> item { Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) } }
                 if (r.local.isNotEmpty()) {
                     item { dev.musicforge.ui.components.SectionTitle("In your library") }
-                    items(r.local, key = { "l:" + it.id }, contentType = { "song" }) { s ->
+                    items(r.local, key = { "l:" + it.id }) { s ->
                         val item = androidx.compose.runtime.remember(s.id) { s.toMediaItem() }
                         SongRow(item, s.artistLine, onPlay = { player.play(r.local.map { it.toMediaItem() }, r.local.indexOf(s)) })
                     }
                     if (r.items.isNotEmpty()) item { dev.musicforge.ui.components.SectionTitle("YouTube Music") }
                 }
                 if (r.items.isEmpty() && r.local.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
-                items(r.items, key = { "${it::class.simpleName}:${it.id}" }, contentType = { it::class }) { result ->
+                items(r.items, key = { "${it::class.simpleName}:${it.id}" }) { result ->
                     when (result) {
                         is SongItem -> {
                             val item = androidx.compose.runtime.remember(result.id) { result.toMediaItem() }
