@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -167,16 +168,26 @@ class Awareness(
 
     /** The combined situation as a data class. */
     val situation: StateFlow<Situation> = combine(
-        _network, _metered, _validatedButSlow, _batterySaver, _lowStorage,
-        _streamFailures, _syncStale, _syncFailing
-    ) { network: NetworkState, metered: Boolean?, slow: Boolean, battery: Boolean, storage: Boolean,
-        failures: Int, syncStale: Boolean, syncFailing: Boolean ->
-        Situation(network, metered, slow, battery, storage, failures, syncStale, syncFailing)
+        arrayOf(
+            _network, _metered, _validatedButSlow, _batterySaver, _lowStorage,
+            _streamFailures, _syncStale, _syncFailing
+        )
+    ) { values ->
+        Situation(
+            network = values[0] as NetworkState,
+            metered = values[1] as Boolean?,
+            validatedButSlow = values[2] as Boolean,
+            batterySaver = values[3] as Boolean,
+            lowStorage = values[4] as Boolean,
+            recentStreamFailures = values[5] as Int,
+            syncStale = values[6] as Boolean,
+            syncFailing = values[7] as Boolean,
+        )
     }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), Situation.Unknown)
 
     enum class NetworkState { Unknown, Offline, Metered, Online }
 
-    data class Situation(
+    inner data class Situation(
         val network: NetworkState = NetworkState.Unknown,
         val metered: Boolean? = null,
         val validatedButSlow: Boolean = false,

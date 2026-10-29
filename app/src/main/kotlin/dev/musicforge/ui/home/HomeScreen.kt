@@ -129,7 +129,8 @@ fun HomeScreen(
     var pulled by remember { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(state.remote.isLoading) { if (!state.remote.isLoading) pulled = false }
     // Collect awareness situation for the banner
-    val awarenessMessage by context.graph.awareness.situation
+    val ctx = LocalContext.current
+    val awarenessMessage by ctx.graph.awareness.situation
         .map { Awareness.situationMessage(it) }
         .collectAsStateWithLifecycle(null)
 

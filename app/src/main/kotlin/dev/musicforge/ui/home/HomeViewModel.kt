@@ -80,7 +80,7 @@ class HomeViewModel(
     welcomeDismissed: Boolean,
     private val onWelcomeDismissed: () -> Unit,
     private val refreshAccount: () -> Unit = {},
-    private val awareness: kotlinx.coroutines.flow.StateFlow<Awareness.Situation> = kotlinx.coroutines.flow.stateOf(Awareness.Situation.Unknown),
+    private val awareness: kotlinx.coroutines.flow.StateFlow<Awareness.Situation> = kotlinx.coroutines.flow.MutableStateFlow(Awareness.Situation.Unknown),
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState(isWelcomeDismissed = welcomeDismissed))
 

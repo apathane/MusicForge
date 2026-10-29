@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -107,7 +106,7 @@ fun AwarenessBanner(
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = Close,
                         contentDescription = context.getString(android.R.string.cancel),
                         tint = MaterialTheme.colorScheme.onInverseSurface.copy(alpha = 0.7f),
                         modifier = Modifier.size(24.dp),
