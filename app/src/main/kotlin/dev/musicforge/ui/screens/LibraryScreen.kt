@@ -21,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,8 +46,6 @@ import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.PillButton
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
-import dev.musicforge.ui.designsystem.LoadingBar
-import dev.musicforge.ui.components.SkeletonRows
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -165,29 +162,21 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
         if (signedIn) {
             item { SectionTitle("From YouTube Music") }
             item { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
-            // Account playlists load from the network — show a thin bar while they arrive.
-            if (account.isEmpty()) {
-                item {
-                    LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp))
-                    SkeletonRows(count = 3)
-                }
-            } else {
-                items(account, key = { "yt:" + it.id }) { p ->
-                    val press = remember { MutableInteractionSource() }
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .animateItem()
-                            .pressScale(press)
-                            .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Artwork(p.thumbnail, 56.dp, corner = 8.dp)
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(p.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                            p.songCountText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        }
+            items(account, key = { "yt:" + it.id }) { p ->
+                val press = remember { MutableInteractionSource() }
+                Row(
+                    Modifier.fillMaxWidth()
+                        .animateItem()
+                        .pressScale(press)
+                        .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Artwork(p.thumbnail, 56.dp, corner = 8.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(p.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        p.songCountText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
             }

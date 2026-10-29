@@ -388,7 +388,18 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsViewModel) {
     when (state) {
         SettingsViewModel.RestoreState.Idle -> Unit
-        SettingsViewModel.RestoreState.Working -> Unit
+        // Modal on purpose: nothing else should touch the library while a backup is restoring.
+        SettingsViewModel.RestoreState.Working -> AlertDialog(
+            onDismissRequest = {},
+            confirmButton = {},
+            title = { Text("Working…") },
+            text = {
+                Column {
+                    Text("Reading your backup. Large libraries take a few seconds.")
+                    dev.musicforge.ui.designsystem.LoadingBar(modifier = Modifier.padding(top = 12.dp), delayMs = 0)
+                }
+            },
+        )
         is SettingsViewModel.RestoreState.Confirm -> {
             var includeAccount by androidx.compose.runtime.remember { mutableStateOf(true) }
             val p = state.preview

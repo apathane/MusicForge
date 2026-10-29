@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,9 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.graph
-import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.SignalChip
-import dev.musicforge.ui.components.SkeletonRows
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
