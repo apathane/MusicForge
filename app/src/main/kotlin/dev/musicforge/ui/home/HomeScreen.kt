@@ -63,6 +63,8 @@ import dev.musicforge.recommendation.HomeSection
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.components.Artwork
+import dev.musicforge.ui.components.CollectionActionsSheet
+import dev.musicforge.ui.components.CollectionTarget
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.PillButton
 import dev.musicforge.ui.components.ScreenHeader
@@ -148,6 +150,13 @@ fun HomeScreen(
     // The indicator spins only for a pull, not for the first load (that has its skeleton).
     var pulled by remember { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(state.remote.isLoading) { if (!state.remote.isLoading) pulled = false }
+
+    // Collection long-press menu: album, artist or playlist. Null when closed.
+    var collectionTarget by remember { androidx.compose.runtime.mutableStateOf<CollectionTarget?>(null) }
+    if (collectionTarget != null) {
+        CollectionActionsSheet(collectionTarget!!) { collectionTarget = null }
+    }
+
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = pulled && state.remote.isLoading,
         onRefresh = { pulled = true; onAction(HomeAction.Refresh) },
@@ -160,15 +169,51 @@ fun HomeScreen(
             item(key = "welcome", contentType = "welcome") { WelcomeCard(onAction) }
         }
         state.sections.orEmpty().forEach { section ->
-            item(key = section.id, contentType = section.layout) { Section(section, onAction) }
+            item(key = section.id, contentType = section.layout) {
+                Section(
+                    section,
+                    onAction,
+                    onCollectionLongPress = { collectionTarget = it },
+                )
+            }
         }
-        remoteFeed(state, signedIn, onAction, onRemoteItem)
+        remoteFeed(state, signedIn, onAction, onRemoteItem) { item ->
+            collectionTarget = when (item) {
+                is com.metrolist.innertube.models.AlbumItem -> CollectionTarget.Album(
+                    id = item.browseId,
+                    title = item.title,
+                    thumbnail = item.thumbnail,
+                    artists = item.artists?.map { it.name } ?: emptyList(),
+                    year = item.year,
+                    artistId = item.artists?.firstOrNull()?.id,
+                )
+                is com.metrolist.innertube.models.ArtistItem -> CollectionTarget.Artist(
+                    id = item.id,
+                    title = item.title,
+                    thumbnail = item.thumbnail,
+                    channelId = item.channelId,
+                )
+                is com.metrolist.innertube.models.PlaylistItem -> CollectionTarget.Playlist(
+                    id = item.id,
+                    title = item.title,
+                    thumbnail = item.thumbnail,
+                    owner = item.author?.name,
+                    songCount = 0, // unknown from the card
+                    isLocal = false,
+                )
+                else -> null
+            }
+        }
     }
     }
 }
 
 @Composable
-private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
+private fun Section(
+    section: HomeSection,
+    onAction: (HomeAction) -> Unit,
+    onCollectionLongPress: (CollectionTarget) -> Unit,
+) {
     var menuExpanded by rememberSaveable { mutableStateOf(false) }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     when (section.layout) {
@@ -210,7 +255,19 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 items(section.items, key = { it.key }) { item ->
                     val artist = item as? HomeItem.Artist ?: return@items
                     val isTop = section.items.indexOfFirst { it is HomeItem.Artist } == section.items.indexOf(item)
-                    ArtistCard(artist.artist, { onAction(HomeAction.OpenArtist(artist.artist.channelId ?: artist.artist.id)) }, isTop = isTop)
+                    ArtistCard(
+                        artist = artist.artist,
+                        onClick = { onAction(HomeAction.OpenArtist(artist.artist.channelId ?: artist.artist.id)) },
+                        isTop = isTop,
+                        onLongPress = {
+                            onCollectionLongPress(CollectionTarget.Artist(
+                                id = artist.artist.id,
+                                title = artist.artist.name,
+                                thumbnail = artist.artist.thumbnailUrl,
+                                channelId = artist.artist.channelId,
+                            ))
+                        },
+                    )
                 }
             }
         }
@@ -238,7 +295,22 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(section.items, key = { it.key }) { item ->
-                    (item as? HomeItem.Playlist)?.let { PlaylistCard(it.playlist) { onAction(HomeAction.OpenPlaylist(it.playlist.playlist.id)) } }
+                    (item as? HomeItem.Playlist)?.let { p ->
+                        PlaylistCard(
+                            p = p.playlist,
+                            onClick = { onAction(HomeAction.OpenPlaylist(p.playlist.playlist.id)) },
+                            onLongPress = {
+                                onCollectionLongPress(CollectionTarget.Playlist(
+                                    id = p.playlist.playlist.id,
+                                    title = p.playlist.playlist.name,
+                                    thumbnail = p.playlist.playlist.thumbnailUrl,
+                                    owner = null,
+                                    songCount = p.playlist.songCount,
+                                    isLocal = p.playlist.playlist.isLocal,
+                                ))
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -336,9 +408,23 @@ private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) ->
 }
 
 @Composable
-private fun PlaylistCard(p: PlaylistSummary, onClick: () -> Unit) {
+private fun PlaylistCard(
+    p: PlaylistSummary,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
+) {
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Column(Modifier.width(CardSize).pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick)) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val hapticsEnabled by LocalContext.current.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val hapticsOn = hapticsEnabled?.get(Keys.HapticsEnabled) ?: true
+    Column(
+        Modifier.width(CardSize).pressScale(press).combinedClickable(
+            interactionSource = press, indication = null,
+            onClick = onClick,
+            onLongClick = { if (hapticsOn) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onLongPress() },
+            onLongClickLabel = "More options",
+        ),
+    ) {
         Artwork(p.playlist.thumbnailUrl, CardSize, corner = Signal.radiusRow, fallbackLetter = p.playlist.name)
         Spacer(Modifier.height(6.dp))
         Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -354,8 +440,16 @@ private fun PlaylistCard(p: PlaylistSummary, onClick: () -> Unit) {
  * in the making of this card, though the color sampling may judge your music taste.
  */
 @Composable
-private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean = false) {
+private fun ArtistCard(
+    artist: ArtistEntity,
+    onClick: () -> Unit,
+    isTop: Boolean = false,
+    onLongPress: () -> Unit = {},
+) {
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val hapticsEnabled by LocalContext.current.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val hapticsOn = hapticsEnabled?.get(Keys.HapticsEnabled) ?: true
     val size = if (isTop) 104.dp else 88.dp
     val shape = if (isTop) RoundedCornerShape(48.dp) else RoundedCornerShape(40.dp)
     // A theme surface under the portrait, not a per-card palette: sampling every artist image
@@ -363,7 +457,12 @@ private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean
     val baseColor = MaterialTheme.colorScheme.surfaceVariant
     val nameColor = Color.White
     Column(
-        Modifier.width(size).pressScale(press).combinedClickable(interactionSource = press, indication = null, onClick = onClick),
+        Modifier.width(size).pressScale(press).combinedClickable(
+            interactionSource = press, indication = null,
+            onClick = onClick,
+            onLongClick = { if (hapticsOn) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onLongPress() },
+            onLongClickLabel = "More options",
+        ),
     ) {
         Box(
             Modifier
@@ -510,6 +609,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
     signedIn: Boolean,
     onAction: (HomeAction) -> Unit,
     onRemoteItem: (com.metrolist.innertube.models.YTItem, List<com.metrolist.innertube.models.YTItem>) -> Unit,
+    onRemoteCollectionLongPress: (com.metrolist.innertube.models.YTItem) -> Unit,
 ) {
     val remote = state.remote
     item(key = "remote-header", contentType = "header") {
@@ -553,7 +653,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
         else -> remote.sections.forEachIndexed { i, section ->
             // Titles repeat across continuation pages only when YouTube repeats them; index keeps keys unique.
             item(key = "remote:$i:${section.title}", contentType = "remote-shelf") {
-                Shelf(section.title, section.items) { onRemoteItem(it, section.items) }
+                Shelf(section.title, section.items, onClick = { onRemoteItem(it, section.items) }, onLongPress = onRemoteCollectionLongPress)
             }
         }
     }

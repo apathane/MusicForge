@@ -217,7 +217,7 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 }
                 page(Routes.ALBUMS) { LibraryAlbumsScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.ARTISTS) { LibraryArtistsScreen(onBack = { nav.popBackStack() }) }
-                page(Routes.LOCAL_MUSIC, arguments = listOf(navArgument("sort") { type = NavType.StringType })) { entry ->
+                page("${Routes.LOCAL_MUSIC}/{sort}", arguments = listOf(navArgument("sort") { type = NavType.StringType })) { entry ->
                     val sort = runCatching { LocalSort.valueOf(entry.arguments!!.getString("sort")!!) }.getOrDefault(LocalSort.TITLE)
                     LocalMusicScreen(sort, onBack = { nav.popBackStack() })
                 }

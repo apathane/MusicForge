@@ -165,9 +165,20 @@ class PlayerConnection(private val context: Context) {
         c.addMediaItem((c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount), item)
     }
 
+    /** Insert [items] after the currently playing track. */
+    fun playNext(items: List<MediaItem>) = withController { c ->
+        val idx = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
+        c.addMediaItems(idx, items)
+    }
+
     /** Append [item] to the end of the current queue without starting it. */
     fun addToQueue(item: MediaItem) = withController { c ->
         c.addMediaItem(c.mediaItemCount, item)
+    }
+
+    /** Append [items] to the end of the current queue without starting it. */
+    fun addToQueue(items: List<MediaItem>) = withController { c ->
+        c.addMediaItems(c.mediaItemCount, items)
     }
 
     /**

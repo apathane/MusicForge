@@ -86,6 +86,18 @@ class LibraryActions(
     /** Drops every play checkpoint for this track — the "Remove from history" row. */
     fun removeFromHistory(item: MediaItem) = scope.launch { db.dao().deleteEvents(item.mediaId) }
 
+    /** Follow/unfollow an artist — stores a bookmark just like liking an album does. */
+    fun setArtistBookmark(id: String, bookmarked: Boolean) = scope.launch {
+        val at = if (bookmarked) System.currentTimeMillis() else null
+        db.dao().setArtistBookmark(id, at)
+    }
+
+    /** Save/remove an album from the library. */
+    fun setAlbumBookmark(id: String, bookmarked: Boolean) = scope.launch {
+        val at = if (bookmarked) System.currentTimeMillis() else null
+        db.dao().setAlbumBookmark(id, at)
+    }
+
     /** Same id style as Metrolist's local playlists (a UUID), so our backups read back there too. */
     fun createPlaylist(name: String, firstSong: MediaItem? = null) = scope.launch {
         val id = UUID.randomUUID().toString()

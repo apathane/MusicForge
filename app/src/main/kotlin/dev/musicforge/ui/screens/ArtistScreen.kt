@@ -27,7 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +40,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.metrolist.innertube.YouTube
+import com.metrolist.innertube.models.AlbumItem
+import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.ArtistPage
 import dev.musicforge.graph
@@ -48,6 +52,8 @@ import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.SectionTitle
+import dev.musicforge.ui.components.CollectionTarget
+import dev.musicforge.ui.components.CollectionActionsSheet
 import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
 import dev.musicforge.ui.openItem
@@ -93,6 +99,7 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val nav = LocalNavController.current
     val player = LocalContext.current.graph.player
+    var sheetTarget by remember { mutableStateOf<CollectionTarget?>(null as CollectionTarget?) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
         item { BackRow(onBack) }
@@ -139,7 +146,25 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
                         }
                     } else {
                         item(key = "h:${section.title}") {
-                            Shelf(section.title, section.items) { openItem(it, section.items, nav, player) }
+                            Shelf(
+                                title = section.title,
+                                items = section.items,
+                                onClick = { openItem(it, section.items, nav, player) },
+                                onLongPress = { item ->
+                                    sheetTarget = when (item) {
+                                        is AlbumItem -> CollectionTarget.Album(
+                                            id = item.id, title = item.title, thumbnail = item.thumbnail,
+                                            artists = item.artists?.map { it.name } ?: emptyList(), year = item.year,
+                                            artistId = item.artists?.firstOrNull()?.id,
+                                        )
+                                        is PlaylistItem -> CollectionTarget.Playlist(
+                                            id = item.id, title = item.title, thumbnail = item.thumbnail,
+                                            owner = item.author?.name, songCount = item.songCountText?.removeSuffix(" songs")?.substringAfter(" ")?.toIntOrNull() ?: 0,
+                                        )
+                                        else -> null
+                                    }
+                                },
+                            )
                         }
                     }
                 }
@@ -148,6 +173,9 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
                 }
             }
         }
+    }
+    sheetTarget?.let { target ->
+        CollectionActionsSheet(target) { sheetTarget = null }
     }
 }
 
