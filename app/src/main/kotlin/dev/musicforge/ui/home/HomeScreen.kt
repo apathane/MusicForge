@@ -177,7 +177,7 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             if (section.items.size > 1) {
                 SectionHeader("Before that", null)
                 LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    itemsIndexed(section.items.drop(1), key = { _, it -> it.key }) { i, item ->
+                    itemsIndexed(section.items.drop(1), key = { _, it -> it.key }, contentType = { "track" }) { i, item ->
                         (item as? HomeItem.Track)?.let {
                             Box(Modifier.animateItem()) {
                                 SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i + 1)) }
@@ -193,6 +193,13 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(section.items, key = { _, it -> it.key }, contentType = { "track" }) { i, item ->
+                    (item as? HomeItem.Track)?.let {
+                        Box(Modifier.animateItem()) {
+                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
+                        }
+                    }
+                }
+            }
         }
         HomeLayout.ARTISTS -> Column {
             ShelfHeader(section.title, section.reason) {
