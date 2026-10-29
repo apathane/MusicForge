@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
+import dev.musicforge.ui.designsystem.TypeIn
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.LocalHideTopBar
 import coil3.compose.AsyncImage
@@ -62,7 +63,7 @@ fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composa
                 .graphicsLayer { this.alpha = alpha },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
+            TypeIn(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
             action?.invoke()
         }
     }
@@ -245,7 +246,7 @@ fun EmptyState(title: String, body: String, modifier: Modifier = Modifier, actio
         modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
+        TypeIn(title, style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         Text(
             body,
