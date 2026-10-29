@@ -41,7 +41,7 @@ class PlaybackService : MediaLibraryService() {
         const val TARGET_LUFS = -14.0
         const val ACTION_LIKE = "dev.musicforge.LIKE"
     const val ACTION_START_RADIO = "dev.musicforge.START_RADIO"
-    private const val EXTRA_MEDIA_ID = "mediaId"
+    const val EXTRA_MEDIA_ID = "mediaId"
         const val WIDGET_ART_PX = 168
     }
 
@@ -157,7 +157,9 @@ class PlaybackService : MediaLibraryService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session
 
     private val likeCommand = androidx.media3.session.SessionCommand(ACTION_LIKE, android.os.Bundle.EMPTY)
-    private val startRadioCommand = androidx.media3.session.SessionCommand(ACTION_START_RADIO, android.os.Bundle.EMPTY)
+    private val startRadioCommand = androidx.media3.session.SessionCommand(
+        ACTION_START_RADIO, android.os.Bundle().apply { putString(EXTRA_MEDIA_ID, "") },
+    )
 
     private fun likeButton(liked: Boolean) =
         androidx.media3.session.CommandButton.Builder(

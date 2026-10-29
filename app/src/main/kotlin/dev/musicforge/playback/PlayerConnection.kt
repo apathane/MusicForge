@@ -162,9 +162,10 @@ class PlayerConnection(private val context: Context) {
      * this song's video id. Ported from Metrolist's queue-on-related behaviour.
      */
     fun startRadio(item: MediaItem) {
+        val keys = android.os.Bundle().apply { putString(PlaybackService.EXTRA_MEDIA_ID, "") }
+        val cmd = androidx.media3.session.SessionCommand(PlaybackService.ACTION_START_RADIO, keys)
         val args = android.os.Bundle().apply { putString(PlaybackService.EXTRA_MEDIA_ID, item.mediaId) }
-        val cmd = androidx.media3.session.SessionCommand(PlaybackService.ACTION_START_RADIO, args)
-        withController { c -> c.sendCustomCommand(cmd, android.os.Bundle.EMPTY) }
+        withController { c -> c.sendCustomCommand(cmd, args) }
     }
 
     fun togglePlay() {
