@@ -1,5 +1,7 @@
 package dev.musicforge.ui.screens
 
+import dev.musicforge.ui.designsystem.pressScale
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource

@@ -26,22 +26,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
@@ -49,19 +45,16 @@ import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import dev.musicforge.ui.LocalNavController
-import dev.musicforge.ui.components.CollectionActionsSheet
 import dev.musicforge.ui.components.TrackRow
 import dev.musicforge.ui.openItem
 import dev.musicforge.AppGraph
 import dev.musicforge.data.db.SearchHistory
 import dev.musicforge.graph
-import dev.musicforge.ui.components.CollectionTarget
 import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.toMediaItem
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -174,10 +167,6 @@ fun SearchScreen() {
     val nav = LocalNavController.current
     val list = androidx.compose.foundation.lazy.rememberLazyListState()
     dev.musicforge.ui.ScrollToTopOnReselect(list)
-    var sheetTarget by rememberSaveable<CollectionTarget?, String, String>(
-        save = { (it as? CollectionTarget)?.let { t -> t.id + "|" + t::class.simpleName } ?: "" },
-        restore = { null },
-    ) { mutableStateOf<CollectionTarget?>(null) }
     val fieldFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     // Opening Search with nothing typed means you are about to type.
     LaunchedEffect(Unit) { if (vm.query.value.isEmpty()) runCatching { fieldFocus.requestFocus() } }
@@ -283,31 +272,10 @@ fun SearchScreen() {
                             },
                             artworkUrl = result.thumbnail,
                             onClick = { openItem(result, r.items, nav, player) },
-                            onLongClick = {
-                                sheetTarget = when (result) {
-                                    is AlbumItem -> CollectionTarget.Album(
-                                        id = result.id, title = result.title, thumbnail = result.thumbnail,
-                                        artists = result.artists?.map { it.name } ?: emptyList(), year = result.year,
-                                        artistId = result.artists?.firstOrNull()?.id,
-                                    )
-                                    is ArtistItem -> CollectionTarget.Artist(
-                                        id = result.id, title = result.title, thumbnail = result.thumbnail,
-                                        channelId = result.channelId,
-                                    )
-                                    is PlaylistItem -> CollectionTarget.Playlist(
-                                        id = result.id, title = result.title, thumbnail = result.thumbnail,
-                                        owner = result.author?.name, songCount = result.songCountText?.removeSuffix(" songs")?.substringAfter(" ")?.toIntOrNull() ?: 0,
-                                    )
-                                    else -> null
-                                }
-                            },
                         )
                     }
                 }
             }
-        }
-        sheetTarget?.let { target ->
-            CollectionActionsSheet(target) { sheetTarget = null }
         }
     }
 }
