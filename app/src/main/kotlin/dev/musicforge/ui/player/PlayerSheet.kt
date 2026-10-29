@@ -44,6 +44,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateTopPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -71,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
@@ -178,10 +183,11 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                     // Fully open, nothing is painted behind the sheet (no window background), so
                     // rounded corners would show stale pixels: square it off at rest.
                     clip = offset.value > 0.5f
-                }
-                .playerBackground(ambience, remember(ambience.backdrop) { ambience.backdrop?.let(::withScrim) }),
+                },
         ) {
-            PlayerContent(now, onClose, dismissDrag, ambience.colors.ambient)
+            // The pane decides whether the backdrop fades in under the cover, so the canvas is
+            // drawn inside PlayerContent where the pane is known.
+            PlayerContent(now, onClose, dismissDrag, ambience)
         }
     }
 }
@@ -191,38 +197,55 @@ private val playerScrim = Brush.verticalGradient(0f to Color.Black.copy(alpha = 
 /**
  * The scrim (so white text always reads) baked into the small blurred backdrop once per
  * track: drawing it full-screen every frame was a third full-screen fill on the X7b.
+ *
+ * [fadeTop] erases the backdrop above that fraction of the screen. On the artwork pane the
+ * backdrop then begins exactly where the cover's fade ends, so the two meet at the same
+ * ambient colour instead of showing a seam (T4 faded the cover but left the backdrop solid).
  */
-private fun withScrim(backdrop: ImageBitmap): ImageBitmap {
+private fun withScrim(backdrop: ImageBitmap, fadeTop: Float? = null): ImageBitmap {
     val out = ImageBitmap(backdrop.width, backdrop.height)
     val canvas = Canvas(out)
     val size = androidx.compose.ui.geometry.Size(backdrop.width.toFloat(), backdrop.height.toFloat())
     CanvasDrawScope().draw(androidx.compose.ui.unit.Density(1f), androidx.compose.ui.unit.LayoutDirection.Ltr, canvas, size) {
         drawImage(backdrop)
         drawRect(playerScrim)
+        if (fadeTop != null) {
+            // DstIn keeps the backdrop only where this mask is opaque; the top stays clear.
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    fadeTop to Color.Transparent,
+                    (fadeTop + 0.17f).coerceAtMost(1f) to Color.Black,
+                    1f to Color.Black,
+                ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
     }
     return out
 }
 
 /** Blurred artwork stretched to the screen; one full-screen draw when there is artwork. */
 private fun Modifier.playerBackground(ambience: Ambience, scrimmed: ImageBitmap?): Modifier = drawBehind {
+    // The ambient canvas is the target colour for every pane: the cover fades to exactly this,
+    // so a flat scrim drawn here would put the band back where the cover meets the controls.
+    drawRect(ambience.colors.ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114))
     if (scrimmed != null) {
         drawImage(
             scrimmed,
             dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
             filterQuality = FilterQuality.Low,
         )
-    } else {
-        drawRect(ambience.colors.ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114))
-        drawRect(playerScrim)
     }
 }
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier, ambient: Color) {
+private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier, ambience: Ambience) {
     val context = LocalContext.current
     val graph = context.graph
     val connection = graph.player
+    val ambient = ambience.colors.ambient
     val position: State<Long> = remember(connection) { connection.position(200) }.collectAsStateWithLifecycle(0L)
     val prefs by graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
     val doubleTapSeek = prefs?.get(Keys.DoubleTapSeek) ?: true
@@ -248,17 +271,26 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     // System volume and active output device.
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
+    // The backdrop is faded in beneath the cover; other panes keep it from the very top.
+    // 0.45 is the cover's share of the screen, so the backdrop is still clear at the seam.
+    val scrimmed = remember(ambience.backdrop, pane) {
+        ambience.backdrop?.let { withScrim(it, fadeTop = if (pane == PlayerPane.ARTWORK) 0.45f else null) }
+    }
+
+    // Insets belong to the controls, not this Box: padding the whole player pushed the cover
+    // down and left a grey strip behind the status bar (T4's regression).
+    val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+
     BoxWithConstraints(
         Modifier.fillMaxSize()
-            .then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier)
-            // safeDrawing clears the nav bar AND display cutouts (statusBars + navigationBars + displayCutout).
-            .windowInsetsPadding(WindowInsets.safeDrawing),
+            .playerBackground(ambience, scrimmed)
+            .then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier),
     ) {
         // Artwork covers the top ~45% of the sheet when on the artwork pane.
-        // No artwork on lyrics/queue panes: the grabber height is the top inset instead.
-        val artHeight = if (pane == PlayerPane.ARTWORK) maxHeight * 0.45f else 44.dp
+        // No artwork on lyrics/queue panes: the grabber's slot is the top inset instead.
+        val artHeight = if (pane == PlayerPane.ARTWORK) maxHeight * 0.45f else topInset + 44.dp
 
-        // Full-bleed cover, edge to edge, no card frame.
+        // Full-bleed cover, edge to edge from y = 0, under the status bar.
         if (pane == PlayerPane.ARTWORK) {
             BigArtwork(
                 now, ambient, Modifier
@@ -276,20 +308,26 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             )
         }
 
-        // The grabber rests at the very top, over the artwork when shown.
-        Box(Modifier.fillMaxWidth().height(44.dp), contentAlignment = Alignment.Center) {
+        // The grabber and chevron ride over the cover but stay below the status bar.
+        Box(
+            Modifier.fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .height(44.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Box(Modifier.size(width = 38.dp, height = 5.dp).clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.35f)))
             Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(ForgeIcons.Collapse, "Close player", white, 30.dp, onClose) }
         }
 
-        // Controls below the artwork, with horizontal gutter.
+        // Controls below the artwork, with horizontal gutter and clear of the nav bar.
         Column(
             Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                 .padding(horizontal = 26.dp)
                 // No verticalScroll here: the weighted pane holds the queue's LazyColumn, and a
-                // lazy list inside a scroll measures with infinite height and crashes. The insets
-                // above keep the controls clear of the nav bar instead.
+                // lazy list inside a scroll measures with infinite height and crashes. The inset
+                // on this Column keeps the controls clear of the gesture bar instead.
                 .padding(top = artHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -315,7 +353,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             Scrubber(position, now.durationMs, white, onSeek = connection::seekTo, modifier = Modifier.padding(top = 10.dp), codecLabel = codecLabel)
 
             // Up Next row: the next song's small cover, "Up Next", title, artist. Tap plays it.
-            if (nextItem != null) {
+            // The queue already lists it, so the card would only repeat the first row there.
+            if (nextItem != null && pane != PlayerPane.QUEUE) {
                 UpNextRow(nextItem, currentIndex, connection, white)
             }
 
@@ -654,9 +693,10 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         Canvas(
             Modifier
                 .weight(1f)
-                .height(6.dp)
-                // 6 dp track with padding above and below = a 48 dp touch target.
-                .padding(vertical = 21.dp)
+                // The Canvas itself is 48 dp tall; the 6 dp track is centred inside it. Before,
+                // `.height(6.dp).padding(vertical = 21.dp)` left the drawing area at zero and the
+                // slider vanished like a magician's assistant — the trick, not the reveal.
+                .height(48.dp)
                 .semantics {
                     // TalkBack reads the range and current value, and adjusts via the setProgress
                     // action (this Compose version exposes no Role.Slider).
@@ -689,10 +729,11 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
                     )
                 },
         ) {
-            val h = size.height
+            val h = 6.dp.toPx()
+            val top = (size.height - h) / 2f
             val r = h / 2
-            drawRoundRect(color.copy(alpha = 0.22f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(r))
-            drawRoundRect(color, size = Size(size.width * fraction.coerceIn(0f, 1f), h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(r))
+            drawRoundRect(color.copy(alpha = 0.22f), topLeft = Offset(0f, top), size = Size(size.width, h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(r))
+            drawRoundRect(color, topLeft = Offset(0f, top), size = Size(size.width * fraction.coerceIn(0f, 1f), h), cornerRadius = androidx.compose.ui.geometry.CornerRadius(r))
         }
     }
 }
@@ -740,8 +781,15 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
         }
     }
 
-    val icon = if (deviceInfo?.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) PlayerIcons.VolumeUp else PlayerIcons.Headphones
-    val label = deviceInfo?.productName?.toString() ?: "Speaker"
+    // Before the first lookup lands, assume the phone itself; it is right almost every time.
+    val builtin = deviceInfo == null || deviceInfo?.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+    val icon = if (builtin) PlayerIcons.VolumeUp else PlayerIcons.Headphones
+    // productName on the built-in speaker is the device model ("sdk_gphone64_x86_64" on an
+    // emulator), which means nothing to a listener. Bluetooth and wired devices keep their names.
+    val label = when {
+        builtin -> "This phone"
+        else -> deviceInfo?.productName?.toString()?.takeIf { it.isNotBlank() } ?: "This phone"
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier.size(56.dp).clip(RoundedCornerShape(50)).clickable(

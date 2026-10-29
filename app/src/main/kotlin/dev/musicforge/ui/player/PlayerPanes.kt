@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -283,60 +282,65 @@ fun QueuePane(now: NowPlaying, connection: PlayerConnection, onMore: () -> Unit 
                     )
                 }
             }
-            // 48 dp touch target for the text button — fingers are not mouse pixels, 40 dp was audacious.
-            AnimatedVisibility(removed != null || cleared != null) {
+            // Undo, Clear and the lock share one 48 dp row, so the lock stops sitting on
+            // "Clear"'s shoulder like a bad group photo. Fingers are not mouse pixels either.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AnimatedVisibility(removed != null || cleared != null) {
+                    Box(
+                        Modifier.height(48.dp)
+                            .clickable(onClickLabel = "Put the removed songs back") {
+                                removed?.let { (at, item) -> connection.insertAt(at, item) }
+                                cleared?.sortedByDescending { it.first }?.forEach { (at, item) -> connection.insertAt(at, item) }
+                                removed = null
+                                cleared = null
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "Undo",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = white,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(white.copy(alpha = 0.16f)),
+                        )
+                    }
+                }
                 Box(
-                    Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                        .clickable(onClickLabel = "Put the removed songs back") {
-                            removed?.let { (at, item) -> connection.insertAt(at, item) }
-                            cleared?.sortedByDescending { it.first }?.forEach { (at, item) -> connection.insertAt(at, item) }
-                            removed = null
-                            cleared = null
+                    Modifier.size(48.dp)
+                        .clickable(onClickLabel = "Clear the songs after this one") {
+                            val qNow = connection.queue.value
+                            val idx = connection.currentIndex.value
+                            val upcoming = qNow.drop(idx + 1).mapIndexed { i, item -> (idx + 1 + i) to item }
+                            if (upcoming.isNotEmpty()) {
+                                cleared = upcoming
+                                upcoming.sortedByDescending { it.first }.forEach { connection.removeAt(it.first) }
+                            }
                         },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        "Undo",
+                        "Clear",
                         style = MaterialTheme.typography.labelLarge,
-                        color = white,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(white.copy(alpha = 0.16f)),
+                        color = white.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(horizontal = 6.dp),
                     )
                 }
-            }
-            // 48 dp touch target for the text button (the padded text was ~30 dp tall).
-            Box(
-                Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                    .clickable(onClickLabel = "Clear the songs after this one") {
-                        val qNow = connection.queue.value
-                        val idx = connection.currentIndex.value
-                        val upcoming = qNow.drop(idx + 1).mapIndexed { i, item -> (idx + 1 + i) to item }
-                        if (upcoming.isNotEmpty()) {
-                            cleared = upcoming
-                            upcoming.sortedByDescending { it.first }.forEach { connection.removeAt(it.first) }
-                        }
-                    },
-            ) {
-                Text(
-                    "Clear",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = white.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                )
-            }
-            Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(50))
-                    .clickable(onClickLabel = if (locked) "Unlock queue" else "Lock queue") {
-                        scope.launch { graph.settings.edit { it[Keys.QueueLocked] = !locked } }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (locked) PlayerIcons.LockClosed else PlayerIcons.LockOpen,
-                    contentDescription = if (locked) "Unlock queue" else "Lock queue",
-                    tint = if (locked) white else white.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp),
-                )
+                Spacer(Modifier.width(4.dp))
+                Box(
+                    Modifier.size(48.dp).clip(RoundedCornerShape(50))
+                        .clickable(onClickLabel = if (locked) "Unlock queue" else "Lock queue") {
+                            scope.launch { graph.settings.edit { it[Keys.QueueLocked] = !locked } }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        if (locked) PlayerIcons.LockClosed else PlayerIcons.LockOpen,
+                        contentDescription = if (locked) "Unlock queue" else "Lock queue",
+                        tint = if (locked) white else white.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
         Spacer(Modifier.height(4.dp))
