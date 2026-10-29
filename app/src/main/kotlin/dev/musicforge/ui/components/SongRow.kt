@@ -19,6 +19,7 @@ fun SongRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     val meta = item.mediaMetadata
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     TrackRow(
         title = meta.title?.toString().orEmpty(),
         subtitle = subtitle,
@@ -26,6 +27,7 @@ fun SongRow(
         onClick = onPlay,
         onLongClick = { menu = true },
         number = number,
+        interactionSource = press,
         trailing = {
             DownloadBadge(item.mediaId)
             IconAction(ForgeIcons.More, "More options") { menu = true }

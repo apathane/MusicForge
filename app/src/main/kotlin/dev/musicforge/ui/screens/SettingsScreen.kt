@@ -5,6 +5,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,6 +51,7 @@ import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.GlassTier
+import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.update.ReleaseInfo
 import dev.musicforge.update.UpdateKeys
 import dev.musicforge.update.UpdateState
@@ -453,7 +457,8 @@ private fun Group(content: @Composable () -> Unit) {
 
 @Composable
 private fun ActionRow(title: String, subtitle: String, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp)) {
+    val press = remember { MutableInteractionSource() }
+    Column(Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -474,10 +479,12 @@ private fun UpdateCheckRow(
         is UpdateState.Installing -> "Opening installer…"
         is UpdateState.Failed -> state.message
     }
+    val press = remember { MutableInteractionSource() }
     Column(
         Modifier
             .fillMaxWidth()
-            .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, role = androidx.compose.ui.semantics.Role.Button) {
                 when (state) {
                     is UpdateState.Available -> onInstall(state.release)
                     is UpdateState.Idle, is UpdateState.UpToDate, is UpdateState.Failed -> onCheck()
@@ -525,6 +532,7 @@ private fun ChoiceRow(title: String, options: List<Pair<String, String>>, select
         ) {
             options.forEach { (value, label) ->
                 val on = value == selected
+                val press = remember { MutableInteractionSource() }
                 Text(
                     label,
                     style = MaterialTheme.typography.labelLarge,
@@ -533,8 +541,9 @@ private fun ChoiceRow(title: String, options: List<Pair<String, String>>, select
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
+                        .pressScale(press)
                         .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { onSelect(value) }
+                        .clickable(interactionSource = press, indication = null) { onSelect(value) }
                         .padding(vertical = 8.dp),
                 )
             }

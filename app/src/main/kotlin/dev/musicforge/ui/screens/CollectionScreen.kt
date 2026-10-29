@@ -3,6 +3,9 @@ package dev.musicforge.ui.screens
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +60,7 @@ import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.SongRow
 import dev.musicforge.ui.components.askToRunInBackground
+import dev.musicforge.ui.designsystem.pressScale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -328,11 +332,13 @@ fun Cover(urls: List<String>, size: Dp) {
 private fun HeaderButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, primary: Boolean, onClick: () -> Unit) {
     val bg = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
     val fg = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
+    val press = remember { MutableInteractionSource() }
     Row(
         Modifier
             .clip(RoundedCornerShape(percent = 50))
+            .pressScale(press)
             .background(bg)
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
