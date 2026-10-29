@@ -1,12 +1,14 @@
 package dev.musicforge.ui
 
 import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -129,15 +131,24 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                 startDestination = Tab.Home.route,
                 // Pages push in from the side a little; tabs, which aren't a hierarchy, only crossfade.
                 // Navigation's default is a 700 ms fade, slow enough to feel like lag.
+                // Spatial: forward pushes slide in from the right / slide out to the left,
+                // back pops come in from the left / out to the right. Tab switches crossfade only.
+                // Pop exit always animates — the surface must never vanish on back.
                 enterTransition = {
                     if (targetState.destination.route in tabRoutes) fadeIn(tween(160))
                     else fadeIn(tween(220)) + slideInHorizontally(tween(260, easing = EaseOutCubic)) { it / 10 }
                 },
-                exitTransition = { fadeOut(tween(140)) },
-                popEnterTransition = { fadeIn(tween(200)) },
+                exitTransition = {
+                    if (targetState.destination.route in tabRoutes) fadeOut(tween(140))
+                    else fadeOut(tween(140)) + slideOutHorizontally(tween(200, easing = EaseInCubic)) { -it / 10 }
+                },
+                popEnterTransition = {
+                    if (initialState.destination.route in tabRoutes) fadeIn(tween(180))
+                    else fadeIn(tween(200)) + slideInHorizontally(tween(260, easing = EaseOutCubic)) { -it / 10 }
+                },
                 popExitTransition = {
-                    if (initialState.destination.route in tabRoutes) fadeOut(tween(140))
-                    else fadeOut(tween(180)) + slideOutHorizontally(tween(220, easing = EaseOutCubic)) { it / 10 }
+                    if (initialState.destination.route in tabRoutes) fadeOut(tween(160))
+                    else fadeOut(tween(160)) + slideOutHorizontally(tween(240, easing = EaseInCubic)) { it / 10 }
                 },
                 modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }
                     .then(if (live != null) Modifier.layerBackdrop(live) else Modifier),
