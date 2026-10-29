@@ -180,6 +180,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         android.widget.Toast.makeText(ctx, "Image cache cleared", android.widget.Toast.LENGTH_SHORT).show()
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun clearSongCache() = viewModelScope.launch {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.mediaEngine.clearPlayerCache() }
         android.widget.Toast.makeText(graph.app, "Song cache cleared", android.widget.Toast.LENGTH_SHORT).show()
