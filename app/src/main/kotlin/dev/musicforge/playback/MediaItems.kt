@@ -91,6 +91,18 @@ val MediaMetadata.albumId: String? get() = extras?.getString(EXTRA_ALBUM_ID)
 val MediaMetadata.from: String? get() = extras?.getString(EXTRA_FROM)
 val MediaMetadata.isFromRadio: Boolean get() = from == FROM_RADIO
 
+/**
+ * Radio de-duplication: InnerTube's continuation can repeat songs already queued or playing, so
+ * drop any whose video id is already in [queuedIds]. Pure so it can be unit-tested without Player.
+ * Ported from Metrolist's queue-on-related dedup.
+ */
+fun filterFreshRadioIds(candidates: List<String>, queuedIds: Set<String>): List<String> =
+    candidates.filter { it !in queuedIds }
+
+/** Radio de-duplication over full items, keeping only songs not already queued. */
+fun <T> List<T>.filterFresh(queuedIds: Set<String>, idOf: (T) -> String): List<T> =
+    filter { idOf(it) !in queuedIds }
+
 fun MediaItem.markedFrom(label: String): MediaItem = buildUpon()
     .setMediaMetadata(mediaMetadata.buildUpon().setExtras(android.os.Bundle(mediaMetadata.extras ?: android.os.Bundle()).apply { putString(EXTRA_FROM, label) }).build())
     .build()

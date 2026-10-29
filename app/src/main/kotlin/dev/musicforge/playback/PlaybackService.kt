@@ -505,7 +505,7 @@ class PlaybackService : MediaLibraryService() {
             val result = withContext(Dispatchers.IO) { YouTube.next(endpoint, radioContinuation) }.getOrNull() ?: return@launch
             radioContinuation = result.continuation
             val queued = (0 until player.mediaItemCount).mapTo(HashSet()) { player.getMediaItemAt(it).mediaId }
-            val fresh = result.items.filter { it.id !in queued }.map { it.toMediaItem().markedFromRadio() }
+            val fresh = result.items.filterFresh(queued) { it.id }.map { it.toMediaItem().markedFromRadio() }
             if (fresh.isNotEmpty() && allowed()) player.addMediaItems(fresh)
         }
     }

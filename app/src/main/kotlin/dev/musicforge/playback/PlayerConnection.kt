@@ -157,6 +157,13 @@ class PlayerConnection(private val context: Context) {
         c.addMediaItem((c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount), item)
     }
 
+    /**
+     * Starts a station from [item]: it plays alone, and the service's endless play (radio
+     * continuation when 3 or fewer songs remain) seeds RDAMVM<id> from it. Same idea as
+     * Metrolist's "Start radio", without a second code path.
+     */
+    fun startRadio(item: MediaItem) = play(listOf(item))
+
     fun togglePlay() {
         val c = controller ?: return
         // A restored queue (or one that hit an error) is idle until prepared.
