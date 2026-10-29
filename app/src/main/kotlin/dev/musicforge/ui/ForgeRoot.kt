@@ -51,6 +51,8 @@ import dev.musicforge.graph
 import dev.musicforge.ui.player.MiniPlayer
 import dev.musicforge.ui.player.PlayerSheet
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -120,8 +122,22 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     var covered by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     // Which tab the nav host opens on (Metrolist's defaultOpenTab key).
     val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
-    val startRoute = prefs?.get(Keys.StartScreen) ?: Tab.Home.route
     val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
+    // The start tab is applied once, by navigating like a tab tap: changing NavHost's
+    // startDestination after the first frame would rebuild the graph and drop the back stack.
+    // Metrolist stores the tab as its enum name ("LIBRARY"), we as the route ("library"): take both.
+    var startApplied by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(prefs != null) {
+        val raw = prefs?.get(Keys.StartScreen) ?: return@LaunchedEffect
+        if (startApplied) return@LaunchedEffect
+        startApplied = true
+        val tab = Tab.entries.firstOrNull { it.route.equals(raw, true) || it.name.equals(raw, true) } ?: return@LaunchedEffect
+        if (tab != Tab.Home) nav.navigate(tab.route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
     // enableEdgeToEdge picks icon colours from the *system* theme; follow what we paint instead.
     val lightContent = MaterialTheme.colorScheme.background.luminance() > 0.5f && !playerOpen
     val view = androidx.compose.ui.platform.LocalView.current
@@ -142,7 +158,7 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
             NavHost(
                 nav,
-                startDestination = startRoute,
+                startDestination = Tab.Home.route,
                 // Pages push in from the side a little; tabs, which aren't a hierarchy, only crossfade.
                 // Navigation's default is a 700 ms fade, slow enough to feel like lag.
                 // Spatial: forward pushes slide in from the right / slide out to the left,

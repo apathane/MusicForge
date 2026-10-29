@@ -301,7 +301,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 
         SectionTitle("General")
         Group {
-            val start = prefs?.get(Keys.StartScreen) ?: Tab.Home.route
+            val start = prefs?.get(Keys.StartScreen)?.let { raw -> Tab.entries.firstOrNull { it.route.equals(raw, true) || it.name.equals(raw, true) }?.route } ?: Tab.Home.route
             ChoiceRow("Start screen", Tab.entries.map { it.route to it.label }, start) { vm.set(Keys.StartScreen, it) }
             ToggleRow("Keep screen on", prefs?.get(Keys.KeepScreenOn) ?: false) { vm.set(Keys.KeepScreenOn, it) }
             ToggleRow("Haptics", prefs?.get(Keys.HapticsEnabled) ?: true, subtitle = "Button presses, long-presses and swipe-to-skip") { vm.set(Keys.HapticsEnabled, it) }
