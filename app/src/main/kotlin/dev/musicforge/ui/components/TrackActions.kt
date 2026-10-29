@@ -6,7 +6,14 @@ import android.content.Intent
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,40 +24,53 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
 import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
+import dev.musicforge.data.db.FormatEntity
+import dev.musicforge.data.db.SongStats
 import dev.musicforge.graph
+import dev.musicforge.ui.CollectionKind
+import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.Routes
+import dev.musicforge.ui.player.clock
+import dev.musicforge.ui.player.codecPill
+import dev.musicforge.playback.albumId
+import dev.musicforge.playback.credits
+import dev.musicforge.playback.durationSec
 
-/** Download state of one song, small enough to sit at the end of a row. */
 @OptIn(UnstableApi::class)
 @Composable
 fun DownloadBadge(id: String) {
@@ -87,11 +107,22 @@ fun TrackActionsSheet(
 ) {
     val context = LocalContext.current
     val graph = context.graph
+    val nav = LocalNavController.current
     val download by remember(item.mediaId) { graph.downloads.state(item.mediaId) }.collectAsStateWithLifecycle(null)
     val liked by remember(item.mediaId) { graph.database.dao().isLiked(item.mediaId) }.collectAsStateWithLifecycle(null)
-    var picking by remember { mutableStateOf(false) }
-    val bitrate by androidx.compose.runtime.produceState<Int?>(null, item.mediaId) { value = graph.database.dao().format(item.mediaId)?.bitrate }
+    // "Remove from history" only appears when there's history to remove (plays > 0).
+    val stats by produceState<SongStats?>(null, item.mediaId) {
+        value = graph.database.dao().statsFor(item.mediaId)
+    }
+    val pickedPlaylist = remember { mutableStateOf(false) }
+    val showingInfo = remember { mutableStateOf(false) }
     val meta = item.mediaMetadata
+    val downloaded = download?.state == Download.STATE_COMPLETED
+
+    if (showingInfo.value) {
+        SongInfoDialog(item, onDismiss = { showingInfo.value = false })
+    }
+
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
             Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -111,15 +142,15 @@ fun TrackActionsSheet(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            if (picking) {
+            if (pickedPlaylist.value) {
                 PlaylistPicker(item, onDone = onDismiss)
                 return@Column
             }
+            // Order follows the music-app convention (Metrolist/BitChord): queue, station, save,
+            // then the download lifecycle, then navigation and the song's own details.
             Action(ForgeIcons.Next, "Play next") { graph.player.playNext(item); onDismiss() }
-            // Radio: a station seeded from this song (endless play takes it from there).
+            Action(ForgeIcons.Queue, "Add to queue") { graph.player.addToQueue(item); onDismiss() }
             Action(ForgeIcons.Radio, "Start radio") { graph.player.startRadio(item); onDismiss() }
-            // A heart that's full needs a moment to decide it's hollow — 140 in, 120 out,
-            // because breaking up is harder than making up (and the colour fades faster than the shape).
             AnimatedContent(
                 targetState = liked == true,
                 transitionSpec = {
@@ -142,14 +173,10 @@ fun TrackActionsSheet(
                     Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
                 }
             }
-            Action(ForgeIcons.PlaylistAdd, "Add to playlist") { picking = true }
+            Action(ForgeIcons.PlaylistAdd, "Add to playlist") { pickedPlaylist.value = true }
             extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
             when (download?.state) {
                 Download.STATE_COMPLETED -> {
-                    // Downloaded at one of YouTube's low-quality formats (on mobile data, say).
-                    if (dev.musicforge.download.Upgrades.isLow(bitrate) && download?.request?.customCacheKey.let { it == null || it == item.mediaId }) {
-                        Action(ForgeIcons.Download, "Re-download in high quality") { graph.downloads.upgrade(item.mediaId); onDismiss() }
-                    }
                     Action(ForgeIcons.Download, "Remove download") { graph.downloads.remove(item.mediaId); onDismiss() }
                 }
                 Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING -> Action(ForgeIcons.Download, "Cancel download") {
@@ -160,7 +187,102 @@ fun TrackActionsSheet(
                     graph.downloads.download(listOf(item)); onDismiss()
                 }
             }
+            // Share is always available for a YouTube track — the id is the link.
+            Action(ForgeIcons.Share, "Share") { shareTrack(context, item); onDismiss() }
+            // Navigate before dismissing so the sheet doesn't swallow the pop.
+            meta.albumId?.let { album ->
+                Action(ForgeIcons.Album, "Go to album") { nav.navigate(Routes.collection(CollectionKind.ALBUM, album)); onDismiss() }
+            }
+            meta.credits.firstOrNull { it.id != null }?.let { artist ->
+                Action(ForgeIcons.Person, "Go to artist") { nav.navigate(Routes.artist(artist.id!!)); onDismiss() }
+            }
+            Action(ForgeIcons.Info, "Song info") { showingInfo.value = true }
+            if (stats?.plays ?: 0 > 0) {
+                Action(ForgeIcons.History, "Remove from history") { graph.library.removeFromHistory(item); onDismiss() }
+            }
+            // Only offer to clear the stream cache — a finished download's bytes live elsewhere.
+            if (!downloaded) {
+                Action(ForgeIcons.MusicNote, "Remove from cache") { graph.mediaEngine.removeFromCache(item.mediaId); onDismiss() }
+            }
         }
+    }
+}
+
+/**
+ * "Title – Artist https://music.youtube.com/watch?v=<id>" — kept pure so a unit test pins the
+ * exact format Metrolist/ConvX/YouTube expect. Two spaces, one en dash: looks tidy pasted into
+ * a tweet and parses as a title, artist, then a link.
+ */
+fun shareText(title: String?, artist: String?, videoId: String): String {
+    val t = title?.takeIf { it.isNotBlank() }.orEmpty()
+    val a = artist?.takeIf { it.isNotBlank() }.orEmpty()
+    return "$t – $a https://music.youtube.com/watch?v=$videoId"
+}
+
+private fun shareTrack(context: Context, item: MediaItem) {
+    val meta = item.mediaMetadata
+    val intent = Intent().apply {
+        action = Intent.ACTION_SEND
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText(meta.title?.toString(), meta.artist?.toString(), item.mediaId))
+    }
+    context.startActivity(Intent.createChooser(intent, null))
+}
+
+/**
+ * A small in-sheet fact card for a track — title, artists, album, duration, format, loudness,
+ * play count and total time, and the video id with a copy action. A dialog, not a bottom sheet:
+ * it's the size of the details, and the menu already is the sheet.
+ */
+@Composable
+private fun SongInfoDialog(item: MediaItem, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val graph = context.graph
+    val meta = item.mediaMetadata
+    val format by produceState<FormatEntity?>(null, item.mediaId) {
+        value = graph.database.dao().format(item.mediaId)
+    }
+    val stats by produceState<SongStats?>(null, item.mediaId) {
+        value = graph.database.dao().statsFor(item.mediaId)
+    }
+    val clipboard = LocalClipboardManager.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Song info") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                infoRow("Title", meta.title?.toString())
+                infoRow("Artist", meta.credits.joinToString(separator = ", ") { it.name })
+                infoRow("Album", meta.albumTitle?.toString())
+                meta.durationSec?.let { sec -> infoRow("Duration", clock(sec * 1000L)) }
+                infoRow("Format", format?.let { codecPill(it.mimeType, it.codecs, it.bitrate) })
+                infoRow("Sample rate", format?.sampleRate?.let { "$it Hz" })
+                format?.loudnessDb?.let { infoRow("Loudness", "$it LUFS") }
+                infoRow("Play count", (stats?.plays ?: 0).toString())
+                infoRow("Total time", clock(stats?.timeMs ?: 0L))
+                // The one row that wants a button, not just text: copy the video id for a link.
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(item.mediaId, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        clipboard.setText(AnnotatedString(item.mediaId))
+                    }) { Icon(ForgeIcons.MusicNote, contentDescription = null) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onDismiss) { Text("Done") } },
+    )
+}
+
+@Composable
+private fun infoRow(label: String, value: String?) {
+    val v = value?.trim()
+    if (v.isNullOrEmpty()) return
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(v, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(2f))
     }
 }
 
@@ -168,27 +290,35 @@ fun TrackActionsSheet(
 private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
     val graph = LocalContext.current.graph
     val playlists by remember { graph.database.dao().playlists() }.collectAsStateWithLifecycle(emptyList())
-    var naming by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    if (naming) {
+    val naming = remember { mutableStateOf(false) }
+    if (naming.value) {
+        val name = remember { mutableStateOf("") }
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+            OutlinedTextField(
+                value = name.value,
+                onValueChange = { name.value = it },
                 singleLine = true,
                 placeholder = { Text("Playlist name") },
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(10.dp))
-            PillButton("Create", onClick = { graph.library.createPlaylist(name, item); onDone() })
+            PillButton("Create", onClick = { graph.library.createPlaylist(name.value, item); onDone() })
         }
         return
     }
-    Action(ForgeIcons.PlaylistAdd, "New playlist") { naming = true }
-    androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
+    TextButton({ naming.value = true }) { Text("+ New playlist") }
+    androidx.compose.foundation.lazy.LazyColumn(
+        Modifier
+            .fillMaxWidth()
+            .height(320.dp),
+        verticalArrangement = Arrangement.Top,
+    ) {
         items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
             Row(
-                Modifier.fillMaxWidth().animateItem(tween(220)).clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
+                Modifier
+                    .fillMaxWidth()
+                    .animateItem(tween(220))
+                    .clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
                     .padding(horizontal = 24.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -204,10 +334,24 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
 }
 
 @Composable
+private fun PillButton(text: String, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.pressScale(press),
+        interactionSource = press,
+    ) { Text(text) }
+}
+
+@Composable
 private fun Action(icon: ImageVector, label: String, onClick: () -> Unit) {
     val press = remember { MutableInteractionSource() }
     Row(
-        Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
+        Modifier
+            .fillMaxWidth()
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))
@@ -219,6 +363,7 @@ private fun Action(icon: ImageVector, label: String, onClick: () -> Unit) {
 /**
  * MagicOS (and other aggressive OEM skins) stop background work unless the app is exempt
  * from battery optimisation. Ask once, at the moment it matters: the first download.
+ * Not a joke — the system really will kill the download thread otherwise.
  */
 @SuppressLint("BatteryLife")
 fun askToRunInBackground(context: Context) {
