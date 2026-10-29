@@ -64,6 +64,10 @@ object Keys {
     val EqPreset = str("forge.eqPreset")
     /** Hide the top bar (status bar scrim and screen headers) for an edge-to-edge canvas. */
     val HideTopBar = bool("forge.hideTopBar")
+    /** Comma-separated Home shelf IDs in the listener's chosen order; empty means default order. */
+    val HomeOrder = str("forge.homeOrder")
+    /** Comma-separated Home shelf IDs the listener hid; empty means none hidden. */
+    val HomeHidden = str("forge.homeHidden")
     // Same names as the upstream app that has ListenBrainz, so a restore brings it along.
     val ListenBrainzToken = str("listenbrainz_token")
     val ListenBrainzEnabled = bool("listenbrainz_enabled")

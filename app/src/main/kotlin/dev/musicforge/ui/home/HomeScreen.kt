@@ -2,36 +2,44 @@ package dev.musicforge.ui.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -81,6 +89,7 @@ fun HomeRoot() {
         HomeViewModel(
             HomeRepository(graph.database.dao(), graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.SuggestionsPaused] == true }.distinctUntilChanged()),
             graph.player,
+            graph.settings,
             welcomeDismissed = once.getBoolean("welcomeDismissed", false),
             onWelcomeDismissed = { once.edit().putBoolean("welcomeDismissed", true).apply() },
             // Does nothing when signed out (AccountSync checks the cookie).
@@ -159,6 +168,8 @@ fun HomeScreen(
 
 @Composable
 private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
+    var menuExpanded by rememberSaveable { mutableStateOf(false) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     when (section.layout) {
         // The first shelf leads with a hero: the song you were last on, big, with its cover as the room.
         HomeLayout.SHELF if section.id == "jump-back-in" -> Column {
@@ -177,7 +188,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
         }
         HomeLayout.SHELF -> Column {
-            SectionHeader(section.title, section.reason)
+            ShelfHeader(section.title, section.reason) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+            }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(section.items, key = { _, it -> it.key }) { i, item ->
                     (item as? HomeItem.Track)?.let {
@@ -188,9 +201,23 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 }
             }
         }
+        HomeLayout.ARTISTS -> Column {
+            ShelfHeader(section.title, section.reason) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+            }
+            LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(section.items, key = { it.key }) { item ->
+                    val artist = item as? HomeItem.Artist ?: return@items
+                    val isTop = section.items.indexOfFirst { it is HomeItem.Artist } == section.items.indexOf(item)
+                    ArtistCard(artist.artist, { onAction(HomeAction.OpenArtist(artist.artist.channelId ?: artist.artist.id)) }, isTop = isTop)
+                }
+            }
+        }
         HomeLayout.ROWS -> Column {
             Row(verticalAlignment = Alignment.Bottom) {
-                SectionHeader(section.title, section.reason, Modifier.weight(1f))
+                ShelfHeader(section.title, section.reason, Modifier.weight(1f)) {
+                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+                }
                 Text(
                     "See all",
                     style = MaterialTheme.typography.labelLarge,
@@ -205,7 +232,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
         }
         HomeLayout.PLAYLISTS -> Column {
-            SectionHeader(section.title, section.reason)
+            ShelfHeader(section.title, section.reason) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menuExpanded = true
+            }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(section.items, key = { it.key }) { item ->
                     (item as? HomeItem.Playlist)?.let { PlaylistCard(it.playlist) { onAction(HomeAction.OpenPlaylist(it.playlist.playlist.id)) } }
@@ -223,6 +252,46 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             Text(section.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(section.stat.orEmpty(), style = MaterialTheme.typography.headlineLarge)
             Text(section.reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (menuExpanded) {
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Hide this shelf") },
+                onClick = { onAction(HomeAction.HideShelf(section.id)); menuExpanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text("Move up") },
+                onClick = { onAction(HomeAction.MoveShelf(section.id, -1)); menuExpanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text("Move down") },
+                onClick = { onAction(HomeAction.MoveShelf(section.id, 1)); menuExpanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text("Customise Home") },
+                onClick = { onAction(HomeAction.CustomiseHome); menuExpanded = false },
+            )
+        }
+    }
+}
+
+/** Section header with a long-press to open the shelf menu. */
+@Composable
+private fun ShelfHeader(title: String, reason: String?, modifier: Modifier = Modifier, onLongPress: () -> Unit) {
+    Column(modifier.combinedClickable(onLongClick = { onLongPress() }, onClick = {}).padding(start = Signal.gutter, end = Signal.gutter, top = 22.dp, bottom = 10.dp)) {
+        Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (!reason.isNullOrEmpty()) {
+            Text(
+                reason,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -273,6 +342,67 @@ private fun PlaylistCard(p: PlaylistSummary, onClick: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(if (p.songCount == 1) "1 song" else "${p.songCount} songs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Artist portrait card: a large circle or squircle with the name overlaid on a soft
+ * ambience-coloured base sampled from the portrait. Staggered sizes for the top artist
+ * feel from BitChord and ConvX artist cards — the first artist gets the larger tile.
+ * The name floats over a gradient so it reads on any portrait; no artist was harmed
+ * in the making of this card, though the color sampling may judge your music taste.
+ */
+@Composable
+private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean = false) {
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val size = if (isTop) 104.dp else 88.dp
+    val shape = if (isTop) RoundedCornerShape(48.dp) else RoundedCornerShape(40.dp)
+    // A theme surface under the portrait, not a per-card palette: sampling every artist image
+    // on a scrolling shelf costs more than the hint of colour is worth on the X7b.
+    val baseColor = MaterialTheme.colorScheme.surfaceVariant
+    val nameColor = Color.White
+    Column(
+        Modifier.width(size).pressScale(press).combinedClickable(interactionSource = press, indication = null, onClick = onClick),
+    ) {
+        Box(
+            Modifier
+                .size(size)
+                .clip(shape)
+                .background(baseColor),
+        ) {
+            Artwork(artist.thumbnailUrl, size, corner = if (isTop) 48.dp else 40.dp)
+            // Name overlaid on a soft gradient legibility base so it reads over any portrait.
+            if (isTop) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .graphicsLayer { alpha = 0.88f }
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.55f),
+                            ),
+                        ),
+                ) {
+                    Text(
+                        artist.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = nameColor,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
+        }
+        if (!isTop) {
+            Spacer(Modifier.height(8.dp))
+            Text(artist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

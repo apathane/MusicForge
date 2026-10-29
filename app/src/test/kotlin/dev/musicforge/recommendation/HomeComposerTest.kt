@@ -2,6 +2,7 @@ package dev.musicforge.recommendation
 
 import com.google.common.truth.Truth.assertThat
 import dev.musicforge.data.db.ArtistEntity
+import dev.musicforge.data.db.ArtistStat
 import dev.musicforge.data.db.PlaylistEntity
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.data.db.Song
@@ -11,6 +12,9 @@ import org.junit.Test
 class HomeComposerTest {
     private fun song(id: String, artist: String = "a-$id") =
         Song(SongEntity(id = id, title = "Song $id"), listOf(ArtistEntity(id = artist, name = "Artist $artist")))
+
+    private fun artistStat(id: String, name: String, plays: Int = 5, timeMs: Long = 60_000L) =
+        ArtistStat(ArtistEntity(id = id, name = name), plays = plays, timeMs = timeMs)
 
     @Test
     fun cleanInstallShowsNoSectionsAtAll() {
@@ -35,6 +39,7 @@ class HomeComposerTest {
         assertThat(sections.first { it.id == "your-downloads" }.reason).isEqualTo("2113 songs play offline")
         assertThat(sections.last().stat).isEqualTo("3 h 5 min")
         assertThat(sections.last().reason).isEqualTo("Mostly Portishead")
+        assertThat(sections.last().title).isEqualTo("Your week")
     }
 
     @Test
@@ -136,5 +141,89 @@ class HomeComposerTest {
     fun sameSignalsGiveTheSameHome() {
         val s = LocalSignals(recent = listOf(song("a"), song("b")), rotation = (1..4).map { song("t$it") to 2 })
         assertThat(HomeComposer.compose(s)).isEqualTo(HomeComposer.compose(s))
+    }
+
+    @Test
+    fun customOrderReordersSections() {
+        val signals = LocalSignals(recent = listOf(song("r")), rotation = (1..3).map { song("t$it") to 3 })
+        val default = HomeComposer.compose(signals).map { it.id }
+        val reordered = HomeComposer.compose(signals, order = listOf("your-rotation", "jump-back-in")).map { it.id }
+        assertThat(reordered).isEqualTo(listOf("your-rotation", "jump-back-in"))
+        assertThat(default).isNotEqualTo(reordered)
+    }
+
+    @Test
+    fun hiddenShelvesAreSkipped() {
+        val signals = LocalSignals(recent = listOf(song("r")))
+        val all = HomeComposer.compose(signals).map { it.id }
+        val hidden = HomeComposer.compose(signals, hidden = setOf("jump-back-in")).map { it.id }
+        assertThat(hidden).doesNotContain("jump-back-in")
+        assertThat(all.minus("jump-back-in")).isEqualTo(hidden)
+    }
+
+    @Test
+    fun orderAndHiddenCombine() {
+        val signals = LocalSignals(
+            recent = listOf(song("r")),
+            rotation = (1..3).map { song("t$it") to 3 },
+        )
+        val sections = HomeComposer.compose(signals, order = listOf("your-rotation"), hidden = setOf("jump-back-in"))
+        assertThat(sections.map { it.id }).containsExactly("your-rotation")
+    }
+
+    @Test
+    fun artistShedAppearsWithTopArtists() {
+        val artist = artistStat("ar1", "Portishead", plays = 20, timeMs = 300_000L)
+        val signals = LocalSignals(
+            rotation = (1..3).map { song("t$it") to 3 },
+            topArtists = listOf(artist),
+        )
+        val sections = HomeComposer.compose(signals)
+        assertThat(sections.map { it.id }).contains("your-artists")
+        val shelf = sections.first { it.id == "your-artists" }
+        assertThat(shelf.layout).isEqualTo(HomeLayout.ARTISTS)
+        assertThat(shelf.items).hasSize(1)
+        assertThat((shelf.items.first() as HomeItem.Artist).artist.id).isEqualTo("ar1")
+    }
+
+    @Test
+    fun artistShedNotShownWhenEmpty() {
+        val signals = LocalSignals(recent = listOf(song("r")))
+        assertThat(HomeComposer.compose(signals).map { it.id }).doesNotContain("your-artists")
+    }
+
+    @Test
+    fun streakShownOnYourWeek() {
+        val signals = LocalSignals(
+            weekMs = 2 * 60 * 60_000L,
+            topArtistThisWeek = "Portishead",
+            streakDays = 5,
+        )
+        val stats = HomeComposer.compose(signals).first { it.id == "listening" }
+        assertThat(stats.title).isEqualTo("Your week")
+        assertThat(stats.reason).contains("5-day streak")
+    }
+
+    @Test
+    fun streakNotShownWhenBelowTwoDays() {
+        val signals = LocalSignals(
+            weekMs = 2 * 60 * 60_000L,
+            topArtistThisWeek = "Portishead",
+            streakDays = 1,
+        )
+        val stats = HomeComposer.compose(signals).first { it.id == "listening" }
+        assertThat(stats.reason).doesNotContain("streak")
+    }
+
+    @Test
+    fun statsNotShownWhenNoWeekMsAndNoStreak() {
+        val signals = LocalSignals(streakDays = 0)
+        assertThat(HomeComposer.compose(signals).map { it.id }).doesNotContain("listening")
+    }
+
+    @Test
+    fun statsShownWhenOnlyStreak() {
+        val signals = LocalSignals(weekMs = 0, streakDays = 3)
+        assertThat(HomeComposer.compose(signals).map { it.id }).contains("listening")
     }
 }

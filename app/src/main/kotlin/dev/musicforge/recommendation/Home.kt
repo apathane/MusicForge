@@ -1,12 +1,13 @@
 package dev.musicforge.recommendation
 
+import dev.musicforge.data.db.ArtistEntity
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.data.db.Song
 
 /** Where a Home item came from. Every item carries one; nothing is shown without a real source. */
 enum class Provenance { LOCAL_LIBRARY, YOUTUBE_ACCOUNT, YOUTUBE_CATALOG, MOOD_CURATED, EXTERNAL_SIGNAL }
 
-enum class HomeLayout { SHELF, ROWS, PLAYLISTS, STATS }
+enum class HomeLayout { SHELF, ROWS, PLAYLISTS, STATS, ARTISTS }
 
 /** One thing Home can show: a song from the library, or a playlist to open. */
 sealed interface HomeItem {
@@ -19,6 +20,10 @@ sealed interface HomeItem {
 
     data class Playlist(val playlist: PlaylistSummary, override val provenance: Provenance = Provenance.LOCAL_LIBRARY) : HomeItem {
         override val key get() = "p:" + playlist.playlist.id
+    }
+
+    data class Artist(val artist: ArtistEntity, override val provenance: Provenance = Provenance.YOUTUBE_ACCOUNT) : HomeItem {
+        override val key get() = "a:" + artist.id
     }
 }
 
@@ -46,6 +51,10 @@ data class LocalSignals(
     val likedCount: Int = 0,
     val weekMs: Long = 0,
     val topArtistThisWeek: String? = null,
+    /** Artists you've been listening to this month, descending by play time. */
+    val topArtists: List<dev.musicforge.data.db.ArtistStat> = emptyList(),
+    /** Consecutive play days ending today; 0 when you haven't played anything. */
+    val streakDays: Int = 0,
     /** Songs played at this hour of the day (±1 h) across history, with play counts. */
     val aroundNow: List<Pair<Song, Int>> = emptyList(),
     /** The hour [aroundNow] is about, 0..23. */
@@ -72,20 +81,33 @@ data class LocalSignals(
 object HomeComposer {
     const val MAX_PER_ARTIST = 2
     private const val SHELF = 12
+    /** Default shelf order; the listener can reorder via DataStore. */
+    val DEFAULT_ORDER = listOf("jump-back-in", "around-this-hour", "your-rotation", "your-artists", "liked-then-forgotten", "your-downloads", "from-your-library", "listening")
 
-    fun compose(signals: LocalSignals): List<HomeSection> {
+    /**
+     * Builds Home from the listener's own library, deterministically: the same signals always give
+     * the same sections. A section appears only when it has real items, so a clean install shows
+     * the welcome state and nothing invented.
+     *
+     * [order] overrides the default shelf order; [hidden] skips shelves the listener hid.
+     */
+    fun compose(signals: LocalSignals, order: List<String>? = null, hidden: Set<String> = emptySet()): List<HomeSection> {
         val s = signals.corrected()
         // Each shelf skips what a shelf above already shows.
         val shown = HashSet<String>()
-        return listOfNotNull(
+        val built = listOfNotNull(
             jumpBackIn(s)?.also { shown += it.ids() },
             aroundThisHour(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
             rotation(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+            artists(s, shown)?.takeUnless { s.isPaused }?.also { /* artists tracked separately */ },
             forgotten(s, shown)?.takeUnless { s.isPaused },
             downloads(s),
             library(s),
             stats(s),
-        )
+        ).filterNot { it.id in hidden }
+        if (order.isNullOrEmpty()) return built
+        val map = built.associateBy { it.id }
+        return order.mapNotNull { map[it] } + built.filterNot { it.id in order }
     }
 
     /**
@@ -106,7 +128,7 @@ object HomeComposer {
     }
 
     /** The shelves that suggest rather than report; "Less of <artist>" only means something here. */
-    val SUGGESTIONS = setOf("around-this-hour", "your-rotation", "liked-then-forgotten")
+    val SUGGESTIONS = setOf("around-this-hour", "your-rotation", "your-artists", "liked-then-forgotten")
 
     private fun HomeSection.ids() = items.filterIsInstance<HomeItem.Track>().map { it.song.id }
 
@@ -145,6 +167,15 @@ object HomeComposer {
             HomeSection("your-rotation", "Your rotation", "On repeat this month", HomeLayout.SHELF, it)
         }
 
+    /** The artists you've been listening to this month, largest first. */
+    private fun artists(s: LocalSignals, shown: Set<String>): HomeSection? =
+        s.topArtists.takeIf { it.isNotEmpty() }?.let { stats ->
+            HomeSection(
+                "your-artists", "Your artists", s.topArtistThisWeek?.let { "Mostly $it" } ?: "The artists you play most",
+                HomeLayout.ARTISTS, stats.map { HomeItem.Artist(it.artist) },
+            )
+        }
+
     /** Likes that slipped away, a different handful each day. */
     private fun forgotten(s: LocalSignals, shown: Set<String>) =
         pick(s.forgotten.shuffled(kotlin.random.Random(s.daySeed)).asSequence(), shown)?.let {
@@ -173,10 +204,12 @@ object HomeComposer {
 
     private fun stats(s: LocalSignals): HomeSection? {
         val minutes = s.weekMs / 60_000
-        if (minutes < 1) return null
+        if (minutes < 1 && s.streakDays < 2) return null
         val time = if (minutes >= 120) "${minutes / 60} h ${minutes % 60} min" else "$minutes min"
+        val reason = s.topArtistThisWeek?.let { "Mostly $it" } ?: "Your listening"
+        val withStreak = if (s.streakDays >= 2) "$reason · ${s.streakDays}-day streak" else reason
         return HomeSection(
-            "listening", "Last 7 days", s.topArtistThisWeek?.let { "Mostly $it" } ?: "Your listening",
+            "listening", "Your week", withStreak,
             HomeLayout.STATS, stat = time,
         )
     }

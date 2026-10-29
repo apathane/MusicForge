@@ -221,6 +221,10 @@ interface MusicDao {
     @Query("SELECT COUNT(DISTINCT songId) FROM event WHERE timestamp >= :since")
     fun distinctSongs(since: Long): Flow<Int>
 
+    /** Distinct local-play days (YYYY-MM-DD) in the last [limit] calendar days, newest first. */
+    @Query("SELECT DISTINCT strftime('%Y-%m-%d', timestamp / 1000, 'unixepoch', 'localtime') FROM event ORDER BY 1 DESC LIMIT :limit")
+    suspend fun playDays(limit: Int = 14): List<String>
+
     /** Songs you have (in library, liked, downloaded or played) matching title or artist. */
     @Transaction
     @Query(
