@@ -41,31 +41,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.pressScale
-import dev.musicforge.ui.LocalHideTopBar
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 
-/** Big, heavy page title in the BitChord style, with an optional trailing action.
- *  With "Hide top bar" on, only the big title collapses: the status-bar inset and the action
- *  (often the only way into Settings) stay, so nothing slides under the clock. */
+/** Big, heavy page title in the BitChord style, with an optional trailing action. */
 @Composable
 fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composable () -> Unit)? = null) {
-    val hideTopBar = LocalHideTopBar.current
-    val titleAlpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
     Row(
         Modifier
             .fillMaxWidth()
             // Under a back-button row the status bar is already accounted for.
             .then(if (belowBackRow) Modifier else Modifier.statusBarsPadding())
-            .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow || hideTopBar) 0.dp else 16.dp, bottom = if (hideTopBar) 0.dp else 8.dp),
+            .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow) 0.dp else 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (titleAlpha > 0.01f) {
-            Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha })
-        } else {
-            Spacer(Modifier.weight(1f))
-        }
+        Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
         action?.invoke()
     }
 }

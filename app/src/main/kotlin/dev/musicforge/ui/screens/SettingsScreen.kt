@@ -442,7 +442,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow(
                 "Hide top bar",
                 prefs?.get(Keys.HideTopBar) ?: false,
-                subtitle = "Hide the big page titles for more room; Settings and back stay",
+                subtitle = "Hide the Android status bar; swipe down from the top to see it",
             ) { vm.set(Keys.HideTopBar, it) }
         }
 
