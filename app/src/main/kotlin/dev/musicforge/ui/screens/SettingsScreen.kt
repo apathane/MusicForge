@@ -176,12 +176,12 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         val ctx = graph.app
         val loader = coil3.SingletonImageLoader.get(ctx)
         loader.memoryCache?.clear()
-        loader.diskCache?.clear()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { loader.diskCache?.clear() }
         android.widget.Toast.makeText(ctx, "Image cache cleared", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     fun clearSongCache() = viewModelScope.launch {
-        graph.mediaEngine.clearPlayerCache()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.mediaEngine.clearPlayerCache() }
         android.widget.Toast.makeText(graph.app, "Song cache cleared", android.widget.Toast.LENGTH_SHORT).show()
     }
 
@@ -355,29 +355,6 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
         SectionTitle("Storage")
         Group {
             // Cache so big it has its own gravitational pull? Tap to clear.
-            val imageMb = prefs?.get(Keys.MaxImageCacheSizeMb) ?: 50
-            var showCacheDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-            ActionRow("Image cache size", "$imageMb MB · tap to change") { showCacheDialog = true }
-            if (showCacheDialog) {
-                val input = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(imageMb.toString()) }
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showCacheDialog = false },
-                    title = { Text("Image cache size") },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Cache live images and covers in this much space (MB).", style = MaterialTheme.typography.bodyMedium)
-                            androidx.compose.material3.OutlinedTextField(
-                                value = input.value,
-                                onValueChange = { input.value = it.filter { c -> c.isDigit() } },
-                                singleLine = true,
-                                label = { Text("MB") },
-                            )
-                        }
-                    },
-                    confirmButton = { TextButton({ vm.set(Keys.MaxImageCacheSizeMb, input.value.toIntOrNull() ?: 50); showCacheDialog = false }) { Text("Save") } },
-                    dismissButton = { TextButton({ showCacheDialog = false }) { Text("Cancel") } },
-                )
-            }
             var imgSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
             LaunchedEffect(Unit) {
                 imgSize = coil3.SingletonImageLoader.get(context).diskCache?.size ?: 0L
