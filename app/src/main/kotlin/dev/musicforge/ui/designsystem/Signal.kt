@@ -1,5 +1,7 @@
 package dev.musicforge.ui.designsystem
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -8,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
@@ -53,11 +57,16 @@ fun SectionHeader(title: String, reason: String?, modifier: Modifier = Modifier)
 /** Filter, mood and period chips: one selected look, ink on canvas inverted. */
 @Composable
 fun SignalChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    // Chips pop in on first appearance (EaseBackOut) — one read of [pop] in the draw phase,
+    // so the row of them typesets without recomposing as they land.
+    val pop = remember { Animatable(0.9f) }
+    LaunchedEffect(Unit) { pop.animateTo(1f, tween(Motion.Arrive, easing = Motion.EaseBackOut)) }
     Text(
         label,
         style = MaterialTheme.typography.labelLarge,
         color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
+            .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
             .clip(RoundedCornerShape(percent = 50))
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
