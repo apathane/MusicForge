@@ -75,7 +75,6 @@ import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.ui.designsystem.signalSurface
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.openItem
-import dev.musicforge.ui.theme.rememberImagePalette
 import dev.musicforge.ui.theme.ForgeTheme
 import java.util.Calendar
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -358,10 +357,10 @@ private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val size = if (isTop) 104.dp else 88.dp
     val shape = if (isTop) RoundedCornerShape(48.dp) else RoundedCornerShape(40.dp)
-    // Sample the portrait for a soft base colour so each card carries a hint of its image.
-    val palette = rememberImagePalette(artist.thumbnailUrl)
-    val baseColor = palette.ambient.takeIf { it != Color.Unspecified } ?: MaterialTheme.colorScheme.surfaceContainer
-    val nameColor = if (isTop) palette.onAccent.takeIf { it != Color.Unspecified } ?: Color.White else Color.Unspecified
+    // A theme surface under the portrait, not a per-card palette: sampling every artist image
+    // on a scrolling shelf costs more than the hint of colour is worth on the X7b.
+    val baseColor = MaterialTheme.colorScheme.surfaceVariant
+    val nameColor = Color.White
     Column(
         Modifier.width(size).pressScale(press).combinedClickable(interactionSource = press, indication = null, onClick = onClick),
     ) {
@@ -393,7 +392,7 @@ private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
+                            .align(Alignment.Center)
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
