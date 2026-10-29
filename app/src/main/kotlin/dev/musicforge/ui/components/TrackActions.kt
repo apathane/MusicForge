@@ -1,11 +1,11 @@
 package dev.musicforge.ui.components
 
 import android.annotation.SuppressLint
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -38,17 +38,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
@@ -57,12 +56,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
-import dev.musicforge.R
 import dev.musicforge.data.db.FormatEntity
 import dev.musicforge.data.db.SongStats
 import dev.musicforge.graph
 import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.player.clock
 import dev.musicforge.ui.player.codecPill
@@ -101,7 +100,7 @@ fun TrackActionsSheet(
     extra: List<Pair<String, () -> Unit>> = emptyList(),
     /** Why a suggestion is on screen ("Why this?"), shown under the title. */
     why: String? = null,
-    onDismiss: () => Unit,
+    onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val graph = context.graph
@@ -112,13 +111,13 @@ fun TrackActionsSheet(
     val stats by produceState<SongStats?>(null, item.mediaId) {
         value = graph.database.dao().statsFor(item.mediaId)
     }
-    var pickedPlaylist by rememberSaveable { mutableStateOf(false) }
-    var showingInfo by rememberSaveable { mutableStateOf(false) }
+    val pickedPlaylist = remember { mutableStateOf(false) }
+    val showingInfo = remember { mutableStateOf(false) }
     val meta = item.mediaMetadata
     val downloaded = download?.state == Download.STATE_COMPLETED
 
-    if (showingInfo) {
-        SongInfoDialog(item, onDismiss = { showingInfo = false })
+    if (showingInfo.value) {
+        SongInfoDialog(item, onDismiss = { showingInfo.value = false })
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
@@ -140,7 +139,7 @@ fun TrackActionsSheet(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            if (pickedPlaylist) {
+            if (pickedPlaylist.value) {
                 PlaylistPicker(item, onDone = onDismiss)
                 return@Column
             }
@@ -160,7 +159,7 @@ fun TrackActionsSheet(
                     Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
                 }
             }
-            Action(ForgeIcons.PlaylistAdd, "Add to playlist") { pickedPlaylist = true }
+            Action(ForgeIcons.PlaylistAdd, "Add to playlist") { pickedPlaylist.value = true }
             extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
             when (download?.state) {
                 Download.STATE_COMPLETED -> {
@@ -183,7 +182,7 @@ fun TrackActionsSheet(
             meta.credits.firstOrNull { it.id != null }?.let { artist ->
                 Action(ForgeIcons.Person, "Go to artist") { nav.navigate(Routes.artist(artist.id!!)); onDismiss() }
             }
-            Action(ForgeIcons.Info, "Song info") { showingInfo = true }
+            Action(ForgeIcons.Info, "Song info") { showingInfo.value = true }
             if (stats?.plays ?: 0 > 0) {
                 Action(ForgeIcons.History, "Remove from history") { graph.library.removeFromHistory(item); onDismiss() }
             }
@@ -221,7 +220,6 @@ private fun shareTrack(context: Context, item: MediaItem) {
  * play count and total time, and the video id with a copy action. A dialog, not a bottom sheet:
  * it's the size of the details, and the menu already is the sheet.
  */
-@OptIn(UnstableApi::class)
 @Composable
 private fun SongInfoDialog(item: MediaItem, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -255,7 +253,7 @@ private fun SongInfoDialog(item: MediaItem, onDismiss: () -> Unit) {
                 ) {
                     Text(item.mediaId, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                     IconButton(onClick = {
-                        clipboard.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.song_info_copied), item.mediaId))
+                        clipboard.setText(AnnotatedString(item.mediaId))
                     }) { Icon(ForgeIcons.MusicNote, contentDescription = null) }
                 }
             }
@@ -274,28 +272,27 @@ private fun infoRow(label: String, value: String?) {
     }
 }
 
-@OptIn(UnstableApi::class)
 @Composable
 private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
     val graph = LocalContext.current.graph
     val playlists by remember { graph.database.dao().playlists() }.collectAsStateWithLifecycle(emptyList())
-    val (naming, setNaming) = rememberSaveable { mutableStateOf(false) }
-    if (naming) {
-        var name by rememberSaveable { mutableStateOf("") }
+    val naming = remember { mutableStateOf(false) }
+    if (naming.value) {
+        val name = remember { mutableStateOf("") }
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = name.value,
+                onValueChange = { name.value = it },
                 singleLine = true,
                 placeholder = { Text("Playlist name") },
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(10.dp))
-            PillButton("Create", onClick = { graph.library.createPlaylist(name, item); onDone() })
+            PillButton("Create", onClick = { graph.library.createPlaylist(name.value, item); onDone() })
         }
         return
     }
-    TextButton({ setNaming(true) }) { Text("+ New playlist") }
+    TextButton({ naming.value = true }) { Text("+ New playlist") }
     androidx.compose.foundation.lazy.LazyColumn(
         Modifier
             .fillMaxWidth()
