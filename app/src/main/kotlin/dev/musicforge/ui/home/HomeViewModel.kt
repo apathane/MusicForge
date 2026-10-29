@@ -8,6 +8,8 @@ import com.metrolist.innertube.pages.HomePage
 import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.playback.markedFrom
 import dev.musicforge.playback.toMediaItem
+import androidx.datastore.preferences.core.edit
+import dev.musicforge.data.prefs.Keys
 import dev.musicforge.recommendation.HomeComposer
 import dev.musicforge.recommendation.HomeItem
 import dev.musicforge.recommendation.HomeRepository
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -67,6 +70,12 @@ sealed interface HomeAction {
     data class Hide(val songId: String) : HomeAction
     /** "Less of this artist" for a while. */
     data class LessOf(val artistId: String) : HomeAction
+    data object CustomiseHome : HomeAction
+    /** Hide an entire shelf. */
+    data class HideShelf(val id: String) : HomeAction
+    /** Move a shelf up (delta = -1) or down (delta = +1). */
+    data class MoveShelf(val id: String, val delta: Int) : HomeAction
+    data class OpenArtist(val artistId: String) : HomeAction
 }
 
 sealed interface HomeEvent {
@@ -76,6 +85,7 @@ sealed interface HomeEvent {
 class HomeViewModel(
     private val repository: HomeRepository,
     private val player: PlayerConnection,
+    private val settings: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>,
     welcomeDismissed: Boolean,
     private val onWelcomeDismissed: () -> Unit,
     private val refreshAccount: () -> Unit = {},
@@ -86,8 +96,10 @@ class HomeViewModel(
      * Room is read only while Home is on screen: play-time checkpoints rewrite the song table every
      * 30 s, and recomposing Home behind another tab or a locked screen would be wasted work.
      */
-    val state: StateFlow<HomeState> = combine(_state, repository.signals()) { s, signals ->
-        s.copy(sections = HomeComposer.compose(signals), isColdStart = signals.isLibraryEmpty)
+    val state: StateFlow<HomeState> = combine(_state, repository.signals(), settings.data) { s, signals, prefs ->
+        val order = prefs[Keys.HomeOrder].orEmpty().takeIf { it.isNotBlank() }?.split(",")
+        val hidden = prefs[Keys.HomeHidden].orEmpty().takeIf { it.isNotBlank() }?.split(",")?.toSet() ?: emptySet()
+        s.copy(sections = HomeComposer.compose(signals, order, hidden), isColdStart = signals.isLibraryEmpty)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
 
     private val _events = Channel<HomeEvent>()
@@ -122,6 +134,21 @@ class HomeViewModel(
             }
             is HomeAction.Hide -> viewModelScope.launch { repository.hide(action.songId) }
             is HomeAction.LessOf -> viewModelScope.launch { repository.lessOf(action.artistId) }
+            HomeAction.CustomiseHome -> navigate(Routes.CUSTOMISE_HOME)
+            is HomeAction.OpenArtist -> navigate(Routes.artist(action.artistId))
+            is HomeAction.HideShelf -> viewModelScope.launch {
+                settings.edit { it[Keys.HomeHidden] = (it[Keys.HomeHidden]?.takeIf { it.isNotBlank() }?.split(",")?.toMutableSet() ?: mutableSetOf())
+                    .apply { add(action.id) }.joinToString(",") }
+            }
+            is HomeAction.MoveShelf -> viewModelScope.launch {
+                val current = settings.data.first().get(Keys.HomeOrder)?.takeIf { it.isNotBlank() }?.split(",")?.toMutableList() ?: HomeComposer.DEFAULT_ORDER.toMutableList()
+                val idx = current.indexOf(action.id)
+                if (idx < 0) return@launch
+                val newIdx = (idx + action.delta).coerceIn(0, current.lastIndex)
+                if (newIdx == idx) return@launch
+                current.removeAt(idx); current.add(newIdx, action.id)
+                settings.edit { it[Keys.HomeOrder] = current.joinToString(",") }
+            }
         }
     }
 
