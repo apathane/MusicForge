@@ -1,6 +1,9 @@
 package dev.musicforge
 
 import android.app.Application
+import coil3.memory.MemoryCache
+import coil3.request.allowHardware
+import coil3.util.DebugLogger
 import dev.musicforge.data.prefs.Keys
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -21,9 +24,9 @@ class ForgeApp : Application() {
             coil3.ImageLoader.Builder(ctx)
                 .allowHardware(true)
                 .memoryCache {
-                    coil3.memory.MemoryCache.Builder(ctx).maxSizePercent(ctx, 0.20).build()
+                    MemoryCache.Builder().maxSizePercent(ctx, 0.20).build()
                 }
-                .apply { if (BuildConfig.DEBUG) logger(coil3.util.DebugLogger()) }
+                .also { if (BuildConfig.DEBUG) it.logger(DebugLogger()) }
                 .build()
         }
         graph = AppGraph(this)
