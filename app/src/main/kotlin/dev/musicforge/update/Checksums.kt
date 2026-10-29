@@ -39,4 +39,4 @@ internal fun sha256Hex(file: File): String = run {
  * Unlike this digest, it does not change its mind mid-stream.
  */
 internal fun shouldReuseCachedApk(apkFile: File, expectedSha256: String): Boolean =
-    apkFile.exists() && sha256Hex(apkFile) == expectedSha256
+    apkFile.exists() && sha256Hex(apkFile).equals(expectedSha256, ignoreCase = true)
