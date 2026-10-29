@@ -1,5 +1,6 @@
 package dev.musicforge.recommendation
 
+import dev.musicforge.awareness.Awareness
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.data.db.Song
 
@@ -73,19 +74,36 @@ object HomeComposer {
     const val MAX_PER_ARTIST = 2
     private const val SHELF = 12
 
-    fun compose(signals: LocalSignals): List<HomeSection> {
+    fun compose(signals: LocalSignals, awareness: Awareness.Situation = Awareness.Situation.Unknown): List<HomeSection> {
         val s = signals.corrected()
         // Each shelf skips what a shelf above already shows.
         val shown = HashSet<String>()
-        return listOfNotNull(
-            jumpBackIn(s)?.also { shown += it.ids() },
-            aroundThisHour(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
-            rotation(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
-            forgotten(s, shown)?.takeUnless { s.isPaused },
-            downloads(s),
-            library(s),
-            stats(s),
-        )
+        val isOffline = awareness.network == Awareness.NetworkState.Offline
+        
+        // When offline, show downloads first
+        val downloadsFirst = if (isOffline) {
+            listOfNotNull(
+                jumpBackIn(s)?.also { shown += it.ids() },
+                downloads(s, shown)?.also { shown += it.ids() },
+                aroundThisHour(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+                rotation(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+                forgotten(s, shown)?.takeUnless { s.isPaused },
+                library(s),
+                stats(s),
+            )
+        } else {
+            listOfNotNull(
+                jumpBackIn(s)?.also { shown += it.ids() },
+                aroundThisHour(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+                rotation(s, shown)?.takeUnless { s.isPaused }?.also { shown += it.ids() },
+                forgotten(s, shown)?.takeUnless { s.isPaused },
+                downloads(s, shown),
+                library(s),
+                stats(s),
+            )
+        }
+        
+        return downloadsFirst
     }
 
     /**
@@ -158,7 +176,7 @@ object HomeComposer {
         else -> "${h - 12} pm"
     }
 
-    private fun downloads(s: LocalSignals) = s.downloads.take(5).takeIf { it.isNotEmpty() }?.let { songs ->
+    private fun downloads(s: LocalSignals, shown: Set<String> = emptySet()) = s.downloads.take(5).takeIf { it.isNotEmpty() }?.let { songs ->
         val n = s.downloadCount
         HomeSection(
             "your-downloads", "Your downloads",

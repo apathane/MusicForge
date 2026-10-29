@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.pages.HomePage
+import dev.musicforge.awareness.Awareness
 import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.playback.markedFrom
 import dev.musicforge.playback.toMediaItem
@@ -79,6 +80,7 @@ class HomeViewModel(
     welcomeDismissed: Boolean,
     private val onWelcomeDismissed: () -> Unit,
     private val refreshAccount: () -> Unit = {},
+    private val awareness: kotlinx.coroutines.flow.StateFlow<Awareness.Situation> = kotlinx.coroutines.flow.stateOf(Awareness.Situation.Unknown),
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState(isWelcomeDismissed = welcomeDismissed))
 
@@ -86,8 +88,8 @@ class HomeViewModel(
      * Room is read only while Home is on screen: play-time checkpoints rewrite the song table every
      * 30 s, and recomposing Home behind another tab or a locked screen would be wasted work.
      */
-    val state: StateFlow<HomeState> = combine(_state, repository.signals()) { s, signals ->
-        s.copy(sections = HomeComposer.compose(signals), isColdStart = signals.isLibraryEmpty)
+    val state: StateFlow<HomeState> = combine(_state, repository.signals(), awareness) { s, signals, situation ->
+        s.copy(sections = HomeComposer.compose(signals, situation), isColdStart = signals.isLibraryEmpty)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
 
     private val _events = Channel<HomeEvent>()

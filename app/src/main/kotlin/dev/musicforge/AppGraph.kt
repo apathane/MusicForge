@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import androidx.annotation.OptIn
 import androidx.core.content.getSystemService
 import androidx.media3.common.util.UnstableApi
+import dev.musicforge.awareness.Awareness
 import dev.musicforge.data.backup.BackupExporter
 import dev.musicforge.data.backup.BackupImporter
 import dev.musicforge.data.db.MusicDatabase
@@ -14,6 +15,7 @@ import dev.musicforge.download.Downloads
 import dev.musicforge.playback.MediaEngine
 import dev.musicforge.playback.PlayRecorder
 import dev.musicforge.playback.PlayerConnection
+import dev.musicforge.playback.ReadAhead
 import dev.musicforge.playback.StreamResolver
 import dev.musicforge.playback.YouTubeSession
 import kotlinx.coroutines.CoroutineScope
@@ -72,13 +74,21 @@ class AppGraph(val app: Application) {
 
     val recorder by lazy { PlayRecorder(database) }
 
-    val musicExport by lazy { dev.musicforge.download.MusicExport(app, mediaEngine, database.dao(), "MusicForge", lyrics) }
+    val awareness by lazy {
+        Awareness(app, scope)
+    }
 
     val downloads by lazy {
         Downloads(app, mediaEngine, database.dao(), recorder, scope) { id ->
             if (settings.data.first()[Keys.ExportToMusic] == true) musicExport.export(id)
         }
     }
+
+    val readAhead by lazy {
+        ReadAhead(app, mediaEngine, downloads, scope, awareness)
+    }
+
+    val musicExport by lazy { dev.musicforge.download.MusicExport(app, mediaEngine, database.dao(), "MusicForge", lyrics) }
 
     val redownloads by lazy { dev.musicforge.download.Redownloads(app) }
 

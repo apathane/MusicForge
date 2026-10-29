@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.musicforge.awareness.Awareness
 import dev.musicforge.graph
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -78,6 +79,7 @@ fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
 /**
  * Artwork decoded at its display size. On a 1080p phone a 48 dp thumbnail is 144 px;
  * decoding the 544 px source would waste memory and GPU upload bandwidth.
+ * When metered, battery saver, or slow network, requests one size step smaller.
  */
 @Composable
 fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier, fallbackLetter: String? = null) {
@@ -85,6 +87,12 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
     val context = LocalContext.current
     val placeholder = MaterialTheme.colorScheme.surfaceVariant
     var failed by remember(url) { androidx.compose.runtime.mutableStateOf(false) }
+    
+    // Awareness: reduce artwork quality on metered, battery saver, or slow network
+    val awareness = context.graph.awareness.situation.collectAsStateWithLifecycle(Awareness.Situation.Unknown)
+    val reduceQuality = awareness.value.shouldReduceArtworkQuality
+    val requestPx = if (reduceQuality) (px * 0.6).toInt() else px // one size step down
+    
     Box(
         modifier
             .size(size)
@@ -109,8 +117,8 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
             val tile = remember(placeholder) { androidx.compose.ui.graphics.painter.ColorPainter(placeholder) }
             AsyncImage(
                 // Right-sized file; fade only for big artwork (a fade draws both images: GPU time on the X7b).
-                model = remember(url, px) {
-                    ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, px)).size(px).crossfade(px > 600).build()
+                model = remember(url, requestPx) {
+                    ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, requestPx)).size(requestPx).crossfade(requestPx > 600).build()
                 },
                 contentDescription = null,
                 placeholder = tile,

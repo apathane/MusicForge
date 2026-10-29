@@ -39,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.musicforge.awareness.AwarenessBanner
 import dev.musicforge.data.db.ArtistEntity
 import dev.musicforge.data.db.PlaylistEntity
 import dev.musicforge.data.db.PlaylistSummary
@@ -84,6 +85,7 @@ fun HomeRoot() {
             onWelcomeDismissed = { once.edit().putBoolean("welcomeDismissed", true).apply() },
             // Does nothing when signed out (AccountSync checks the cookie).
             refreshAccount = { graph.scope.launch { graph.accountSync.sync() } },
+            awareness = graph.awareness.situation,
         )
     }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -126,21 +128,34 @@ fun HomeScreen(
     // The indicator spins only for a pull, not for the first load (that has its skeleton).
     var pulled by remember { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(state.remote.isLoading) { if (!state.remote.isLoading) pulled = false }
+    // Collect awareness situation for the banner
+    val awarenessMessage by context.graph.awareness.situation
+        .map { Awareness.situationMessage(it) }
+        .collectAsStateWithLifecycle(null)
+
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = pulled && state.remote.isLoading,
         onRefresh = { pulled = true; onAction(HomeAction.Refresh) },
         modifier = Modifier.fillMaxSize(),
     ) {
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item(key = "header", contentType = "header") { ScreenHeader(greeting()) { dev.musicforge.ui.SettingsAction() } }
-        if (state.isColdStart && !state.isWelcomeDismissed) {
-            item(key = "welcome", contentType = "welcome") { WelcomeCard(onAction) }
+        Column(Modifier.fillMaxSize()) {
+            // Awareness banner at the top
+            AwarenessBanner(awarenessMessage) {
+                // Dismiss does nothing - the banner will reappear if the issue persists
+                // The message is driven by state, not a one-time event
+            }
+
+            LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
+                item(key = "header", contentType = "header") { ScreenHeader(greeting()) { dev.musicforge.ui.SettingsAction() } }
+                if (state.isColdStart && !state.isWelcomeDismissed) {
+                    item(key = "welcome", contentType = "welcome") { WelcomeCard(onAction) }
+                }
+                state.sections.orEmpty().forEach { section ->
+                    item(key = section.id, contentType = section.layout) { Section(section, onAction) }
+                }
+                remoteFeed(state, signedIn, onAction, onRemoteItem)
+            }
         }
-        state.sections.orEmpty().forEach { section ->
-            item(key = section.id, contentType = section.layout) { Section(section, onAction) }
-        }
-        remoteFeed(state, signedIn, onAction, onRemoteItem)
-    }
     }
 }
 

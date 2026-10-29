@@ -11,10 +11,13 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.exoplayer.offline.Download
+import dev.musicforge.awareness.Awareness
 import dev.musicforge.download.Downloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.InterruptedIOException
@@ -34,10 +37,12 @@ class ReadAhead(
     private val engine: MediaEngine,
     private val downloads: Downloads,
     private val scope: CoroutineScope,
+    private val awareness: StateFlow<Awareness.Situation> = kotlinx.coroutines.flow.stateOf(Awareness.Situation.Unknown),
 ) {
     private val connectivity = context.getSystemService<ConnectivityManager>()
     private val power = context.getSystemService<PowerManager>()
     private val jobs = HashMap<String, Pair<Job, CacheWriter>>()
+    private var currentBudget = 3
 
     private val source by lazy {
         CacheDataSource.Factory()
@@ -45,17 +50,30 @@ class ReadAhead(
             .setUpstreamDataSourceFactory(engine.upstream(forDownload = false))
     }
 
-    private fun budget(): Int = when {
-        power?.isPowerSaveMode == true -> 0
-        connectivity?.isActiveNetworkMetered != false -> 1
+    private fun computeBudget(situation: Awareness.Situation): Int = when {
+        situation.shouldPauseReadAhead -> 0
+        situation.metered == true -> 1
         else -> 3
+    }
+
+    init {
+        scope.launch {
+            awareness.collect { situation ->
+                val newBudget = computeBudget(situation)
+                if (newBudget != currentBudget) {
+                    currentBudget = newBudget
+                    // Re-evaluate the current queue with the new budget
+                    // The player will call update() with the current queue when it changes
+                }
+            }
+        }
     }
 
     /** Call with the queue ids after the current item, in play order. Main thread. */
     fun update(upcoming: List<String>) {
         val wanted = upcoming.asSequence()
             .filter { id -> downloads.states.value[id]?.state.let { it == null || it == Download.STATE_REMOVING } }
-            .take(budget())
+            .take(currentBudget)
             .toSet()
         // Cancel what fell out of the window (skipped past, reordered, or budget shrank).
         jobs.keys.filter { it !in wanted }.forEach { cancel(it) }
