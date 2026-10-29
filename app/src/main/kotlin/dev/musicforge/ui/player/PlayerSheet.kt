@@ -491,7 +491,8 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
     val haptics = LocalHapticFeedback.current
     val nav = LocalNavController.current
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+        // A gap before the buttons, so a scrolling title never slides under the heart.
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
             // A long title scrolls once, after a pause, instead of being cut off for good.
             // Long-press copies "title – artist" (Metrolist).
             Text(
@@ -510,6 +511,15 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                             clipboard.setText(AnnotatedString(listOf(title, artist).filter { it.isNotEmpty() }.joinToString(" – ")))
                         },
                     )
+                    // Fade the right edge while it scrolls instead of chopping letters in half.
+                    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(
+                            Brush.horizontalGradient(0.9f to Color.Black, 1f to Color.Transparent),
+                            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                        )
+                    }
                     .basicMarquee(iterations = 1, initialDelayMillis = 2_000),
             )
             // Tapping the artist opens them, as everywhere else in the app.
@@ -806,10 +816,18 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
 /** The currently active output device: a connected headset/bluetooth, or the built-in speaker. */
 private fun activeOutputDevice(audioManager: AudioManager): AudioDeviceInfo? {
     val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-    // Look for a non-builtin device first (headphones, bluetooth, usb, hdmi).
-    return devices.firstOrNull { it.type != AudioDeviceInfo.TYPE_BUILTIN_SPEAKER && it.type != AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
+    // Only outputs a listener plugs in or pairs count as "not this phone": the emulator (and some
+    // phones) also list bus, telephony and remote-submix outputs named after the device model.
+    return devices.firstOrNull { it.type in LISTENER_OUTPUTS }
         ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
 }
+
+private val LISTENER_OUTPUTS = setOf(
+    AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_LINE_ANALOG,
+    AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLUETOOTH_SCO, AudioDeviceInfo.TYPE_USB_HEADSET,
+    AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_HDMI, AudioDeviceInfo.TYPE_HEARING_AID,
+    26 /* TYPE_BLE_HEADSET, API 31 */, 27 /* TYPE_BLE_SPEAKER, API 31 */,
+)
 
 /** Open the system output switcher. The MEDIA_OUTPUT panel is missing on some builds
  *  (MagicOS) and gone entirely on API 35+, so fall back to sound settings — and never crash. */
