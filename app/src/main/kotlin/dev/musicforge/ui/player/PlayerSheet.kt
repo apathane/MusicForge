@@ -250,6 +250,9 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     val doubleTapSeek = prefs?.get(Keys.DoubleTapSeek) ?: true
     val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
     var pane by rememberSaveable { mutableStateOf(PlayerPane.ARTWORK) }
+    // Back (and the chevron) leave lyrics or the queue for the cover first; only from the cover
+    // does back close the player. Registered after the sheet's own handler, so it wins.
+    BackHandler(enabled = pane != PlayerPane.ARTWORK) { pane = PlayerPane.ARTWORK }
     var menu by remember { mutableStateOf(false) }
     var sleepMenu by remember { mutableStateOf(false) }
     val liked by remember(now.mediaId) { graph.database.dao().isLiked(now.mediaId) }.collectAsStateWithLifecycle(null)
@@ -315,7 +318,11 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             contentAlignment = Alignment.Center,
         ) {
             Box(Modifier.size(width = 38.dp, height = 5.dp).clip(RoundedCornerShape(50)).background(white.copy(alpha = 0.35f)))
-            Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(ForgeIcons.Collapse, "Close player", white, 30.dp, onClose) }
+            Box(Modifier.align(Alignment.CenterStart)) { PlayerIcon(
+                ForgeIcons.Collapse,
+                if (pane == PlayerPane.ARTWORK) "Close player" else "Back to the cover",
+                white, 30.dp,
+            ) { if (pane == PlayerPane.ARTWORK) onClose() else pane = PlayerPane.ARTWORK } }
         }
 
         // Controls below the artwork, with horizontal gutter and clear of the nav bar.

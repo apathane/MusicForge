@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -121,6 +122,8 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     var covered by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     // Which tab the nav host opens on (Metrolist's defaultOpenTab key).
     val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
+    val hapticsOn by androidx.compose.runtime.rememberUpdatedState(prefs?.get(Keys.HapticsEnabled) ?: true)
+    val haptics = remember(context) { ForgeHaptics(context) { hapticsOn } }
     val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
     // The start tab is applied once, by navigating like a tab tap: changing NavHost's
     // startDestination after the first frame would rebuild the graph and drop the back stack.
@@ -151,7 +154,7 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
             isAppearanceLightNavigationBars = lightContent
         }
     }
-    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar) {
+    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar, LocalHapticFeedback provides haptics) {
         // Under a fully open player the screen behind is never seen: don't paint it at all.
         Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
@@ -181,11 +184,11 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }
                     .then(if (live != null) Modifier.layerBackdrop(live) else Modifier),
             ) {
-                composable(Tab.Home.route) { HomeRoot() }
-                composable(Tab.Search.route) { SearchScreen() }
-                composable(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
-                composable(Tab.Downloads.route) { DownloadsScreen() }
-                composable(SETTINGS_ROUTE) { SettingsScreen(
+                page(Tab.Home.route) { HomeRoot() }
+                page(Tab.Search.route) { SearchScreen() }
+                page(Tab.Library.route) { LibraryScreen(onOpenSettings = { nav.navigate(SETTINGS_ROUTE) }) }
+                page(Tab.Downloads.route) { DownloadsScreen() }
+                page(SETTINGS_ROUTE) { SettingsScreen(
                         onBack = { nav.popBackStack() },
                         onSignIn = { nav.navigate(Routes.LOGIN) },
                         onAbout = { nav.navigate(Routes.ABOUT) },
@@ -193,13 +196,13 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                         onTaste = { nav.navigate(Routes.TASTE) },
                         onCustomiseHome = { nav.navigate(Routes.CUSTOMISE_HOME) },
                     ) }
-                composable(Routes.CUSTOMISE_HOME) { CustomiseHomeScreen(onBack = { nav.popBackStack() }) }
-                composable(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
-                composable(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
-                composable(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }
-                composable(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
-                composable(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
-                composable(
+                page(Routes.CUSTOMISE_HOME) { CustomiseHomeScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
+                page(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
+                page(
                     Routes.COLLECTION,
                     arguments = listOf(navArgument("kind") { type = NavType.StringType }, navArgument("id") { type = NavType.StringType }),
                 ) { entry ->
@@ -207,11 +210,11 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                     val id = android.net.Uri.decode(entry.arguments!!.getString("id")!!)
                     CollectionScreen(kind, id, onBack = { nav.popBackStack() })
                 }
-                composable(Routes.ARTIST, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                page(Routes.ARTIST, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     ArtistScreen(android.net.Uri.decode(entry.arguments!!.getString("id")!!), onBack = { nav.popBackStack() })
                 }
-                composable(Routes.ALBUMS) { LibraryAlbumsScreen(onBack = { nav.popBackStack() }) }
-                composable(Routes.ARTISTS) { LibraryArtistsScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.ALBUMS) { LibraryAlbumsScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.ARTISTS) { LibraryArtistsScreen(onBack = { nav.popBackStack() }) }
             }
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
@@ -244,17 +247,13 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 }
             }
             // Content scrolls under a transparent status bar; a scrim keeps the clock readable.
-            // When hideTopBar is on the scrim collapses to the status-bar inset with an animated transition.
-            val scrimAlpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180), label = "scrimAlpha")
-            if (scrimAlpha > 0.01f) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .windowInsetsTopHeight(WindowInsets.statusBars)
-                        .graphicsLayer { this.alpha = scrimAlpha }
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
-                )
-            }
+            // It stays with "Hide top bar" on: without it scrolling text runs through the clock.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
+            )
             now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
     }
@@ -323,4 +322,18 @@ private fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = 
             }
         }
     }
+}
+
+
+/**
+ * A destination with its own opaque background. NavHost slides and fades two pages at once;
+ * with transparent pages the leaving one showed straight through the arriving one (Settings
+ * cards floating over Home on back). One extra fill, only while a page is on screen.
+ */
+private fun androidx.navigation.NavGraphBuilder.page(
+    route: String,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
+) = composable(route, arguments = arguments) { entry ->
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { content(entry) }
 }
