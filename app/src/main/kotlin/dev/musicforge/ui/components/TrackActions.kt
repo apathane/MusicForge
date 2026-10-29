@@ -23,13 +23,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.animateItem
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -159,7 +163,7 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
     androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
         items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
             Row(
-                Modifier.fillMaxWidth().clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
+                Modifier.fillMaxWidth().animateItem(tween(220)).clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
                     .padding(horizontal = 24.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -176,8 +180,9 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
 
 @Composable
 private fun Action(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))
