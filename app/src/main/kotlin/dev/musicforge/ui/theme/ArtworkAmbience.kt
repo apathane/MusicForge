@@ -2,11 +2,19 @@ package dev.musicforge.ui.theme
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.ColorUtils
 import androidx.palette.graphics.Palette
+import coil3.SingletonImageLoader
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -62,25 +70,30 @@ class ArtworkAmbience(private val context: Context, scope: CoroutineScope, artwo
         Ambience(colors, blurred.asImageBitmap())
     }
 
-    private fun colorsOf(bitmap: Bitmap): ArtworkColors {
-        val palette = Palette.from(bitmap).maximumColorCount(12).generate()
-        val swatch = palette.vibrantSwatch ?: palette.lightVibrantSwatch ?: palette.dominantSwatch
-            ?: return ArtworkColors.Unset
-        // Accent: the most characterful colour, kept bright enough to read on near-black.
-        val hsl = swatch.hsl.copyOf()
-        hsl[2] = hsl[2].coerceIn(0.45f, 0.72f)
-        val accent = ColorUtils.HSLToColor(hsl)
-        // Ambient: the dominant colour pushed dark, for backgrounds behind white text.
-        val dom = (palette.dominantSwatch ?: swatch).hsl.copyOf()
-        dom[2] = dom[2].coerceAtMost(0.22f)
-        dom[1] = dom[1].coerceAtMost(0.55f)
-        val ambient = ColorUtils.HSLToColor(dom)
-        val onAccent = if (ColorUtils.calculateLuminance(accent) > 0.45) Color.Black else Color.White
-        return ArtworkColors(Color(accent), onAccent, Color(ambient))
-    }
-
     companion object {
         val EMPTY = Ambience(ArtworkColors.Unset, null)
+
+        /** Extract a soft ambient colour from a bitmap — the dominant hue, desaturated and pushed
+         *  dark enough to sit behind light text. Used by artist portrait cards so each one carries
+         *  a hint of its image's palette without paying for a live blur. */
+        private const val PALETTE_PX = 128
+
+        fun colorsOf(bitmap: Bitmap): ArtworkColors {
+            val palette = Palette.from(bitmap).maximumColorCount(12).generate()
+            val swatch = palette.vibrantSwatch ?: palette.lightVibrantSwatch ?: palette.dominantSwatch
+                ?: return ArtworkColors.Unset
+            // Accent: the most characterful colour, kept bright enough to read on near-black.
+            val hsl = swatch.hsl.copyOf()
+            hsl[2] = hsl[2].coerceIn(0.45f, 0.72f)
+            val accent = ColorUtils.HSLToColor(hsl)
+            // Ambient: the dominant colour pushed dark, for backgrounds behind white text.
+            val dom = (palette.dominantSwatch ?: swatch).hsl.copyOf()
+            dom[2] = dom[2].coerceAtMost(0.22f)
+            dom[1] = dom[1].coerceAtMost(0.55f)
+            val ambient = ColorUtils.HSLToColor(dom)
+            val onAccent = if (ColorUtils.calculateLuminance(accent) > 0.45) Color.Black else Color.White
+            return ArtworkColors(Color(accent), onAccent, Color(ambient))
+        }
 
         /** Classic box-approximated blur, in place. Radius in pixels of the small bitmap. */
         fun stackBlur(bitmap: Bitmap, radius: Int) {
@@ -122,5 +135,29 @@ class ArtworkAmbience(private val context: Context, scope: CoroutineScope, artwo
                 }
             }
         }
+    }
+
+    /**
+     * Samples a bitmap-sized decode of [imageUrl] for its palette, off the main thread.
+     * Returns null when the image can't be decoded; callers fall back to the theme's colours.
+     * Caches results by URL in the same seedCache-backed flow the player uses.
+     */
+    @Composable
+    fun rememberImagePalette(imageUrl: String?): ArtworkColors {
+        val context = LocalContext.current
+        var colors by remember(imageUrl) { mutableStateOf<ArtworkColors?>(null) }
+        LaunchedEffect(imageUrl) {
+            if (imageUrl == null) return@LaunchedEffect
+            if (colors != null) return@LaunchedEffect
+            val request = ImageRequest.Builder(context)
+                .data(imageUrl)
+                .size(PALETTE_PX)
+                .allowHardware(false)
+                .build()
+            val result = SingletonImageLoader.get(context).execute(request)
+            val bitmap = (result as? SuccessResult)?.image?.toBitmap(PALETTE_PX, PALETTE_PX, Bitmap.Config.ARGB_8888)
+            colors = bitmap?.let { colorsOf(it) }
+        }
+        return colors ?: ArtworkColors.Unset
     }
 }

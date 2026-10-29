@@ -1,21 +1,16 @@
 package dev.musicforge.ui.home
 
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -36,6 +31,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -70,6 +68,7 @@ import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.ui.designsystem.signalSurface
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.openItem
+import dev.musicforge.ui.theme.rememberImagePalette
 import dev.musicforge.ui.theme.ForgeTheme
 import java.util.Calendar
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -202,7 +201,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             }
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(section.items, key = { it.key }) { item ->
-                    (item as? HomeItem.Artist)?.let { ArtistCard(it.artist) { onAction(HomeAction.OpenArtist(it.artist.channelId ?: it.artist.id)) } }
+                    val artist = item as? HomeItem.Artist ?: return@items
+                    val isTop = section.items.indexOfFirst { it is HomeItem.Artist } == section.items.indexOf(item)
+                    ArtistCard(artist.artist, { onAction(HomeAction.OpenArtist(artist.artist.channelId ?: artist.artist.id)) }, isTop = isTop)
                 }
             }
         }
@@ -336,21 +337,63 @@ private fun PlaylistCard(p: PlaylistSummary, onClick: () -> Unit) {
 }
 
 /**
- * Artist portrait card: a large circle or squircle with the name over a soft ambience-coloured
- * base. Staggered sizes for the top artist feel from BitChord and ConvX artist cards.
+ * Artist portrait card: a large circle or squircle with the name overlaid on a soft
+ * ambience-coloured base sampled from the portrait. Staggered sizes for the top artist
+ * feel from BitChord and ConvX artist cards — the first artist gets the larger tile.
+ * The name floats over a gradient so it reads on any portrait; no artist was harmed
+ * in the making of this card, though the color sampling may judge your music taste.
  */
 @Composable
-private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit) {
+private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean = false) {
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val staggered = artist.name.hashCode().mod(2) == 0
-    val size = if (staggered) 104.dp else 88.dp
+    val size = if (isTop) 104.dp else 88.dp
+    val shape = if (isTop) RoundedCornerShape(48.dp) else RoundedCornerShape(40.dp)
+    // Sample the portrait for a soft base colour so each card carries a hint of its image.
+    val palette = rememberImagePalette(artist.thumbnailUrl)
+    val baseColor = palette.ambient.takeIf { it != Color.Unspecified } ?: MaterialTheme.colorScheme.surfaceContainer
+    val nameColor = if (isTop) palette.onAccent.takeIf { it != Color.Unspecified } ?: Color.White else Color.Unspecified
     Column(
         Modifier.width(size).pressScale(press).combinedClickable(interactionSource = press, indication = null, onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Artwork(artist.thumbnailUrl, size, corner = if (staggered) 48.dp else 24.dp)
-        Spacer(Modifier.height(8.dp))
-        Text(artist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(
+            Modifier
+                .size(size)
+                .clip(shape)
+                .background(baseColor),
+        ) {
+            Artwork(artist.thumbnailUrl, size, corner = if (isTop) 48.dp else 40.dp)
+            // Name overlaid on a soft gradient legibility base so it reads over any portrait.
+            if (isTop) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .graphicsLayer { alpha = 0.88f }
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.55f),
+                            ),
+                        ),
+                ) {
+                    Text(
+                        artist.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = nameColor,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
+        }
+        if (!isTop) {
+            Spacer(Modifier.height(8.dp))
+            Text(artist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
