@@ -48,8 +48,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -275,10 +273,10 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = 26.dp)
-                .padding(top = artHeight)
-                // If content is taller than the screen, scroll the controls — never clip them.
-                // The cover itself is at 45% and scales down first via its own transform.
-                .verticalScroll(rememberScrollState()),
+                // No verticalScroll here: the weighted pane holds the queue's LazyColumn, and a
+                // lazy list inside a scroll measures with infinite height and crashes. The insets
+                // above keep the controls clear of the nav bar instead.
+                .padding(top = artHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // The middle pane changes; lyrics and queue. Artwork pane has nothing here —
