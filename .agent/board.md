@@ -31,6 +31,7 @@ Wave 2
 
 Wave 3
 - [ ] **T7 Home**: customisable shelves, creative artist portraits, listening tracking · `toccata/home`
+  claimed: kilo · toccata/home
 - [ ] **T8 settings**: the basic and quality-of-life settings every player has · `toccata/settings`
 - [ ] **T9 performance**: GPU-friendly drawing, fewer recompositions, measured · `toccata/perf`
 
