@@ -1,14 +1,15 @@
-MusicForge P1 · 0.15.0 · Toccata
-The first preview of phase 15, Toccata: motion, speed and the basics, from your 0.14.0 notes.
+MusicForge P2 · 0.15.0 · Toccata
+A pixel-by-pixel pass, from a walk through every screen on an Honor X7b-shaped emulator.
 
-- Motion everywhere: screens slide in and out with predictive back (back never just vanishes), cards and rows press down, lists animate items in and out, play/pause and like icons crossfade
-- Player: controls clear the navigation bar and cutouts, the full-bleed cover fades into the track's own colour instead of a dark band, and a new "Hide top bar" option
-- Radio: "Start radio" in every song's menu; endless play keeps the music going when the queue runs out
-- Loading: a thin bar on every screen that fetches (artist, album, playlist, search, Home refresh, sign-in, sync, restore), so you're never left guessing
-- Awareness: the app notices when you're offline, on mobile data, on battery saver, low on storage or when streams keep failing, and says so in one line on Home
-- Home: hide and reorder shelves, artist portrait cards, a "Your week" shelf with your listening streak
-- Settings: start screen, keep the screen on, haptics, double-tap to seek, swipe-to-skip, clear image and song caches, lyrics defaults
-- Updater: a verified APK that's already downloaded is installed again without re-downloading
-- Faster: startup and disk work moved off the main thread
+- Player: the cover runs edge to edge under the status bar again, and fades into the player in one smooth gradient (no more dark band)
+- Player: the volume slider is back, the output reads "This phone" on the speaker, the lock icon is a real lock, and long titles no longer slide under the heart
+- Player: a resumed song shows its length straight away instead of "-0:00"
+- Queue: dragging songs lands where you drop them (it was off by one), and "Up next" no longer repeats under the open queue
+- Library: rows no longer draw on top of each other; Songs, Albums, Artists, History and Stats each have their own icon; the refresh spinner only shows while syncing
+- Home: artist portraits load their pictures, the top artist's name is readable, the loading bar lines up with the page
+- Empty pages say what fills them ("Download songs to play them offline.")
+- Search keeps the same height when you tap into it
+- Restore: one progress bar instead of two, and the dialog says which app the backup is from
+- Sleep timer "end of this song" no longer stays armed after the last song
 
 This is a preview. Back up your library first, and report anything device-specific.

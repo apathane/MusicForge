@@ -8,6 +8,17 @@ All notable changes to MusicForge. Newest phase first.
 
 Version 0.15.0, codename `Toccata`. Plan: `.agent/decisions/0001-phase-15-toccata.md`.
 
+### P2 · 0.15.0
+
+Tag: [`p2-0.15.0`](../../releases/tag/p2-0.15.0) · Version code `1502` · 2026-10-29
+
+Pixel fixes from an emulator walk-through (1080×2412, 400 dpi, Android 14): full-bleed cover under
+the status bar, one continuous cover-to-canvas gradient, visible volume slider, "This phone" for the
+built-in speaker, Material lock glyphs, faded title edge; stable LazyColumn keys (no ghost rows),
+distinct Library icons, idle pull-to-refresh hidden, per-collection empty copy, artist portraits
+looked up through `ArtRepair`; queue drag index fix and end-of-song sleep unarmed on `STATE_ENDED`
+(from the pre-release review).
+
 ### P1 · 0.15.0
 
 Tag: [`p1-0.15.0`](../../releases/tag/p1-0.15.0) · Version code `1501` · 2026-10-29
