@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
@@ -31,8 +30,7 @@ import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
-import dev.musicforge.ui.components.ForgeIcons
-import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
 
 @Composable
@@ -94,7 +92,7 @@ private fun CoverGrid(
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp),
         ) {
             // The side padding is for the cells; full-width rows bleed past it to line up with other screens.
-            item(span = full) { Row(Modifier.bleed(Edge).statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
+            item(span = full) { BackRow(onBack, Modifier.bleed(Edge)) }
             item(span = full) { Box(Modifier.bleed(Edge)) { ScreenHeader(title, belowBackRow = true) } }
             if (empty) item(span = full) { Box(Modifier.bleed(Edge)) { EmptyState(emptyTitle, emptyBody) } }
             content(side)

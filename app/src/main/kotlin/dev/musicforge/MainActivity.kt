@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
                 darkMode = prefs[Keys.DarkMode]?.let { runCatching { DarkMode.valueOf(it) }.getOrNull() } ?: DarkMode.AUTO,
                 pureBlack = prefs[Keys.PureBlack] ?: false,
                 glass = prefs[Keys.GlassTier]?.let { runCatching { GlassTier.valueOf(it) }.getOrNull() } ?: GlassTier.Default,
+                hideTopBar = prefs[Keys.HideTopBar] ?: false,
             )
         }
         graph.player.connect()
@@ -55,7 +56,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             ForgeTheme(darkMode = current.darkMode, pureBlack = current.pureBlack, artwork = ambience.colors) {
-                ForgeRoot(glassTier = current.glass, ambience = ambience)
+                ForgeRoot(glassTier = current.glass, hideTopBar = current.hideTopBar, ambience = ambience)
             }
         }
     }
@@ -89,5 +90,6 @@ class MainActivity : ComponentActivity() {
         val darkMode: DarkMode = DarkMode.AUTO,
         val pureBlack: Boolean = false,
         val glass: GlassTier = GlassTier.Default,
+        val hideTopBar: Boolean = false,
     )
 }

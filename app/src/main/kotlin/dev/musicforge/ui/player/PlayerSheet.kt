@@ -43,10 +43,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -179,7 +180,7 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                 }
                 .playerBackground(ambience, remember(ambience.backdrop) { ambience.backdrop?.let(::withScrim) }),
         ) {
-            PlayerContent(now, onClose, dismissDrag)
+            PlayerContent(now, onClose, dismissDrag, ambience.colors.ambient)
         }
     }
 }
@@ -217,7 +218,7 @@ private fun Modifier.playerBackground(ambience: Ambience, scrimmed: ImageBitmap?
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier) {
+private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier, ambient: Color) {
     val context = LocalContext.current
     val graph = context.graph
     val connection = graph.player
@@ -246,7 +247,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier)
-            .statusBarsPadding().navigationBarsPadding(),
+            // safeDrawing clears the nav bar AND display cutouts (statusBars + navigationBars + displayCutout).
+            .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         // Artwork covers the top ~45% of the sheet when on the artwork pane.
         // No artwork on lyrics/queue panes: the grabber height is the top inset instead.
@@ -254,7 +256,7 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
         // Full-bleed cover, edge to edge, no card frame.
         if (pane == PlayerPane.ARTWORK) {
-            BigArtwork(now, Modifier
+            BigArtwork(now, ambient, Modifier
                 .fillMaxWidth()
                 .height(artHeight)
             )
@@ -271,6 +273,9 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = 26.dp)
+                // No verticalScroll here: the weighted pane holds the queue's LazyColumn, and a
+                // lazy list inside a scroll measures with infinite height and crashes. The insets
+                // above keep the controls clear of the nav bar instead.
                 .padding(top = artHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -337,10 +342,10 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 }
 
 /** Big cover that eases back when paused: the record is resting. Full-bleed (no card/rounded frame);
- *  the fade to black is baked into the ambience backdrop once per track. The gradient overlay at
- *  its bottom blends the art into the dark controls below. */
+ *  the fade to the canvas colour is baked into the ambience backdrop once per track. The gradient
+ *  overlay at its bottom blends the art into the ambience background below, so there is no dark band. */
 @Composable
-private fun BigArtwork(now: NowPlaying, modifier: Modifier = Modifier) {
+private fun BigArtwork(now: NowPlaying, ambient: Color, modifier: Modifier = Modifier) {
     val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
     // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
     val letterboxed = dev.musicforge.playback.isLetterboxedThumbnail(now.metadata.artworkUri?.toString().orEmpty())
@@ -356,6 +361,9 @@ private fun BigArtwork(now: NowPlaying, modifier: Modifier = Modifier) {
     val placeholder = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color.White.copy(alpha = 0.08f)) }
     // A failed load draws a dim grey tile — not the same as the loading tile, so failures are visible.
     val error = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFBBBBBB).copy(alpha = 0.4f)) }
+    // Fade the bottom edge of the art into the canvas (ambient) colour, not into black, so the
+    // cover meets the controls without a visible dark band where two different gradients meet.
+    val canvas = ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114)
     AsyncImage(
         model = now.metadata.artworkUri,
         contentDescription = contentDescription,
@@ -369,15 +377,13 @@ private fun BigArtwork(now: NowPlaying, modifier: Modifier = Modifier) {
                 scaleY = scale
                 // No clip or shadow: full-bleed artwork.
             }
-            // Fade the bottom edge of the art into the black background below,
-            // so the cover meets the controls without a hard cut.
             .drawWithContent {
                 drawContent()
                 drawRect(
                     brush = Brush.verticalGradient(
                         0f to Color.Transparent,
-                        0.65f to Color.Black.copy(alpha = 0.4f),
-                        1f to Color.Black,
+                        0.65f to canvas.copy(alpha = 0.35f),
+                        1f to canvas,
                     ),
                 )
             },

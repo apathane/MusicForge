@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,8 +46,7 @@ import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
-import dev.musicforge.ui.components.ForgeIcons
-import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
@@ -98,7 +96,7 @@ fun ArtistScreen(id: String, onBack: () -> Unit) {
     val player = LocalContext.current.graph.player
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
-        item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
+        item { BackRow(onBack) }
         when (val s = state) {
             ArtistViewModel.State.Loading -> item {
                 dev.musicforge.ui.components.SkeletonRows()

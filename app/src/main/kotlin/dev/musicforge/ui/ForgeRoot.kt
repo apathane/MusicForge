@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -89,8 +90,11 @@ val LocalBottomInset = staticCompositionLocalOf { PaddingValues(bottom = 96.dp) 
 
 val LocalNavController = staticCompositionLocalOf<NavHostController> { error("no nav controller") }
 
+/** When true, the top bar (scrim + screen headers) collapses to just the status-bar inset. */
+val LocalHideTopBar = staticCompositionLocalOf { false }
+
 @Composable
-fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
+fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambience) {
     val nav = rememberNavController()
     val windowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.coerceAtLeast(1)
     // Liquid needs RenderEffect (API 31); below that it falls back to the artwork slice.
@@ -122,7 +126,7 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
             isAppearanceLightNavigationBars = lightContent
         }
     }
-    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset) {
+    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar) {
         // Under a fully open player the screen behind is never seen: don't paint it at all.
         Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
@@ -214,12 +218,17 @@ fun ForgeRoot(glassTier: GlassTier, ambience: Ambience) {
                 }
             }
             // Content scrolls under a transparent status bar; a scrim keeps the clock readable.
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
-            )
+            // When hideTopBar is on the scrim collapses to the status-bar inset with an animated transition.
+            val scrimAlpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180), label = "scrimAlpha")
+            if (scrimAlpha > 0.01f) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .windowInsetsTopHeight(WindowInsets.statusBars)
+                        .graphicsLayer { this.alpha = scrimAlpha }
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
+                )
+            }
             now?.let { PlayerSheet(it, ambience, open = playerOpen, onClose = { playerOpen = false }, onCovering = { covered = it }) }
         }
     }

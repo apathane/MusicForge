@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -38,8 +37,7 @@ import dev.musicforge.graph
 import dev.musicforge.recommendation.HomeComposer
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.components.EmptyState
-import dev.musicforge.ui.components.ForgeIcons
-import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.TrackRow
 import dev.musicforge.ui.designsystem.SectionHeader
@@ -62,7 +60,7 @@ fun TasteScreen(onBack: () -> Unit) {
     val lessOf by remember { dao.lessOfArtists(now) }.collectAsStateWithLifecycle(emptyList())
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
-        item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
+        item { BackRow(onBack) }
         item { ScreenHeader("What shapes your Home", belowBackRow = true) }
         item {
             Text(

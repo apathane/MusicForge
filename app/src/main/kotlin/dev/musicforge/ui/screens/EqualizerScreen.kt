@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -41,8 +40,7 @@ import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.EqPreset
 import dev.musicforge.playback.EqSettings
 import dev.musicforge.ui.components.EmptyState
-import dev.musicforge.ui.components.ForgeIcons
-import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
 import kotlinx.coroutines.launch
 
@@ -66,7 +64,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
-        Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) }
+        BackRow(onBack)
         ScreenHeader("Equalizer", belowBackRow = true) {
             Switch(
                 enabled,

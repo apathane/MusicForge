@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,23 +39,48 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.LocalHideTopBar
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 
-/** Big, heavy page title in the BitChord style, with an optional trailing action. */
+/** Big, heavy page title in the BitChord style, with an optional trailing action.
+ *  Collapses (fades out) when hideTopBar is on — see ForgeRoot's LocalHideTopBar. */
 @Composable
 fun ScreenHeader(title: String, belowBackRow: Boolean = false, action: (@Composable () -> Unit)? = null) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            // Under a back-button row the status bar is already accounted for.
-            .then(if (belowBackRow) Modifier else Modifier.statusBarsPadding())
-            .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow) 0.dp else 16.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
-        action?.invoke()
+    val hideTopBar = LocalHideTopBar.current
+    val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
+    if (alpha > 0.01f) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                // Under a back-button row the status bar is already accounted for.
+                .then(if (belowBackRow) Modifier else Modifier.statusBarsPadding())
+                .padding(start = 20.dp, end = 12.dp, top = if (belowBackRow) 0.dp else 16.dp, bottom = 8.dp)
+                .graphicsLayer { this.alpha = alpha },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = MaterialTheme.typography.displayLarge, modifier = Modifier.weight(1f))
+            action?.invoke()
+        }
+    }
+}
+
+/**
+ * Back-button row that collapses (fades out) when hideTopBar is on.
+ * Replace inline `Row(Modifier.statusBarsPadding()...) { IconAction(...) }` patterns with this.
+ */
+@Composable
+fun BackRow(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val hideTopBar = LocalHideTopBar.current
+    val alpha by animateFloatAsState(if (hideTopBar) 0f else 1f, tween(180))
+    if (alpha > 0.01f) {
+        Row(
+            modifier
+                .statusBarsPadding()
+                .padding(start = 4.dp, top = 4.dp)
+                .graphicsLayer { this.alpha = alpha },
+        ) { IconAction(ForgeIcons.Back, "Back", onBack) }
     }
 }
 

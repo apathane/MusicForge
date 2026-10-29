@@ -62,6 +62,8 @@ object Keys {
     val EqEnabled = bool("forge.eqEnabled")
     val EqLevels = str("forge.eqLevelsMb")
     val EqPreset = str("forge.eqPreset")
+    /** Hide the top bar (status bar scrim and screen headers) for an edge-to-edge canvas. */
+    val HideTopBar = bool("forge.hideTopBar")
     // Same names as the upstream app that has ListenBrainz, so a restore brings it along.
     val ListenBrainzToken = str("listenbrainz_token")
     val ListenBrainzEnabled = bool("listenbrainz_enabled")

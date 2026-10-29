@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -39,8 +38,7 @@ import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.EmptyState
-import dev.musicforge.ui.components.ForgeIcons
-import dev.musicforge.ui.components.IconAction
+import dev.musicforge.ui.components.BackRow
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
 import dev.musicforge.ui.components.SongRow
@@ -75,7 +73,7 @@ fun StatsScreen(onBack: () -> Unit) {
     val artists by remember(since) { dao.topArtists(since) }.collectAsStateWithLifecycle(emptyList())
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = LocalBottomInset.current) {
-        item { Row(Modifier.statusBarsPadding().padding(start = 4.dp, top = 4.dp)) { IconAction(ForgeIcons.Back, "Back", onBack) } }
+        item { BackRow(onBack) }
         item { ScreenHeader("Your listening", belowBackRow = true) }
         item {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
