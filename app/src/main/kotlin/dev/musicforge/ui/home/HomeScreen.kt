@@ -370,6 +370,12 @@ private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean
                 .clip(shape)
                 .background(baseColor),
         ) {
+            // Most restored artists have no picture (3840 of 3977 in one real backup); look it up
+            // once, as Stats does. Artists known only by name have nothing to look up.
+            if (artist.thumbnailUrl.isNullOrBlank() && !artist.id.startsWith("name:")) {
+                val graph = androidx.compose.ui.platform.LocalContext.current.graph
+                LaunchedEffect(artist.id) { graph.artRepair.missingArtist(artist.id) }
+            }
             Artwork(artist.thumbnailUrl, size, corner = if (isTop) 48.dp else 40.dp)
             // Name overlaid on a soft gradient legibility base so it reads over any portrait.
             if (isTop) {
@@ -381,7 +387,7 @@ private fun ArtistCard(artist: ArtistEntity, onClick: () -> Unit, isTop: Boolean
                         .background(
                             Brush.verticalGradient(
                                 0f to Color.Transparent,
-                                1f to Color.Black.copy(alpha = 0.55f),
+                                1f to Color.Black.copy(alpha = 0.72f),
                             ),
                         ),
                 ) {
@@ -523,7 +529,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
     }
     when {
         remote.isLoading -> item(key = "remote-loading", contentType = "loading") {
-            LoadingBar(visible = true)
+            LoadingBar(visible = true, modifier = Modifier.padding(horizontal = 20.dp))
             dev.musicforge.ui.components.SkeletonRows()
         }
         // With nothing of your own to fall back on, the failure gets the whole screen and a way out.
