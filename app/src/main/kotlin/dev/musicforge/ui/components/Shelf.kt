@@ -2,7 +2,6 @@ package dev.musicforge.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,7 +38,7 @@ fun Shelf(title: String, items: List<YTItem>, onClick: (YTItem) -> Unit) {
         // YouTube sometimes lists an item twice in one shelf; keys must be unique, so the repeat goes.
         val unique = androidx.compose.runtime.remember(items) { items.distinctBy { it.id } }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            items(unique, key = { it.id }) { item -> Card(item, onClick) }
+            items(unique, key = { it.id }) { item -> Box(Modifier.animateItem()) { Card(item, onClick) } }
         }
     }
 }
@@ -55,7 +54,7 @@ fun Card(item: YTItem, onClick: (YTItem) -> Unit) {
         else -> ""
     }
     val press = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Column(Modifier.width(size).animateItem().dev.musicforge.ui.designsystem.pressScale(press).clickable(interactionSource = press, indication = null) { onClick(item) }) {
+    Column(Modifier.width(size).dev.musicforge.ui.designsystem.pressScale(press).clickable(interactionSource = press, indication = null) { onClick(item) }) {
         Artwork(item.thumbnail, size, corner = if (item is ArtistItem) size / 2 else 10.dp)
         Spacer(Modifier.height(8.dp))
         Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
