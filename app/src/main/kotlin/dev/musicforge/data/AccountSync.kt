@@ -291,7 +291,7 @@ class AccountSync(
     }
 
     /** Signing out or switching account: the next account's first sync must not remove anything. */
-    fun forgetSnapshots() {
+    suspend fun forgetSnapshots() = withContext(Dispatchers.IO) {
         dir.listFiles()?.forEach { it.delete() }
     }
 

@@ -1,5 +1,6 @@
 package dev.musicforge.download
 
+import coil3.request.allowHardware
 import android.content.ContentValues
 import android.content.Context
 import android.os.Build
@@ -207,6 +208,7 @@ class MusicExport(
         val request = coil3.request.ImageRequest.Builder(context)
             .data(dev.musicforge.playback.hiResArtwork(url))
             .size(COVER_PX)
+            .allowHardware(false) // compressed / parcelled: needs a software bitmap
             .build()
         val bitmap = (coil3.SingletonImageLoader.get(context).execute(request) as? coil3.request.SuccessResult)
             ?.let { (it.image as? coil3.BitmapImage)?.bitmap } ?: return null

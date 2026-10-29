@@ -1,7 +1,12 @@
 package dev.musicforge
 
 import android.app.Application
+import coil3.memory.MemoryCache
+import coil3.request.allowHardware
+import coil3.util.DebugLogger
+import dev.musicforge.data.prefs.Keys
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -12,13 +17,21 @@ class ForgeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
-        // Debug builds log every image request: a failed cover is otherwise just a grey tile.
-        if (BuildConfig.DEBUG) {
-            coil3.SingletonImageLoader.setSafe { ctx ->
-                coil3.ImageLoader.Builder(ctx).logger(coil3.util.DebugLogger()).build()
-            }
+        // Coil: debug logs, hardware bitmaps (fast on Adreno 610), and a memory cache sized for 4 GB devices.
+        // allowHardware(true) globally is overridden to false in ArtworkAmbience (which reads pixels).
+        // crossfade is set per-request in Artwork (only for large covers) — no global fade needed.
+        coil3.SingletonImageLoader.setSafe { ctx ->
+            coil3.ImageLoader.Builder(ctx)
+                .allowHardware(true)
+                .memoryCache {
+                    MemoryCache.Builder().maxSizePercent(ctx, 0.20).build()
+                }
+                .also { if (BuildConfig.DEBUG) it.logger(DebugLogger()) }
+                .build()
         }
         graph = AppGraph(this)
+        // Pre-fetch the cache size off the main thread; mediaEngine's lazy block needs it.
+        graph.scope.launch { graph.songCacheMb = graph.settings.data.first()[Keys.MaxSongCacheSizeMb] ?: 0 }
         graph.youTubeSession.start()
         // Signed in: bring the YouTube Music library up to date, at most hourly (live enough, and
         // gentle on YouTube). The session needs a moment to apply the stored cookie first.

@@ -1,5 +1,6 @@
 package dev.musicforge.playback
 
+import coil3.request.allowHardware
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
@@ -528,6 +529,7 @@ class PlaybackService : MediaLibraryService() {
                         val request = coil3.request.ImageRequest.Builder(this@PlaybackService)
                             .data(meta?.artworkUri)
                             .size(WIDGET_ART_PX)
+                            .allowHardware(false) // compressed / parcelled: needs a software bitmap
                             .build()
                         val result = coil3.SingletonImageLoader.get(this@PlaybackService).execute(request) as? coil3.request.SuccessResult
                         (result?.image as? coil3.BitmapImage)?.bitmap

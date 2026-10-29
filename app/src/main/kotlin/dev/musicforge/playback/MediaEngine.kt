@@ -77,6 +77,9 @@ class MediaEngine(
     /** Drops a stream URL so the next attempt resolves a fresh one (a failed download's retry). */
     fun forgetStream(videoId: String) = resolver.invalidate(videoId)
 
+    // Synchronous callback from ResolvingDataSource: runs on Media3's load thread (a background
+    // thread, not main). runBlocking blocks the load thread for one resolve — acceptable because
+    // StreamResolver caches URLs, and the IO is the InnerTube request that can't be deferred.
     private fun resolve(spec: DataSpec, forDownload: Boolean): DataSpec {
         val videoId = spec.key ?: error("no cache key on $spec")
         // Mid-file reopen after a refusal: the new rendition must match what's already cached.
