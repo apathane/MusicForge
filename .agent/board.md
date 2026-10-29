@@ -18,22 +18,28 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 
 ## Now: Toccata · phase 15 (see decisions/0001-phase-15-toccata.md)
 
+P1 · 0.15.0 published (prerelease, code 1501) with all nine packages. Left for P2:
+- [ ] UI half of T9: lazy-list keys/contentType and per-frame reads, done on a device this time
+- [ ] Track menu loading bar (T5's edit broke TrackActions; reverted)
+- [ ] Radio from a track that isn't playing keeps the current queue? (today it replaces it)
+- [ ] Real-device pass: transitions, insets on gesture vs 3-button nav, Hide top bar, awareness line
+
 Wave 1
 - [x] **T1 updater reuse**: don't re-download an APK that is already in cache and verified · `toccata/updater-reuse`
   claimed: kilo · toccata/updater-reuse
-- [ ] **T2 motion**: route transitions with predictive back, sheets/menus/dialogs enter and exit, press and list motion · `toccata/motion`
-- [ ] **T3 radio & streaming basics**: endless play, audio quality, skip silence, crossfade groundwork · `toccata/radio`
+- [x] **T2 motion**: route transitions with predictive back, sheets/menus/dialogs enter and exit, press and list motion · `toccata/motion`
+- [x] **T3 radio & streaming basics**: endless play, audio quality, skip silence, crossfade groundwork · `toccata/radio`
 
 Wave 2
-- [ ] **T4 player canvas**: controls clear of the nav bar, full-bleed cover blends into the ambience canvas, "Hide top bar" option · `toccata/player-canvas`
-- [ ] **T5 loading**: a shared loading bar for every screen and menu that loads, faster menus · `toccata/loading`
-- [ ] **T6 awareness**: offline / metered / battery saver / low storage / failing stream, shown in one line and adapted to · `toccata/awareness`
+- [x] **T4 player canvas**: controls clear of the nav bar, full-bleed cover blends into the ambience canvas, "Hide top bar" option · `toccata/player-canvas`
+- [x] **T5 loading**: a shared loading bar for every screen and menu that loads, faster menus · `toccata/loading`
+- [x] **T6 awareness**: offline / metered / battery saver / low storage / failing stream, shown in one line and adapted to · `toccata/awareness`
 
 Wave 3
-- [ ] **T7 Home**: customisable shelves, creative artist portraits, listening tracking · `toccata/home`
+- [x] **T7 Home**: customisable shelves, creative artist portraits, listening tracking · `toccata/home`
   claimed: kilo · toccata/home
-- [ ] **T8 settings**: the basic and quality-of-life settings every player has · `toccata/settings`
-- [ ] **T9 performance**: GPU-friendly drawing, fewer recompositions, measured · `toccata/perf`
+- [x] **T8 settings**: the basic and quality-of-life settings every player has · `toccata/settings`
+- [x] **T9 performance**: GPU-friendly drawing, fewer recompositions, measured · `toccata/perf`
 
 ## Night shift (maintenance, branch `night/maintenance`)
 
