@@ -109,7 +109,8 @@ class MediaEngine(
 
     /** Wipe the stream cache so the next play re-fetches from the network. */
     fun clearPlayerCache() {
-        playerCache.keys.forEach { playerCache.removeResource(it) }
+        // Copy first: removing while iterating the live key set is asking for trouble.
+        playerCache.keys.toList().forEach { playerCache.removeResource(it) }
     }
 
     companion object {

@@ -4,6 +4,24 @@ All notable changes to MusicForge. Newest phase first.
 
 ---
 
+## Toccata (phase 15)
+
+Version 0.15.0, codename `Toccata`. Plan: `.agent/decisions/0001-phase-15-toccata.md`.
+
+### P1 · 0.15.0
+
+Tag: [`p1-0.15.0`](../../releases/tag/p1-0.15.0) · Version code `1501` · 2026-10-29
+
+- Motion: NavHost slide/fade with predictive back, press feedback, list item animation, icon crossfades
+- Player: safe-drawing insets, cover fades into the ambience canvas, "Hide top bar"
+- Radio: "Start radio" plays the song alone and lets endless play build the station
+- Loading: `LoadingBar` (draw-phase, 150 ms gate) on every real loading state
+- Awareness: one `StateFlow` of network / battery saver / storage / failing streams; one line on Home
+- Home: hidden and reordered shelves (`forge.homeOrder`, `forge.homeHidden`), artist portraits, "Your week" with streak
+- Settings: start screen (`defaultOpenTab`, Metrolist values accepted), keep screen on, haptics, double-tap seek, swipe-to-skip, cache clears, lyrics defaults
+- Updater: reuses a cached APK whose SHA-256 still matches
+- Performance: DataStore and file I/O off the main thread at startup and in Settings; software bitmaps only where pixels are read
+
 ## Sonata (phase 14)
 
 Version 0.14.0, codename `Sonata`.

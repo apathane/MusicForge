@@ -1,13 +1,14 @@
-MusicForge 0.14.0 · S0nata
-The first regular Sonata release: previews 1–4, plus a night of careful fixes.
+MusicForge P1 · 0.15.0 · Toccata
+The first preview of phase 15, Toccata: motion, speed and the basics, from your 0.14.0 notes.
 
-- In-app updater: daily and manual checks in Settings, preview opt-in, download progress, SHA-256 verification before the installer opens
-- Player: full-bleed cover art, output-device picker that survives MagicOS, volume slider with proper touch targets
-- Accessibility: TalkBack can now read and move the seek bar; 48 dp targets across the queue and mini player
-- Queue: rows keep their identity when the queue changes, so a swipe in progress isn't reset
-- Sign-in: an explicit "Use this account" step instead of a reload loop; the account is read off the main thread
-- Artwork: signed thumbnails stay signed, missing covers fall back to the video thumbnail, resized Google covers keep their query string
-- Updater hygiene: asset names can't carry paths, old update APKs are cleared, progress redraws once per percent
-- Repo: old committed APKs removed
+- Motion everywhere: screens slide in and out with predictive back (back never just vanishes), cards and rows press down, lists animate items in and out, play/pause and like icons crossfade
+- Player: controls clear the navigation bar and cutouts, the full-bleed cover fades into the track's own colour instead of a dark band, and a new "Hide top bar" option
+- Radio: "Start radio" in every song's menu; endless play keeps the music going when the queue runs out
+- Loading: a thin bar on every screen that fetches (artist, album, playlist, search, Home refresh, sign-in, sync, restore), so you're never left guessing
+- Awareness: the app notices when you're offline, on mobile data, on battery saver, low on storage or when streams keep failing, and says so in one line on Home
+- Home: hide and reorder shelves, artist portrait cards, a "Your week" shelf with your listening streak
+- Settings: start screen, keep the screen on, haptics, double-tap to seek, swipe-to-skip, clear image and song caches, lyrics defaults
+- Updater: a verified APK that's already downloaded is installed again without re-downloading
+- Faster: startup and disk work moved off the main thread
 
-Signed with the permanent key: installs over preview 1 and later. Coming from 0.13 or older? Back up, uninstall, install, restore once.
+This is a preview. Back up your library first, and report anything device-specific.

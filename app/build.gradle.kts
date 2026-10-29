@@ -10,10 +10,10 @@ plugins {
 // Numeric versions describe compatibility; preview numbers describe milestones. Patch releases
 // reserve the final slot in each patch band, so 0.14.0-p4 (1404) can update to 0.14.0 (1409),
 // then 0.14.1 (1419). Keep preview numbers from 1 through 8.
-val phase = 14
+val phase = 15
 val patch = 0
-val preview = 0
-val codename = "Sonata"
+val preview = 1
+val codename = "Toccata"
 
 android {
     namespace = "dev.musicforge"
