@@ -43,6 +43,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.Motion
+import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -93,7 +95,8 @@ fun DownloadBadge(id: String) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
+@OptIn(UnstableApi::class)
 @Composable
 fun TrackActionsSheet(
     item: MediaItem,
@@ -150,7 +153,18 @@ fun TrackActionsSheet(
             Action(ForgeIcons.Radio, "Start radio") { graph.player.startRadio(item); onDismiss() }
             AnimatedContent(
                 targetState = liked == true,
-                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                transitionSpec = {
+                    if (targetState) {
+                        // Heart fills in with a pop (EaseBackOut). The colour still fades faster than
+                        // the shape — breaking up is harder than making up.
+                        (fadeIn(tween(Motion.Fade)) + androidx.compose.animation.scaleIn(
+                            animationSpec = tween(Motion.Arrive, easing = Motion.EaseBackOut),
+                            initialScale = 0.9f,
+                        )) togetherWith fadeOut(tween(Motion.Instant))
+                    } else {
+                        fadeIn(tween(140)) togetherWith fadeOut(tween(120))
+                    }
+                },
                 label = "like",
             ) { l ->
                 if (l) {

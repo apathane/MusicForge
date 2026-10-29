@@ -23,6 +23,9 @@ P1 · 0.15.0 published (prerelease, code 1501) with all nine packages. Left for 
 - [ ] Track menu loading bar (T5's edit broke TrackActions; reverted)
 - [ ] Radio from a track that isn't playing keeps the current queue? (today it replaces it)
 - [ ] Real-device pass: transitions, insets on gesture vs 3-button nav, Hide top bar, awareness line
+- [x] P2 · 0.15.0: emulator pixel pass (player, library, home, search, restore) + review fixes
+- [ ] P3: motion language (M1), song menu (B1), collection menus (B2), local music (B3), filters + lyrics sources (B4) — see docs/AUDIT-0.15.md
+- Skipped for now (owner, 2026-10-29): Last.fm scrobbling, Google Cast
 
 Wave 1
 - [x] **T1 updater reuse**: don't re-download an APK that is already in cache and verified · `toccata/updater-reuse`
