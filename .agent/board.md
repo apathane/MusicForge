@@ -16,6 +16,23 @@ Plan: changes land through reviewable PRs, CI must pass, and release signing mus
 - [ ] **Real-device updater test**: verify update discovery, checksum rejection, permission flow, and install over preview 3 on hardware.
 - [ ] **Identity (owner)**: the app still needs the owner's decision on its long-term name, colour, and signature element before a larger identity redesign.
 
+## Now: Toccata · phase 15 (see decisions/0001-phase-15-toccata.md)
+
+Wave 1
+- [ ] **T1 updater reuse**: don't re-download an APK that is already in cache and verified · `toccata/updater-reuse`
+- [ ] **T2 motion**: route transitions with predictive back, sheets/menus/dialogs enter and exit, press and list motion · `toccata/motion`
+- [ ] **T3 radio & streaming basics**: endless play, audio quality, skip silence, crossfade groundwork · `toccata/radio`
+
+Wave 2
+- [ ] **T4 player canvas**: controls clear of the nav bar, full-bleed cover blends into the ambience canvas, "Hide top bar" option · `toccata/player-canvas`
+- [ ] **T5 loading**: a shared loading bar for every screen and menu that loads, faster menus · `toccata/loading`
+- [ ] **T6 awareness**: offline / metered / battery saver / low storage / failing stream, shown in one line and adapted to · `toccata/awareness`
+
+Wave 3
+- [ ] **T7 Home**: customisable shelves, creative artist portraits, listening tracking · `toccata/home`
+- [ ] **T8 settings**: the basic and quality-of-life settings every player has · `toccata/settings`
+- [ ] **T9 performance**: GPU-friendly drawing, fewer recompositions, measured · `toccata/perf`
+
 ## Night shift (maintenance, branch `night/maintenance`)
 
 Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
