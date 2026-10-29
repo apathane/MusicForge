@@ -179,7 +179,7 @@ fun SearchScreen() {
     // Collection long-press menu for albums, artists, playlists
     var collectionTarget by remember { androidx.compose.runtime.mutableStateOf<CollectionTarget?>(null) }
     if (collectionTarget != null) {
-        CollectionActionsSheet(collectionTarget!!) { collectionTarget = null }
+        CollectionActionsSheet(collectionTarget) { collectionTarget = null }
     }
     val submit: (String) -> Unit = { text ->
         focus.clearFocus()
