@@ -181,6 +181,9 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    suspend fun songCacheBytes(): Long = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.mediaEngine.playerCacheSizeBytes }
+
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun clearSongCache() = viewModelScope.launch {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.mediaEngine.clearPlayerCache() }
         android.widget.Toast.makeText(graph.app, "Song cache cleared", android.widget.Toast.LENGTH_SHORT).show()
@@ -363,7 +366,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ActionRow("Clear image cache", "${formatBytes(imgSize)} · tap to clear") { vm.clearImageCache() }
             var songSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
             LaunchedEffect(Unit) {
-                songSize = context.graph.mediaEngine.playerCacheSizeBytes
+                songSize = vm.songCacheBytes()
             }
             ActionRow("Clear song cache", "${formatBytes(songSize)} · tap to clear") { vm.clearSongCache() }
         }
