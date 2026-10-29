@@ -12,9 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.CircularProgressIndicator
+import dev.musicforge.ui.designsystem.LoadingBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,10 +169,8 @@ fun LoginScreen(onDone: () -> Unit) {
             Text("Sign in to YouTube Music", style = MaterialTheme.typography.titleMedium)
         }
         status?.let {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.padding(end = 10.dp).size(16.dp), color = MaterialTheme.colorScheme.onBackground, strokeWidth = 2.dp)
-                Text(it, style = MaterialTheme.typography.bodySmall)
-            }
+            LoadingBar(visible = true, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
         }
         session?.let { sess ->
             Column(

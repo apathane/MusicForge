@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,6 +49,7 @@ import dev.musicforge.ui.openItem
 import dev.musicforge.AppGraph
 import dev.musicforge.data.db.SearchHistory
 import dev.musicforge.graph
+import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.playback.toMediaItem
 import androidx.compose.runtime.LaunchedEffect
@@ -235,6 +235,7 @@ fun SearchScreen() {
                 }
             }
             SearchViewModel.Results.Loading -> item {
+                LoadingBar(visible = true)
                 dev.musicforge.ui.components.SkeletonRows()
             }
             is SearchViewModel.Results.Failed -> item { EmptyState("Couldn't search", r.message) }

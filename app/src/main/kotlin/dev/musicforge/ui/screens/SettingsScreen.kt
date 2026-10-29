@@ -23,7 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.LinearProgressIndicator
+import dev.musicforge.ui.designsystem.LoadingBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -188,6 +188,9 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
         BackRow(onBack)
         ScreenHeader("Settings", belowBackRow = true)
+        if (restore is SettingsViewModel.RestoreState.Working) {
+            LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().height(3.dp))
+        }
 
         SectionTitle("Account")
         Group {
@@ -207,6 +210,9 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                         else -> last?.let { "Last synced " + android.text.format.DateUtils.getRelativeTimeSpanString(it) } ?: "Likes, playlists, albums and artists"
                     },
                 ) { vm.syncNow() }
+                if (sync is dev.musicforge.data.AccountSync.Status.Running) {
+                    LoadingBar(visible = true, modifier = Modifier.fillMaxWidth().height(3.dp))
+                }
                 ToggleRow(
                     "Pause search history",
                     prefs?.get(Keys.PauseSearchHistory) ?: false,
@@ -382,11 +388,17 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 private fun RestoreDialogs(state: SettingsViewModel.RestoreState, vm: SettingsViewModel) {
     when (state) {
         SettingsViewModel.RestoreState.Idle -> Unit
+        // Modal on purpose: nothing else should touch the library while a backup is restoring.
         SettingsViewModel.RestoreState.Working -> AlertDialog(
             onDismissRequest = {},
             confirmButton = {},
             title = { Text("Working…") },
-            text = { Text("Reading your backup. Large libraries take a few seconds.") },
+            text = {
+                Column {
+                    Text("Reading your backup. Large libraries take a few seconds.")
+                    dev.musicforge.ui.designsystem.LoadingBar(modifier = Modifier.padding(top = 12.dp), delayMs = 0)
+                }
+            },
         )
         is SettingsViewModel.RestoreState.Confirm -> {
             var includeAccount by androidx.compose.runtime.remember { mutableStateOf(true) }
@@ -500,9 +512,9 @@ private fun UpdateCheckRow(
         Text(if (state is UpdateState.Available) "Install update" else "Check for updates", style = MaterialTheme.typography.titleSmall)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (state is UpdateState.Downloading) {
-            LinearProgressIndicator(
-                progress = { state.progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(4.dp),
+            LoadingBar(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                progress = state.progress.coerceIn(0f, 1f),
             )
         }
     }
