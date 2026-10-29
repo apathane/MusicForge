@@ -100,6 +100,12 @@ object Keys {
     /** Local: swipe the mini player to skip. */
     val SwipeMiniToSkip = bool("forge.swipeMiniToSkip")
 
+    // Local music
+    /** Persisted URI from OpenDocumentTree — a single folder to scan, or null for "all music". */
+    val LocalMusicFolderUri = str("forge.localMusicFolderUri")
+    /** True when the user picked "All music" instead of a specific folder. */
+    val LocalMusicAll = bool("forge.localMusicAll")
+
     // Network
     val ProxyEnabled = bool("proxyEnabled")
     val ProxyType = str("proxyType")

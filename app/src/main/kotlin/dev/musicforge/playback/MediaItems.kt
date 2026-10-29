@@ -26,6 +26,8 @@ fun forgeMediaItem(
     albumId: String? = null,
     albumTitle: String? = null,
     durationSec: Int? = null,
+    /** Override the placeholder URI. Used for local songs whose mediaId is a content:// URI. */
+    uri: String? = null,
 ): MediaItem {
     val extras = Bundle().apply {
         putStringArray(EXTRA_ARTIST_IDS, credits.map { it.id.orEmpty() }.toTypedArray())
@@ -33,11 +35,13 @@ fun forgeMediaItem(
         albumId?.let { putString(EXTRA_ALBUM_ID, it) }
         durationSec?.let { putInt(EXTRA_DURATION, it) }
     }
+    val isLocal = uri != null && uri.startsWith("content://")
     return MediaItem.Builder()
         .setMediaId(videoId)
-        // Placeholder; the resolving data source swaps in the real stream URL.
-        .setUri("https://music.youtube.com/watch?v=$videoId")
-        .setCustomCacheKey(videoId)
+        // Placeholder; the resolving data source swaps in the real stream URL. Local songs keep
+        // their content:// URI so PlaybackService doesn't rewrite it to a YouTube URL.
+        .setUri(uri ?: "https://music.youtube.com/watch?v=$videoId")
+        .setCustomCacheKey(if (isLocal) videoId else videoId)
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(title)
@@ -71,6 +75,9 @@ fun Song.toMediaItem() = forgeMediaItem(
     albumId = song.albumId,
     albumTitle = song.albumName,
     durationSec = song.duration.takeIf { it > 0 },
+    // Local files carry their content:// URI as the song id — hand it back so the player
+    // (and PlaybackService) can play the file straight from MediaStore instead of a YouTube URL.
+    uri = if (song.isLocal) song.id else null,
 )
 
 val MediaMetadata.credits: List<Credit>

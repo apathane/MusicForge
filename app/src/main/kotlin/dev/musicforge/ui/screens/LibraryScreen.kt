@@ -54,6 +54,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import dev.musicforge.playback.toMediaItem
+import dev.musicforge.ui.LocalSort
 import kotlinx.coroutines.launch
 import com.metrolist.innertube.utils.completed
 import androidx.compose.foundation.lazy.items
@@ -83,6 +84,10 @@ class LibraryViewModel(graph: AppGraph) : ViewModel() {
     val signedIn = graph.settings.data.map { it[dev.musicforge.data.prefs.Keys.InnerTubeCookie] != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Songs scanned from local files, for the "On this phone" shelf count. */
+    val localCount = dao.localSongsCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     init {
         viewModelScope.launch {
             signedIn.collect { yes ->
@@ -108,6 +113,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
     val account by vm.accountPlaylists.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     val found by vm.found.collectAsStateWithLifecycle()
+    val localCount by vm.localCount.collectAsStateWithLifecycle()
     val nav = LocalNavController.current
     val empty = counts?.let { it.songs + it.liked + it.playlists + it.albums + it.artists + it.downloaded + it.events == 0 } ?: false
 
@@ -175,14 +181,20 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             item(key = "shelf-artists") { ShelfRow(ForgeIcons.Person, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
             item(key = "shelf-history") { ShelfRow(ForgeIcons.History, "Recently played", -1) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
             item(key = "shelf-listening") { ShelfRow(ForgeIcons.BarChart, "Your listening", -1) { nav.navigate(Routes.STATS) } }
-        }
-        if (signedIn) {
+            }
+            if (signedIn) {
             item(key = "yt-header") { SectionTitle("From YouTube Music") }
             item(key = "yt-liked") { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
             items(account, key = { "yt:" + it.id }, contentType = { "playlist" }) { p ->
                 PlaylistRow(p.title, p.thumbnail, p.songCountText) {
                     nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id))
                 }
+            }
+        }
+        item(key = "device-header") { SectionTitle("On this phone") }
+        item(key = "device-local") {
+            ShelfRow(ForgeIcons.MusicNote, "Local music", localCount) {
+                nav.navigate(Routes.localMusic())
             }
         }
         if (playlists.isNotEmpty()) {

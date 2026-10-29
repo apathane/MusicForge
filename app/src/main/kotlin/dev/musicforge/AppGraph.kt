@@ -10,6 +10,7 @@ import dev.musicforge.data.backup.BackupImporter
 import dev.musicforge.data.db.MusicDatabase
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.data.prefs.dataStore
+import dev.musicforge.data.local.LocalAudioScanner
 import dev.musicforge.download.Downloads
 import dev.musicforge.playback.MediaEngine
 import dev.musicforge.playback.PlayRecorder
