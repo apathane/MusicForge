@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -155,7 +156,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
                 LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     itemsIndexed(section.items.drop(1), key = { _, it -> it.key }) { i, item ->
                         (item as? HomeItem.Track)?.let {
-                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i + 1)) }
+                            Box(Modifier.animateItem()) {
+                                SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i + 1)) }
+                            }
                         }
                     }
                 }
@@ -166,7 +169,9 @@ private fun Section(section: HomeSection, onAction: (HomeAction) -> Unit) {
             LazyRow(contentPadding = PaddingValues(horizontal = Signal.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(section.items, key = { _, it -> it.key }) { i, item ->
                     (item as? HomeItem.Track)?.let {
-                        SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
+                        Box(Modifier.animateItem()) {
+                            SongCard(it.song, section, onAction) { onAction(HomeAction.PlayFrom(section.id, i)) }
+                        }
                     }
                 }
             }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
 import dev.musicforge.ui.designsystem.pressScale
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -166,6 +167,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
                 val press = remember { MutableInteractionSource() }
                 Row(
                     Modifier.fillMaxWidth()
+                        .animateItem()
                         .pressScale(press)
                         .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id)) }
                         .padding(horizontal = 20.dp, vertical = 8.dp),
@@ -186,6 +188,7 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
                 val press = remember { MutableInteractionSource() }
                 Row(
                     Modifier.fillMaxWidth()
+                        .animateItem()
                         .pressScale(press)
                         .clickable(interactionSource = press, indication = null) { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
                         .padding(horizontal = 20.dp, vertical = 8.dp),

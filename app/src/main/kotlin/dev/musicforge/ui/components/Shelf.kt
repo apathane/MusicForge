@@ -2,6 +2,7 @@ package dev.musicforge.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,7 +55,7 @@ fun Card(item: YTItem, onClick: (YTItem) -> Unit) {
         else -> ""
     }
     val press = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    Column(Modifier.width(size).dev.musicforge.ui.designsystem.pressScale(press).clickable(interactionSource = press, indication = null) { onClick(item) }) {
+    Column(Modifier.width(size).animateItem().dev.musicforge.ui.designsystem.pressScale(press).clickable(interactionSource = press, indication = null) { onClick(item) }) {
         Artwork(item.thumbnail, size, corner = if (item is ArtistItem) size / 2 else 10.dp)
         Spacer(Modifier.height(8.dp))
         Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

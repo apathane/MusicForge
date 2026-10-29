@@ -39,6 +39,7 @@ import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.pressScale
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import androidx.compose.foundation.lazy.animateItem
 import coil3.request.crossfade
 
 /** Big, heavy page title in the BitChord style, with an optional trailing action. */
@@ -169,6 +170,7 @@ fun TrackRow(
     Row(
         Modifier
             .fillMaxWidth()
+            .animateItem()
             .pressScale(press)
             .combinedClickable(
                 interactionSource = press,
