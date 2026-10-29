@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import dev.musicforge.ui.designsystem.Motion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +35,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SkeletonRows(count: Int = 8, modifier: Modifier = Modifier) {
     val pulse = rememberInfiniteTransition(label = "skeleton")
-    val alpha = pulse.animateFloat(0.45f, 0.9f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "pulse")
+    val alpha = pulse.animateFloat(1.0f, 0.45f, infiniteRepeatable(tween(Motion.Ambient, easing = Motion.EaseInOutWave), RepeatMode.Restart), label = "pulse")
     // Ink at low alpha, not a surface colour: on pure black the surfaces are nearly black too.
     val tone = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f)
     Column(modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha.value }.semantics { contentDescription = "Loading" }) {

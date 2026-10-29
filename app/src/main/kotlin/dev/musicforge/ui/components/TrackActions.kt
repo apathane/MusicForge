@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -121,7 +122,18 @@ fun TrackActionsSheet(
             // because breaking up is harder than making up (and the colour fades faster than the shape).
             AnimatedContent(
                 targetState = liked == true,
-                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                transitionSpec = {
+                    if (targetState) {
+                        // Heart fills in with a pop (EaseBackOut). The colour still fades faster than
+                        // the shape — breaking up is harder than making up.
+                        (fadeIn(tween(Motion.Fade)) + androidx.compose.animation.scaleIn(
+                            animationSpec = tween(Motion.Arrive, easing = Motion.EaseBackOut),
+                            initialScale = 0.9f,
+                        )) togetherWith fadeOut(tween(Motion.Instant))
+                    } else {
+                        fadeIn(tween(140)) togetherWith fadeOut(tween(120))
+                    }
+                },
                 label = "like",
             ) { l ->
                 if (l) {

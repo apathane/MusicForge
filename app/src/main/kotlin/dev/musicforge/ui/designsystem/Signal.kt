@@ -1,5 +1,7 @@
 package dev.musicforge.ui.designsystem
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -8,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
@@ -53,11 +57,16 @@ fun SectionHeader(title: String, reason: String?, modifier: Modifier = Modifier)
 /** Filter, mood and period chips: one selected look, ink on canvas inverted. */
 @Composable
 fun SignalChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    // Chips pop in on first appearance (EaseBackOut) — one read of [pop] in the draw phase,
+    // so the row of them typesets without recomposing as they land.
+    val pop = remember { Animatable(0.9f) }
+    LaunchedEffect(Unit) { pop.animateTo(1f, tween(Motion.Arrive, easing = Motion.EaseBackOut)) }
     Text(
         label,
         style = MaterialTheme.typography.labelLarge,
         color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
+            .graphicsLayer { scaleX = pop.value; scaleY = pop.value }
             .clip(RoundedCornerShape(percent = 50))
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
@@ -71,14 +80,16 @@ fun Modifier.signalSurface(color: androidx.compose.ui.graphics.Color, radius: an
     clip(RoundedCornerShape(radius)).background(color)
 
 /**
- * Pressed things give way a little (0.97), so a tap is felt before anything else happens. Read
- * in the draw phase on one layer: no recomposition per frame.
+ * Pressed things give way a little (0.96), so a tap is felt before anything else happens — 2 px down
+ * and a tenth of the glyph's opacity, like the ghost's icon buttons. Springs follow the duration
+ * scale, so reduced motion still snaps to target. Read in the draw phase on one layer: no
+ * recomposition per frame.
  */
 fun Modifier.pressScale(interaction: androidx.compose.foundation.interaction.InteractionSource): Modifier = composed {
     val pressed by interaction.collectIsPressedAsState()
     val scale by androidx.compose.animation.core.animateFloatAsState(
-        if (pressed) 0.97f else 1f,
-        androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 900f),
+        if (pressed) 0.96f else 1f,
+        Motion.Press,
         label = "press",
     )
     graphicsLayer { scaleX = scale; scaleY = scale }
