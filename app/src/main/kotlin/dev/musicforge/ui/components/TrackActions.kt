@@ -23,7 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.runtime.Composable
@@ -112,10 +116,18 @@ fun TrackActionsSheet(
                 return@Column
             }
             Action(ForgeIcons.Next, "Play next") { graph.player.playNext(item); onDismiss() }
-            if (liked == true) {
-                Action(ForgeIcons.Heart, "Unlike") { graph.library.setLiked(item, false); onDismiss() }
-            } else {
-                Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
+            // A heart that's full needs a moment to decide it's hollow — 140 in, 120 out,
+            // because breaking up is harder than making up (and the colour fades faster than the shape).
+            AnimatedContent(
+                targetState = liked == true,
+                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                label = "like",
+            ) { l ->
+                if (l) {
+                    Action(ForgeIcons.Heart, "Unlike") { graph.library.setLiked(item, false); onDismiss() }
+                } else {
+                    Action(ForgeIcons.HeartOutline, "Like") { graph.library.setLiked(item, true); onDismiss() }
+                }
             }
             Action(ForgeIcons.PlaylistAdd, "Add to playlist") { picking = true }
             extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }

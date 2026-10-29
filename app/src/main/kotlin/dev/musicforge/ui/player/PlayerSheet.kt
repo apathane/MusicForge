@@ -462,7 +462,13 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                 )
             }
         }
-        DiscButton(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (liked) "Unlike" else "Like", if (liked) accent else white) { onLike() }
+        AnimatedContent(
+            targetState = liked to accent,
+            transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+            label = "like",
+        ) { (l, a) ->
+            DiscButton(if (l) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (l) "Unlike" else "Like", if (l) a else white) { onLike() }
+        }
         Spacer(Modifier.width(12.dp))
         DiscButton(ForgeIcons.More, "More options", white) { onMenu() }
     }
@@ -499,11 +505,17 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
     ) {
         PlayerIcon(ForgeIcons.Previous, "Previous", white, 40.dp) { connection.previous() }
         Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
-            if (now.isBuffering && !now.isPlaying) {
-                CircularProgressIndicator(Modifier.size(40.dp), color = white, strokeWidth = 3.dp)
-            } else {
-                PlayerIcon(if (now.isPlaying) ForgeIcons.Pause else ForgeIcons.Play, if (now.isPlaying) "Pause" else "Play", white, 56.dp) {
-                    connection.togglePlay()
+            AnimatedContent(
+                targetState = now.isPlaying to now.isBuffering,
+                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                label = "playPause",
+            ) { (playing, buffering) ->
+                if (buffering && !playing) {
+                    CircularProgressIndicator(Modifier.size(40.dp), color = white, strokeWidth = 3.dp)
+                } else {
+                    PlayerIcon(if (playing) ForgeIcons.Pause else ForgeIcons.Play, if (playing) "Pause" else "Play", white, 56.dp) {
+                        connection.togglePlay()
+                    }
                 }
             }
         }
@@ -593,13 +605,15 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         }
     }
 
-    val icon = when { fraction <= 0f -> PlayerIcons.VolumeOff; fraction < 0.5f -> PlayerIcons.VolumeDown; else -> PlayerIcons.VolumeUp }
+    val iconState = when { fraction <= 0f -> PlayerIcons.VolumeOff; fraction < 0.5f -> PlayerIcons.VolumeDown; else -> PlayerIcons.VolumeUp }
     val iconLabel = if (fraction <= 0f) "Volume muted" else "Volume on"
     Row(
         Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, iconLabel, tint = color, modifier = Modifier.size(20.dp))
+        AnimatedContent(iconState, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(100)) }, label = "volume") {
+            Icon(it, iconLabel, tint = color, modifier = Modifier.size(20.dp))
+        }
         Spacer(Modifier.width(10.dp))
         Canvas(
             Modifier

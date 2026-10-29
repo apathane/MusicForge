@@ -1,7 +1,11 @@
 package dev.musicforge.ui.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.animateItem
@@ -429,8 +432,14 @@ private fun MiniPlayerHeader(now: NowPlaying, liked: Boolean, onMore: () -> Unit
         }
         val likePress = remember { MutableInteractionSource() }
         val morePress = remember { MutableInteractionSource() }
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(likePress).clickable(interactionSource = likePress, indication = null, onClickLabel = if (liked) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
-            Icon(if (liked) ForgeIcons.Heart else ForgeIcons.HeartOutline, contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) accent else white, modifier = Modifier.size(20.dp))
+        AnimatedContent(
+            targetState = liked to accent,
+            transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+            label = "like",
+        ) { (l, a) ->
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(likePress).clickable(interactionSource = likePress, indication = null, onClickLabel = if (l) "Unlike" else "Like", onClick = onLike), contentAlignment = Alignment.Center) {
+                Icon(if (l) ForgeIcons.Heart else ForgeIcons.HeartOutline, contentDescription = if (l) "Unlike" else "Like", tint = if (l) a else white, modifier = Modifier.size(20.dp))
+            }
         }
         Box(Modifier.size(48.dp).clip(RoundedCornerShape(50)).pressScale(morePress).clickable(interactionSource = morePress, indication = null, onClickLabel = "More options", onClick = onMore), contentAlignment = Alignment.Center) {
             Icon(ForgeIcons.More, contentDescription = "More options", tint = white, modifier = Modifier.size(20.dp))
