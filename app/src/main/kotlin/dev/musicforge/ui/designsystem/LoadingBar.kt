@@ -1,6 +1,5 @@
 package dev.musicforge.ui.designsystem
 
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -70,7 +69,7 @@ fun LoadingBar(
         val sweep by transition.animateFloat(
             initialValue = -1f,
             targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Reverse),
+            animationSpec = infiniteRepeatable(tween(1100, easing = Motion.EaseDrawer), RepeatMode.Restart),
             label = "sweep",
         )
         Box(

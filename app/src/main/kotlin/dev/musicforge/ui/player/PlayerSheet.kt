@@ -53,7 +53,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -117,6 +116,7 @@ import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
+import dev.musicforge.ui.designsystem.BufferingIndicator
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
@@ -595,7 +595,7 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
                 label = "playPause",
             ) { (playing, buffering) ->
                 if (buffering && !playing) {
-                    CircularProgressIndicator(Modifier.size(40.dp), color = white, strokeWidth = 3.dp)
+                    BufferingIndicator(Modifier.size(40.dp), color = white)
                 } else {
                     PlayerIcon(if (playing) ForgeIcons.Pause else ForgeIcons.Play, if (playing) "Pause" else "Play", white, 56.dp) {
                         connection.togglePlay()

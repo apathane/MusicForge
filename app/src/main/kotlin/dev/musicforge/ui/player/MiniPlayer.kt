@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,6 +52,7 @@ import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.glass
+import dev.musicforge.ui.designsystem.BufferingIndicator
 
 @Composable
 fun MiniPlayer(
@@ -108,7 +108,7 @@ fun MiniPlayer(
             ) { (playing, buffering) ->
                 if (buffering && !playing) {
                     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(Modifier.size(20.dp), color = track, strokeWidth = 2.dp)
+                        BufferingIndicator(Modifier.size(20.dp), color = track)
                     }
                 } else {
                     ControlButton(if (playing) ForgeIcons.Pause else ForgeIcons.Play, if (playing) "Pause" else "Play") { connection.togglePlay() }
