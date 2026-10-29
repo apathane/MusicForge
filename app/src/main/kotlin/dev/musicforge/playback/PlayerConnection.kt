@@ -122,7 +122,9 @@ class PlayerConnection(private val context: Context) {
                 metadata = it.mediaMetadata,
                 isPlaying = p.isPlaying,
                 isBuffering = p.playbackState == Player.STATE_BUFFERING,
-                durationMs = p.duration.coerceAtLeast(0),
+                // Until a resumed queue is prepared the player reports no duration; the item's
+                // own length keeps the scrubber and "-3:53" honest instead of "-0:00".
+                durationMs = p.duration.takeIf { it > 0 } ?: ((it.mediaMetadata.durationSec ?: 0) * 1000L),
                 hasNext = p.hasNextMediaItem(),
                 hasPrevious = p.hasPreviousMediaItem() || p.currentPosition > 3_000,
                 error = p.playerError?.let { e -> e.cause?.message ?: e.errorCodeName },
