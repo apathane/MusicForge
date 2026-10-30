@@ -50,3 +50,8 @@
 8. **Context menus / overflow menus**: No overflow or context menus are reachable via tap, menu key, or three-dot button. Repro: open any screen, press menu key or tap top-right corner, no menu appears.
 
 9. **Blank screen on search query**: Search query submission produces a blank screen that reverts to the Settings view. Repro: enter text in Search tab, press search key, screen flashes blank then shows Settings.
+## Coordinator correction (verified after the run)
+
+- Settings rows are NOT dead. The toggle rows are `checkable` with row-level bounds `[40,y][1040,y+120]`. Haptics flipped `false → true → false` on two taps at (540,1840). The "Settings: every row / every toggle dead" rows above are wrong.
+- The black screen seen during the run was the device asleep (`mWakefulness=Asleep`), not a crash. The app process was alive. `KEYCODE_WAKEUP` fixed it.
+- Long-press and player claims are still unverified. The run's tap coordinates may have hit the wrong layer while the screen was asleep. Re-run those rows with the screen awake and `uiautomator dump` before each tap.
