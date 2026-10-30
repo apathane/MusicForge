@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -145,6 +146,16 @@ class PlaybackService : MediaLibraryService() {
         scope.launch {
             graph.settings.data.map { it[Keys.AudioNormalization] ?: true }.distinctUntilChanged()
                 .collect { normalize = it; applyLoudness() }
+        }
+        scope.launch {
+            // The prefs had no reader until now: Crossfade was saved but never played.
+            graph.settings.data.map { (it[Keys.CrossfadeEnabled] ?: false) to (it[Keys.CrossfadeSeconds] ?: 0f) }
+                .distinctUntilChanged()
+                .collect { (on, seconds) ->
+                    fadeMs = if (on) (seconds * 1000).toLong().coerceIn(0L, 12_000L) else 0L
+                    applyVolume()
+                    if (player.isPlaying) startFadeTicker() else fadeJob?.cancel()
+                }
         }
         scope.launch {
             graph.settings.data.map { (it[Keys.EqEnabled] ?: false) to EqSettings.parse(it[Keys.EqLevels]) }
@@ -321,6 +332,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) startFadeTicker() else fadeJob?.cancel()
             if (isPlaying) graph.awareness.streamRecovered()
             val now = android.os.SystemClock.elapsedRealtime()
             if (isPlaying) {
@@ -393,6 +405,13 @@ class PlaybackService : MediaLibraryService() {
 
     private var normalize = true
 
+    /** Loudness attenuation for the current track; the fade multiplies on top of it. */
+    private var loudnessGain = 1f
+
+    /** Length of the fade at each end of a track, 0 when Crossfade is off. */
+    private var fadeMs = 0L
+    private var fadeJob: kotlinx.coroutines.Job? = null
+
     /**
      * Brings loud masters down to YouTube's -14 LUFS reference using the loudness YouTube
      * reports for each track. Attenuation only, so nothing can clip and no extra DSP runs.
@@ -400,7 +419,8 @@ class PlaybackService : MediaLibraryService() {
     private fun applyLoudness() {
         val id = player.currentMediaItem?.mediaId ?: return
         if (!normalize) {
-            player.volume = 1f
+            loudnessGain = 1f
+            applyVolume()
             return
         }
         scope.launch {
@@ -408,8 +428,30 @@ class PlaybackService : MediaLibraryService() {
             if (player.currentMediaItem?.mediaId != id) return@launch
             val measuredLufs = format?.perceptualLoudnessDb ?: format?.loudnessDb?.let { it + TARGET_LUFS }
             val gainDb = measuredLufs?.let { (TARGET_LUFS - it).coerceIn(-15.0, 0.0) } ?: 0.0
-            player.volume = Math.pow(10.0, gainDb / 20.0).toFloat()
+            loudnessGain = Math.pow(10.0, gainDb / 20.0).toFloat()
+            applyVolume()
             Timber.d("loudness %s: measured %.1f LUFS -> gain %.1f dB (volume %.2f)", id, measuredLufs ?: Double.NaN, gainDb, player.volume)
+        }
+    }
+
+    /** Loudness and the track fade share the player's one volume, so both are applied here. */
+    private fun applyVolume() {
+        val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: -1L
+        player.volume = loudnessGain * fadeGain(player.currentPosition, duration, fadeMs)
+    }
+
+    /**
+     * Crossfade is a fade through silence, so the volume moves while the track plays: a 100 ms
+     * tick, and only while Crossfade is on. Shortcut: a tick instead of a Media3 position listener,
+     * upgrade if the battery numbers show it matters.
+     */
+    private fun startFadeTicker() {
+        if (fadeMs <= 0L || fadeJob?.isActive == true) return
+        fadeJob = scope.launch {
+            while (player.isPlaying) {
+                applyVolume()
+                delay(100)
+            }
         }
     }
 
