@@ -23,7 +23,7 @@ Settings (from `sharedUi` strings): Playback → Crossfade; Automix [beta]; Auto
 - Nothing in `playback/` reads them. Nothing in `ui/` mentions crossfade.
 - So the three prefs are **dead**: no playback effect, no Settings control. They exist for backup-key compatibility (`Prefs.kt:126-132`), which is a good reason to keep the keys, not to leave them unused.
 
-## Options for us (X7b: Snapdragon 680, 16 GB storage class, Adreno 610)
+## Options for us (X7b: Snapdragon 680, Adreno 610)
 | Option | What it gives | Cost | Fit |
 |---|---|---|---|
 | A. Volume ramp at track end (single player) | Fade out over N s before the end, fade in at the start of the next | Low: a Player.Listener + a timed volume ramp | Ship first. Honest name: fade, not overlap |
