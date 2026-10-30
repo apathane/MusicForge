@@ -24,12 +24,23 @@ class LibraryActions(
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val scope = CoroutineScope(appScope.coroutineContext + kotlinx.coroutines.Dispatchers.IO.limitedParallelism(1))
 
+    private val _syncFailures = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
+
+    /** Short lines for the UI when an edit saved here didn't reach YouTube Music. The local change stays. */
+    val syncFailures: kotlinx.coroutines.flow.SharedFlow<String> = _syncFailures
+
+    /** Silent failures were the bug: the user sees the toast, the log keeps the stack trace. The toast is short; the stack trace is not. */
+    private fun remoteFailed(what: String, e: Throwable) {
+        Timber.w(e, "YouTube write failed: %s", what)
+        _syncFailures.tryEmit("Saved on this phone. Couldn't reach YouTube Music to $what.")
+    }
+
     fun setLiked(item: MediaItem, liked: Boolean) = scope.launch {
         recorder.ensureSong(item)
         db.dao().setLiked(item.mediaId, liked, if (liked) System.currentTimeMillis() else null)
         if (liked) onLiked(item)
         if (YouTube.cookie != null) {
-            YouTube.likeVideo(item.mediaId, liked).onFailure { Timber.w(it, "YouTube like sync failed") }
+            YouTube.likeVideo(item.mediaId, liked).onFailure { remoteFailed("like this song", it) }
         }
     }
 
@@ -42,7 +53,7 @@ class LibraryActions(
         }
         // A playlist that lives in the YouTube Music account gets the change there too.
         remoteId(playlistId)?.let { browseId ->
-            YouTube.addToPlaylist(browseId, item.mediaId).onFailure { Timber.w(it, "YouTube playlist add failed") }
+            YouTube.addToPlaylist(browseId, item.mediaId).onFailure { remoteFailed("add to the playlist", it) }
         }
     }
 
@@ -53,7 +64,7 @@ class LibraryActions(
         db.dao().touchPlaylist(playlistId, System.currentTimeMillis())
         val browseId = remoteId(playlistId)
         if (browseId != null && setVideoId != null) {
-            YouTube.removeFromPlaylist(browseId, songId, setVideoId).onFailure { Timber.w(it, "YouTube playlist remove failed") }
+            YouTube.removeFromPlaylist(browseId, songId, setVideoId).onFailure { remoteFailed("remove it from the playlist", it) }
         }
     }
 

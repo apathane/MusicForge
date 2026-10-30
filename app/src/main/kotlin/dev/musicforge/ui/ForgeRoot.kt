@@ -126,6 +126,10 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
     val hapticsOn by androidx.compose.runtime.rememberUpdatedState(prefs?.get(Keys.HapticsEnabled) ?: true)
     val haptics = remember(context) { ForgeHaptics(context) { hapticsOn } }
+    // A failed YouTube write gets one toast and the local change stays (see LibraryActions). Yes, it's a toast, not a snackbar: the root has no host yet.
+    LaunchedEffect(context) {
+        context.graph.library.syncFailures.collect { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
+    }
     val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
     // The start tab is applied once, by navigating like a tab tap: changing NavHost's
     // startDestination after the first frame would rebuild the graph and drop the back stack.
