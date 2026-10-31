@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,7 +33,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
@@ -75,6 +73,7 @@ import dev.musicforge.playback.isFromRadio
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
+import dev.musicforge.ui.designsystem.ForgeSheet
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.LocalArtworkColors
 import kotlinx.coroutines.delay
@@ -481,8 +480,8 @@ private fun TogglePill(label: String, icon: androidx.compose.ui.graphics.vector.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SleepSheet(sleepAt: Long?, onPick: (minutes: Int?) -> Unit) {
-    ModalBottomSheet(onDismissRequest = { onPick(-1) }, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
+    ForgeSheet(onDismissRequest = { onPick(-1) }) {
+        Column(Modifier.padding(bottom = 12.dp)) {
             Text("Sleep timer", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
             if (sleepAt != null) {
                 val left = ((sleepAt - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)

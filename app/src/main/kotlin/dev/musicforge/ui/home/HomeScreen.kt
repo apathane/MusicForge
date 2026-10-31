@@ -23,8 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +56,8 @@ import dev.musicforge.recommendation.HomeComposer
 import dev.musicforge.recommendation.HomeItem
 import dev.musicforge.recommendation.HomeLayout
 import dev.musicforge.recommendation.HomeRepository
+import dev.musicforge.ui.designsystem.AnchoredMenu
+import dev.musicforge.ui.designsystem.AnchoredMenuItem
 import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.recommendation.HomeSection
 import dev.musicforge.ui.LocalBottomInset
@@ -327,28 +327,27 @@ private fun Section(
             Text(section.reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    if (menuExpanded) {
-        DropdownMenu(
-            expanded = menuExpanded,
-            onDismissRequest = { menuExpanded = false },
-        ) {
-            DropdownMenuItem(
-                text = { Text("Hide this shelf") },
-                onClick = { onAction(HomeAction.HideShelf(section.id)); menuExpanded = false },
-            )
-            DropdownMenuItem(
-                text = { Text("Move up") },
-                onClick = { onAction(HomeAction.MoveShelf(section.id, -1)); menuExpanded = false },
-            )
-            DropdownMenuItem(
-                text = { Text("Move down") },
-                onClick = { onAction(HomeAction.MoveShelf(section.id, 1)); menuExpanded = false },
-            )
-            DropdownMenuItem(
-                text = { Text("Customise Home") },
-                onClick = { onAction(HomeAction.CustomiseHome); menuExpanded = false },
-            )
-        }
+    // Kept composed so closing can play back into the shelf title.
+    AnchoredMenu(
+        expanded = menuExpanded,
+        onDismissRequest = { menuExpanded = false },
+    ) {
+        AnchoredMenuItem(
+            text = "Hide this shelf",
+            onClick = { onAction(HomeAction.HideShelf(section.id)); menuExpanded = false },
+        )
+        AnchoredMenuItem(
+            text = "Move up",
+            onClick = { onAction(HomeAction.MoveShelf(section.id, -1)); menuExpanded = false },
+        )
+        AnchoredMenuItem(
+            text = "Move down",
+            onClick = { onAction(HomeAction.MoveShelf(section.id, 1)); menuExpanded = false },
+        )
+        AnchoredMenuItem(
+            text = "Customise Home",
+            onClick = { onAction(HomeAction.CustomiseHome); menuExpanded = false },
+        )
     }
 }
 

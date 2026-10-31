@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.ForgeSheet
 import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
@@ -63,7 +62,6 @@ import dev.musicforge.data.db.SongStats
 import dev.musicforge.graph
 import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.LocalNavController
-import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.player.clock
 import dev.musicforge.ui.player.codecPill
@@ -123,8 +121,8 @@ fun TrackActionsSheet(
         SongInfoDialog(item, onDismiss = { showingInfo.value = false })
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
+    ForgeSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(bottom = 12.dp)) {
             Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(meta.artworkUri?.toString(), 52.dp, corner = 8.dp)
                 Spacer(Modifier.width(14.dp))

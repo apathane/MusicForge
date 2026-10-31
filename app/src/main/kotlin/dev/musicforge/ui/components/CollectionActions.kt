@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,7 +22,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +45,7 @@ import dev.musicforge.AppGraph
 import dev.musicforge.graph
 import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.designsystem.ForgeSheet
 import dev.musicforge.ui.designsystem.LoadingBar
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.Routes
@@ -90,7 +89,7 @@ sealed interface CollectionTarget {
 
 /**
  * The long-press menu for an album, artist or playlist. Same visual style as [TrackActionsSheet],
- * same [ModalBottomSheet] primitive. Fetches the collection's tracks lazily — a [LoadingBar]
+ * same [ForgeSheet] primitive. Fetches the collection's tracks lazily — a [LoadingBar]
  * runs while YouTube responds, so taps don't race with navigation.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -132,8 +131,8 @@ fun CollectionActionsSheet(
         return
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
+    ForgeSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(bottom = 12.dp)) {
             LoadingBar(visible = loading, modifier = Modifier.padding(horizontal = 20.dp))
             // Header: artwork, title, subtitle
             Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
