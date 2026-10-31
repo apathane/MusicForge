@@ -9,6 +9,8 @@ import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.GhostTransition
 import dev.musicforge.ui.designsystem.GhostTransition.recordTaps
 import dev.musicforge.ui.designsystem.GhostTransition.tilt
+import dev.musicforge.ui.designsystem.Physics
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -300,29 +302,42 @@ fun ScrollToTopOnReselect(list: androidx.compose.foundation.lazy.LazyListState) 
 
 @Composable
 private fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
+    // One lens slides between tabs instead of each tab fading its own chip: OpenGhost's dock lens,
+    // gliding on [260, 28] and stretching along its speed. Position is in tabs, read while drawing.
+    val lens = remember { androidx.compose.animation.core.Animatable(current.ordinal.toFloat()) }
+    LaunchedEffect(current) { lens.animateTo(current.ordinal.toFloat(), Physics.lensGlide()) }
+    val lensColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f)
     Row(
         modifier = modifier
             .glass(RoundedCornerShape(percent = 50))
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp)
+            .drawBehind {
+                val pitch = (72.dp + 2.dp).toPx()
+                val w = 72.dp.toPx()
+                val h = size.height
+                // Speed in px/s, the unit dock.js tuned its 0.03 against.
+                val (sx, sy) = Physics.stretchScale(Physics.stretchFor(lens.velocity * pitch))
+                val cx = lens.value * pitch + w / 2
+                drawRoundRect(
+                    lensColor,
+                    topLeft = androidx.compose.ui.geometry.Offset(cx - w * sx / 2, h / 2 - h * sy / 2),
+                    size = androidx.compose.ui.geometry.Size(w * sx, h * sy),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * sy / 2),
+                )
+            },
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Tab.entries.forEach { tab ->
             val selected = tab == current
             val tint by animateColorAsState(
                 if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-                tween(160),
+                tween(Motion.Fade),
                 label = "tabTint",
-            )
-            val chip by animateColorAsState(
-                if (selected) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0f),
-                tween(160),
-                label = "tabChip",
             )
             Column(
                 modifier = Modifier
                     .width(72.dp)
                     .height(52.dp)
-                    .background(chip, RoundedCornerShape(percent = 50))
                     .selectable(
                         selected = selected,
                         role = Role.Tab,
