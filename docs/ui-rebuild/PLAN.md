@@ -197,3 +197,27 @@ passing build are not accepted.
   wave; the owner can turn either down after P8.
 - The emulator cannot judge smoothness (software GPU drops frames): gfxinfo numbers come from the
   owner's X7b before P9.
+
+## 8. Status (2026-10-31, end of week)
+
+Shipped in **P8** (`p8-0.15.0`, code 1508, from `ac35689`; R8 build driven on the emulator first:
+analysis with both models ran, no crash):
+
+- S0 kit: `Mirror`/`Curve`, `Physics`, `TypePace`, `WriteTitle`/`StreamText`, `GhostTransition` on
+  Mirror; `KitMathTest`.
+- S1: `ForgeSheet`, `AnchoredMenu` (no Material sheets/menus left), `PhysicsSlider` (crossfade
+  length), scrubber with Automix window + beat pulse, nav pill lens.
+- S2 (part): mini player pull-up, player open/close as mirrors, lyrics cascade/falloff/gap dots,
+  token sweep (worker).
+- Recorded on the emulator: page push/back, tab lens, collection sheet open/close (height jump
+  fixed with smooth-height), slider flick/rubber band, player close.
+
+Next, in order:
+1. S2 Browse: Home, Search (`TypeWave` on the field, quiet), Library, Downloads on the kit
+   (`SignalRow`, `Pill`, one section header). Swipe-a-row-to-queue with arm haptic.
+2. S3: Collection/Artist pages (composite download badge), Settings screens; EQ bands on
+   `PhysicsSlider`; volume row on `PhysicsSlider`.
+3. S4: delete `TypeIn` and old duplicates (`ArtistScreen` private `PillButton` needs `filled`
+   support in the shared one), gfxinfo pass on the X7b, `docs/ui-rebuild/PERF.md`, then P9.
+Owner to try on the phone: does the 6° tilt and 380 ms panel feel right; is the lens stretch
+too much.
