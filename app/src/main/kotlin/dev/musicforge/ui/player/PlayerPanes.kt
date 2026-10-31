@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.animateFloat
 import dev.musicforge.ui.designsystem.Motion
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.animateFloatAsState
