@@ -22,6 +22,7 @@ import androidx.media3.datasource.cache.ContentMetadata
  * analysed (two copies, one tune: the cache's idea of a duet). Reads go through the player's own data source, so a part not cached yet is fetched
  * once and lands in the player cache for when it plays.
  */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class AudioCache(
     private val downloadCache: Cache,
     private val playerCache: Cache,
@@ -70,6 +71,7 @@ class AudioCache(
 }
 
 /** MediaExtractor's random reads served by a Media3 DataSource; one open per read. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private class PlaybackMediaDataSource(
     private val factory: DataSource.Factory,
     private val uri: Uri,
