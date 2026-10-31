@@ -51,3 +51,22 @@ data class LyricLine(
 
 /** One timed word; Automix only needs where it ends. */
 data class LyricWord(val endMs: Long)
+
+/**
+ * The part of BitChord's SleepTimer the controller reads: "stop after this track", which ends the
+ * queue instead of blending into the next song. MusicForge's sleep timer counts minutes only, so
+ * this stays off until it grows that mode.
+ */
+object SleepTimer {
+    val afterTrack = MutableStateFlow(false)
+
+    fun cancel() {
+        afterTrack.value = false
+    }
+}
+
+/**
+ * BitChord skips Automix for items picked from a music-video row. not ported: MusicForge does not
+ * mark music-video items yet, so every item counts as a song here.
+ */
+val androidx.media3.common.MediaItem.isVideoOrigin: Boolean get() = false
