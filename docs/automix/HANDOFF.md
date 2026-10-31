@@ -77,3 +77,19 @@ the filter from the Media3 processor list (it runs in the float path instead).
 Open: wire `syncedLines` to MusicForge's synced lyrics (log shows "lyrics -/-"), so sung bars are
 known from lyrics as well as the vocal mask. Each CI debug APK has a new signature (fresh runner
 keystore): uninstall before installing the next one on a device.
+
+## Loop mix seen (2026-10-31, CI build of c8612c6, emulator)
+- Lyrics reach the loop gate: verdicts now end "lyrics out/in" (synced lines from LRCLIB).
+- A real loop mix ran end to end, after "Aerodynamic" (Daft Punk) in the radio queue:
+  "loop mix at 95.72s · out 2-bar, clear by mask · in 4-bar, clear by lyrics · 120 → 124 BPM over
+  2 bars"; decks built in 2988 ms; armed with takeover at 95.72 s; splice -6.48 ms; align 0
+  -85.07 ms, align 1 -0.01 ms; handoff; "loop mix done: incoming -0.01ms against the deck";
+  "finish from LOOP_RUNNING"; the next pair planned. No crash. Not heard (no emulator audio).
+- Also ran: DJ_FILTER and DJ_BLEND blends with bass swap and tempo match (rate 0.9947, 1.0248).
+- "Aerodynamic" itself got no loop mix: the vocal mask read all 14 loops as sung (its synth and
+  guitar leads), the same call BitChord's code makes.
+- The "mix waveform ... none" spam (open item 2 above) was a seek-test artifact: on an unseeked
+  listen all four tail/head waveforms read "ok" (decode 0.5-3.3 s). A seek leaves a gap in the
+  cache, and `chooseRendition` only reads complete copies.
+- Fixed since: slider and switch colours (theme roles M3 fell back to purple on, `1307b06`), and
+  shared downloads are analysed from the owner song's copy (`c8612c6`).
