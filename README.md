@@ -187,7 +187,7 @@ Keep changes focused, work on a branch or in a separate worktree, and prefer a s
 
 ## Built with help from good projects
 
-MusicForge is licensed under **GPL-3.0** and builds on open-source work. Please give the upstream projects their due:
+MusicForge is licensed under **AGPL-3.0** and builds on open-source work. Please give the upstream projects their due:
 
 - [Metrolist](https://github.com/MetrolistGroup/Metrolist) — YouTube Music API module, download design, and account sync
 - [InnerTubeX](https://github.com/MetrolistGroup/innertubex) — stream extraction
