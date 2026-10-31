@@ -126,6 +126,10 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
     val hapticsOn by androidx.compose.runtime.rememberUpdatedState(prefs?.get(Keys.HapticsEnabled) ?: true)
     val haptics = remember(context) { ForgeHaptics(context) { hapticsOn } }
+    // A failed YouTube write gets one toast and the local change stays (see LibraryActions). Yes, it's a toast, not a snackbar: the root has no host yet.
+    LaunchedEffect(context) {
+        context.graph.library.syncFailures.collect { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
+    }
     val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
     // The start tab is applied once, by navigating like a tab tap: changing NavHost's
     // startDestination after the first frame would rebuild the graph and drop the back stack.
@@ -201,7 +205,12 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 page(Routes.CUSTOMISE_HOME) { CustomiseHomeScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
                 page(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
-                page(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.TASTE) {
+                    dev.musicforge.ui.screens.TasteScreen(
+                        onBack = { nav.popBackStack() },
+                        onArtist = { nav.navigate(Routes.artist(it)) },
+                    )
+                }
                 page(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
                 page(

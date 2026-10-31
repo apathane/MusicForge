@@ -12,7 +12,7 @@ plugins {
 // then 0.14.1 (1419). Keep preview numbers from 1 through 8.
 val phase = 15
 val patch = 0
-val preview = 3
+val preview = 4
 val codename = "Toccata"
 
 android {
@@ -132,6 +132,8 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.room.testing)
+    // Plain JVM tests get android.jar stubs for org.json, which throw. The real one is test-only.
+    testImplementation("org.json:json:20240303")
 }
 
 // Robolectric's native SQLite needs these on JDK 17+.
