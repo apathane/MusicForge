@@ -243,6 +243,10 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun checkForUpdates() = viewModelScope.launch { graph.updater.checkNow() }
 
     fun installUpdate(release: ReleaseInfo) = viewModelScope.launch { graph.updater.install(release) }
+
+    fun skipUpdate(release: ReleaseInfo) = graph.updater.skip(release)
+
+    fun unskipUpdate() = graph.updater.unskip()
 }
 
 @Composable
@@ -525,6 +529,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 state = updateState,
                 onCheck = { vm.checkForUpdates() },
                 onInstall = { release -> vm.installUpdate(release) },
+                onSkip = { release -> vm.skipUpdate(release) },
+                onUnskip = { vm.unskipUpdate() },
             )
             ToggleRow(
                 "Include previews",
@@ -646,6 +652,8 @@ private fun UpdateCheckRow(
     state: UpdateState,
     onCheck: () -> Unit,
     onInstall: (ReleaseInfo) -> Unit,
+    onSkip: (ReleaseInfo) -> Unit,
+    onUnskip: () -> Unit,
 ) {
     val subtitle = when (state) {
         is UpdateState.Idle -> "Version ${BuildConfig.VERSION_NAME} · tap to check"
@@ -655,6 +663,7 @@ private fun UpdateCheckRow(
         is UpdateState.Downloading -> "Downloading… ${(state.progress * 100).roundToInt()}%"
         is UpdateState.Installing -> "Opening installer…"
         is UpdateState.Failed -> state.message
+        is UpdateState.Skipped -> "${state.release.versionName} skipped · tap to bring it back"
     }
     val press = remember { MutableInteractionSource() }
     Column(
@@ -664,6 +673,7 @@ private fun UpdateCheckRow(
             .clickable(interactionSource = press, indication = null, role = androidx.compose.ui.semantics.Role.Button) {
                 when (state) {
                     is UpdateState.Available -> onInstall(state.release)
+                    is UpdateState.Skipped -> onUnskip()
                     is UpdateState.Idle, is UpdateState.UpToDate, is UpdateState.Failed -> onCheck()
                     else -> Unit
                 }
@@ -677,6 +687,10 @@ private fun UpdateCheckRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 progress = state.progress.coerceIn(0f, 1f),
             )
+        }
+        if (state is UpdateState.Available) {
+            // Skipping is a choice, not a delete: the row says so and offers the way back.
+            TextButton(onClick = { onSkip(state.release) }) { Text("Skip this version") }
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import dev.musicforge.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,10 +22,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 private const val DAY_MS = 24 * 3600 * 1000L
 private const val GITHUB_RELEASES = "https://api.github.com/repos/apathane/MusicForge/releases"
@@ -35,6 +38,8 @@ object UpdateKeys {
     val includePreviews = booleanPreferencesKey("forge.includePreviews")
     /** Epoch ms of the last automatic check, to cap frequency at once per day. */
     val lastUpdateCheck = longPreferencesKey("forge.lastUpdateCheck")
+    /** Tag the user chose to skip. That release is never offered again; a newer one is. */
+    val skippedRelease = stringPreferencesKey("forge.skippedRelease")
 }
 
 /** What the Settings row shows. One state at a time, always on the IO scope. */
@@ -43,10 +48,15 @@ sealed interface UpdateState {
     data object Checking : UpdateState
     data class UpToDate(val versionName: String) : UpdateState
     data class Available(val release: ReleaseInfo) : UpdateState
+    /** The user skipped this release. Shown so the choice is visible and reversible. */
+    data class Skipped(val release: ReleaseInfo) : UpdateState
     data class Downloading(val progress: Float) : UpdateState
     data object Installing : UpdateState
     data class Failed(val message: String) : UpdateState
 }
+
+/** GitHub's unauthenticated quota is spent. Not an error in the app: just wait it out. */
+internal class RateLimited : IOException("GitHub is limiting update checks")
 
 /** A release that is newer than the running app and has an installable APK. */
 data class ReleaseInfo(
@@ -57,17 +67,6 @@ data class ReleaseInfo(
     val apkUrl: String,
     val sha256SumsUrl: String?,
     val notes: String,
-)
-
-private data class ParsedRelease(
-    val tagName: String,
-    val versionCode: Int,
-    val isPrerelease: Boolean,
-    val name: String,
-    val body: String,
-    val apkUrl: String,
-    val apkName: String,
-    val sha256SumsUrl: String?,
 )
 
 class UpdateChecker(
@@ -103,18 +102,42 @@ class UpdateChecker(
     /** Begin downloading and installing [release]. */
     fun install(release: ReleaseInfo) = scope.launch { downloadAndInstall(release) }
 
+    /** Skip a release: it stops being offered, and a newer one still is. */
+    fun skip(release: ReleaseInfo) = scope.launch {
+        settings.edit { it[UpdateKeys.skippedRelease] = release.tagName }
+        _state.value = UpdateState.Skipped(release)
+    }
+
+    /** Undo a skip and look again, so the skipped release comes back as Available. */
+    fun unskip() = scope.launch {
+        settings.edit { it.remove(UpdateKeys.skippedRelease) }
+        checkNow()
+    }
+
     private suspend fun publishFromFetch() {
         _state.value = UpdateState.Checking
         try {
-            val includePreviews = settings.data.first()[UpdateKeys.includePreviews]
-                ?: includePreviewsDefault()
+            val prefs = settings.data.first()
+            val includePreviews = prefs[UpdateKeys.includePreviews] ?: includePreviewsDefault()
+            val skipped = prefs[UpdateKeys.skippedRelease]
             val release = withContext(Dispatchers.IO) { fetchLatest(includePreviews) }
-            _state.value = release?.let { UpdateState.Available(it) }
-                ?: UpdateState.UpToDate(BuildConfig.VERSION_NAME)
+            _state.value = when {
+                release == null -> UpdateState.UpToDate(BuildConfig.VERSION_NAME)
+                release.tagName == skipped -> UpdateState.Skipped(release)
+                else -> UpdateState.Available(release)
+            }
         } catch (e: Exception) {
-            _state.value = UpdateState.Failed(e.message ?: "Couldn't check for updates")
+            _state.value = UpdateState.Failed(friendlyMessage(e))
             Timber.w(e, "Update check failed")
         }
+    }
+
+    /** Says what went wrong in words a user can act on: no network, or GitHub asking us to wait. */
+    private fun friendlyMessage(e: Exception): String = when (e) {
+        is UnknownHostException, is ConnectException, is SocketTimeoutException ->
+            "No connection. Couldn't check for updates."
+        is RateLimited -> "GitHub is limiting update checks for now. Try again later."
+        else -> e.message ?: "Couldn't check for updates"
     }
 
     private suspend fun fetchLatest(includePreviews: Boolean): ReleaseInfo? = withContext(Dispatchers.IO) {
@@ -124,16 +147,15 @@ class UpdateChecker(
             .header("User-Agent", "MusicForge/${BuildConfig.VERSION_NAME}")
             .build()
         http.newCall(request).execute().use { response ->
+            // GitHub answers 403 (or 429) with an empty quota when the unauthenticated limit is spent.
+            if (response.code == 429 || (response.code == 403 && response.header("X-RateLimit-Remaining") == "0")) {
+                throw RateLimited()
+            }
             if (!response.isSuccessful) {
                 throw IOException("GitHub API HTTP ${response.code}")
             }
             val body = response.body ?: throw IOException("No response body")
-            val text = body.string()
-            parseReleases(text)
-                .filter { includePreviews || !it.isPrerelease }
-                .maxByOrNull { it.versionCode }
-                ?.takeIf { it.versionCode > BuildConfig.VERSION_CODE }
-                ?.let { it.toReleaseInfo() }
+            pickNewerRelease(body.string(), includePreviews, BuildConfig.VERSION_CODE)
         }
     }
 
@@ -253,51 +275,4 @@ class UpdateChecker(
         }
     }
 
-    private fun parseReleases(json: String): List<ParsedRelease> {
-        val arr = JSONArray(json)
-        val result = mutableListOf<ParsedRelease>()
-        for (i in 0 until arr.length()) {
-            val r = arr.getJSONObject(i)
-            if (r.optBoolean("draft", false)) continue
-            val tag = r.getString("tag_name")
-            val releaseBody = r.optString("body", "")
-            val vc = versionCodeOf(tag, releaseBody) ?: continue
-            val assets = r.optJSONArray("assets") ?: JSONArray()
-            var apkUrl: String? = null
-            var apkName: String? = null
-            var shaUrl: String? = null
-            for (j in 0 until assets.length()) {
-                val a = assets.getJSONObject(j)
-                val name = a.getString("name")
-                val url = a.getString("browser_download_url")
-                when {
-                    name.endsWith(".apk") -> { apkUrl = url; apkName = name }
-                    name == "SHA256SUMS.txt" || name == "SHA256SUMS" -> shaUrl = url
-                }
-            }
-            if (apkUrl != null && apkName != null) {
-                result.add(ParsedRelease(
-                    tagName = tag,
-                    versionCode = vc,
-                    isPrerelease = r.optBoolean("prerelease", false),
-                    name = r.optString("name", tag),
-                    body = releaseBody,
-                    apkUrl = apkUrl,
-                    apkName = apkName,
-                    sha256SumsUrl = shaUrl,
-                ))
-            }
-        }
-        return result
-    }
-
-    private fun ParsedRelease.toReleaseInfo() = ReleaseInfo(
-        tagName = tagName,
-        versionName = name,
-        versionCode = versionCode,
-        apkAssetName = apkName,
-        apkUrl = apkUrl,
-        sha256SumsUrl = sha256SumsUrl,
-        notes = body,
-    )
 }
