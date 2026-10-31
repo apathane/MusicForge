@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.TextUnit
  *
  * Plays once per screen visit (keyed on [text]); under reduced motion it's instant text.
  */
+@Deprecated("Use WriteTitle", ReplaceWith("WriteTitle(text, modifier, style)"))
 @Composable
 fun TypeIn(text: String, modifier: Modifier = Modifier, style: TextStyle = TextStyle.Default) {
     if (text.isEmpty() || reducedMotion()) {
