@@ -8,6 +8,16 @@ All notable changes to MusicForge. Newest phase first.
 
 Version 0.15.0, codename `Toccata`. Plan: `.agent/decisions/0001-phase-15-toccata.md`.
 
+### Unreleased (next Toccata build, draft)
+
+Not published. Branch `agent/p15-release-notes` and the agent branches it lists. Checked on device only where marked.
+
+- Taste: artist rows in "Who you play most" open the artist page (device checked)
+- Failed YouTube writes (like, add to or remove from a playlist) now say so in a toast; the change stays on the phone (compile only, not device checked)
+- Updates: "Skip this version" and bring it back; offline and GitHub rate-limit messages are plain (offline and online checked on device; update-available, skip and checksum not yet)
+- Crossfade: Settings' Crossfade length now fades each track in and out (fade through silence, not an overlap; compile and unit tests only)
+- Site: interactive redesign in progress (agent branch, not deployed)
+
 ### P3 · 0.15.0
 
 Tag: [`p3-0.15.0`](../../releases/tag/p3-0.15.0) · Version code `1503` · 2026-10-29
