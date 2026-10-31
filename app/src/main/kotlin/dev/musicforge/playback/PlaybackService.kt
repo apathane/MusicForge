@@ -102,11 +102,22 @@ class PlaybackService : MediaLibraryService() {
                 context: android.content.Context,
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean,
-            ): androidx.media3.exoplayer.audio.AudioSink =
-                androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
-                    .setAudioProcessors(arrayOf(eq, filter, loudness))
+            ): androidx.media3.exoplayer.audio.AudioSink {
+                // EQ and loudness stay Media3 processors on 16-bit PCM; Automix's transition filter
+                // runs in BitChord's Float32 path around them, which is what lets the loop mix
+                // splice its decks in and keep playing after the song stops feeding it.
+                val delegate = androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setAudioProcessors(arrayOf(eq, loudness))
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                     .build()
+                return dev.musicforge.automix.PrecisionAudioSink(
+                    delegate = delegate,
+                    dspChain = dev.musicforge.automix.DspChain(filter),
+                    // 16-bit out: MusicForge's EqualizerProcessor only takes PCM16.
+                    enableFloatOutput = false,
+                    isAudible = { filter === activeFilter },
+                )
+            }
         }
         val mediaSourceFactory = DefaultMediaSourceFactory(engine.playbackSource())
         return ExoPlayer.Builder(this, renderers)
