@@ -1,5 +1,6 @@
 package dev.musicforge.ui.designsystem
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -120,7 +121,10 @@ fun ForgeSheet(onDismissRequest: () -> Unit, content: @Composable ColumnScope.()
                             onDragCancel = { scope.launch { drag.animateTo(0f, Physics.glide()) } },
                         )
                     }
-                    .navigationBarsPadding(),
+                    .navigationBarsPadding()
+                    // Content that arrives late (a collection's actions) grows the sheet on
+                    // OpenGhost's smooth-height spring [260, 32] instead of jumping.
+                    .animateContentSize(Physics.smoothHeight()),
             ) {
                 Box(
                     Modifier
