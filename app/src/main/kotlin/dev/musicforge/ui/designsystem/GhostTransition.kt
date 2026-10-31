@@ -6,9 +6,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -42,14 +39,9 @@ object GhostTransition {
     private const val SINK_TO = 0.96f     // the page underneath steps back, not away
     const val TILT_DEG = 6f
 
-    private const val TRAVEL = Motion.Panel   // 380 ms, OpenGhost's panel
-    private const val SOLID = 120              // how long the page takes to turn opaque
-
-    // EaseDrawer (.32, .72, 0, 1) run backwards is (1 - x2, 1 - y2, 1 - x1, 1 - y1).
-    private val DrawerBack = CubicBezierEasing(1f, 0f, .68f, .28f)
-
-    private fun <T> there(): FiniteAnimationSpec<T> = tween(TRAVEL, easing = Motion.EaseDrawer)
-    private fun <T> back(): FiniteAnimationSpec<T> = tween(TRAVEL, easing = DrawerBack)
+    private val panel = Mirror.Panel           // 380 ms on EaseDrawer, opaque in 120 ms
+    private fun <T> there(): FiniteAnimationSpec<T> = panel.enter()
+    private fun <T> back(): FiniteAnimationSpec<T> = panel.exit()
 
     private var lastTap = Offset.Unspecified
     private var rootSize = IntSize.Zero
@@ -69,11 +61,11 @@ object GhostTransition {
     }
 
     fun push(origin: TransformOrigin): EnterTransition =
-        fadeIn(tween(SOLID, easing = LinearEasing)) + scaleIn(there(), initialScale = GROW_FROM, transformOrigin = origin)
+        fadeIn(panel.fadeIn()) + scaleIn(there(), initialScale = GROW_FROM, transformOrigin = origin)
 
     /** The exact reverse of [push]: back into the card it grew from, gone in the last 120 ms. */
     fun pop(origin: TransformOrigin): ExitTransition =
-        fadeOut(tween(SOLID, delayMillis = TRAVEL - SOLID, easing = LinearEasing)) +
+        fadeOut(panel.fadeOut()) +
             scaleOut(back(), targetScale = GROW_FROM, transformOrigin = origin)
 
     // The page below only steps back: fading it too showed both pages at once.

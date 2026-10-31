@@ -84,16 +84,18 @@ contributions; nothing is copied from it) and its scan was too vague to rely on.
 Keep: data layer, ViewModels, `AppGraph`, `PlayerConnection`, navigation routes and arguments.
 Rebuild: everything a user sees, on a new kit.
 
-New package `dev.musicforge.ui.kit` (the foundation; nothing in it knows about screens):
+The kit lives in the existing `dev.musicforge.ui.designsystem` package (the foundation; nothing in it
+knows about screens). It stays there rather than moving to a new package: a move would churn every
+import and collide with worker branches. File names below are the targets:
 
 | File | Holds |
 |---|---|
 | `Tokens.kt` | colour roles (all M3 roles filled, as in `1307b06`), type roles (Display/Section/Title/Body/Meta from the spec), radii (10/14/22/30 only), spacing (4 dp unit, 20 dp gutter), artwork sizes |
 | `Motion.kt` (moved) | curves + their exact reverses, durations, Compose springs from OpenGhost's [k,c] (`dampingRatio = c / 2√k`) |
-| `Mirror.kt` | `MirrorSpec`: one object that yields an enter spec and its exact time-reverse for tweens; helpers for fades at either end |
+| `Mirror.kt` | `Curve` + `Mirror`: one object that yields an enter spec and its exact time-reverse for tweens; helpers for fades at either end |
 | `GhostTransition.kt` (moved) | page push/pop from the tap origin + tilt (already on this branch) |
-| `Springs.kt` | `rememberSpringValue` wrappers for velocity-carrying physics where Compose's `Animatable` needs help: stretch-along-speed, rubber band, magnet-to-tick, fling |
-| `TypeText.kt` | `WriteTitle` (OpenGhost chat-list WRITE), `StreamText` (PACE/WAVE model for text that arrives over time), `TypeWave` (composer wave for a text field); graphemes via `BreakIterator` |
+| `Physics.kt` | OpenGhost [k,c] springs as Compose specs, and the pure shaping maths: stretch-along-speed, rubber band, magnet-to-step, fling target, BitChord's pull lift |
+| `TypePace.kt` + `TypeText.kt` | pacing maths (PACE/WAVE/WRITE, graphemes) + composables `WriteTitle` (OpenGhost chat-list WRITE), `StreamText` (PACE/WAVE model for text that arrives over time), `TypeWave` (composer wave for a text field); graphemes via `BreakIterator` |
 | `Press.kt` | press scale 0.96 (`Motion.Press`), icon-button glyph drop 2 dp + alpha .7 |
 | `Surface.kt` | `SignalCanvas`, `SignalSurface`, `ArtworkSurface` (spec §3) |
 | `Row.kt` | one `SignalRow` for tracks, queue rows, local songs, search results (art, title, meta, reason, trailing slot, swipe actions) |

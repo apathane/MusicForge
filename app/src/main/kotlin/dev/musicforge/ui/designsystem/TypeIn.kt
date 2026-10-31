@@ -18,7 +18,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
-import java.text.BreakIterator
 
 /**
  * A title that types itself in, letter by letter, the way a terminal types its prompt when it has
@@ -43,7 +42,7 @@ fun TypeIn(text: String, modifier: Modifier = Modifier, style: TextStyle = TextS
     }
     // Graphemes, not chars: emoji and Zulu clicks are one strike each (stream-view.js segmenter).
     // Cap the animated run — a wall of letters is decoration, not typing.
-    val graphemes = remember(text) { splitGraphemes(text) }
+    val graphemes = remember(text) { TypePace.graphemes(text) }
     if (graphemes.size > 90) {
         Text(text, style = style, modifier = modifier)
         return
@@ -87,18 +86,4 @@ fun TypeIn(text: String, modifier: Modifier = Modifier, style: TextStyle = TextS
             )
         }
     }
-}
-
-private fun splitGraphemes(text: String): List<String> {
-    val it = BreakIterator.getCharacterInstance()
-    it.setText(text)
-    val out = ArrayList<String>(text.length)
-    var start = it.first()
-    var end = it.next()
-    while (end != BreakIterator.DONE) {
-        if (end > start) out.add(text.substring(start, end))
-        start = end
-        end = it.next()
-    }
-    return out
 }
