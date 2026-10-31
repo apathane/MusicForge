@@ -132,6 +132,8 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.room.testing)
+    // Plain JVM tests get android.jar stubs for org.json, which throw. The real one is test-only.
+    testImplementation("org.json:json:20240303")
 }
 
 // Robolectric's native SQLite needs these on JDK 17+.
