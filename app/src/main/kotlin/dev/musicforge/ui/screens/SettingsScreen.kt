@@ -32,6 +32,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -395,6 +398,24 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow("Double-tap cover to seek", prefs?.get(Keys.DoubleTapSeek) ?: true, subtitle = "Rewind or skip 10 seconds") { vm.set(Keys.DoubleTapSeek, it) }
             ToggleRow("Swipe mini player to skip", prefs?.get(Keys.SwipeMiniToSkip) ?: true) { vm.set(Keys.SwipeMiniToSkip, it) }
             ActionRow("Equalizer", "Bands and presets, on any phone", onEqualizer)
+            ToggleRow("Crossfade", prefs?.get(Keys.CrossfadeEnabled) ?: false, subtitle = "Blend one song into the next") { vm.set(Keys.CrossfadeEnabled, it) }
+            if (prefs?.get(Keys.CrossfadeEnabled) == true) {
+                // Whole seconds only: "6 s", not "6.0 s".
+                val seconds = (prefs?.get(Keys.CrossfadeSeconds) ?: 6f).coerceIn(1f, 12f)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    Text("Crossfade length", style = MaterialTheme.typography.titleSmall)
+                    Slider(
+                        value = seconds,
+                        onValueChange = { vm.set(Keys.CrossfadeSeconds, Math.round(it).toFloat()) },
+                        valueRange = 1f..12f,
+                        steps = 10, // 1, 2, ... 12: eleven gaps, ten stops between the ends
+                        modifier = Modifier.semantics { contentDescription = "Crossfade length, ${seconds.toInt()} seconds" },
+                    )
+                    Text("${seconds.toInt()} s", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                ToggleRow("Automix", prefs?.get(Keys.AutomixEnabled) ?: false, subtitle = "Beat-matched blends between songs, from BitChord's automix") { vm.set(Keys.AutomixEnabled, it) }
+                ToggleRow("Keep albums gapless", prefs?.get(Keys.CrossfadeGapless) ?: false, subtitle = "No blend between tracks of the same album") { vm.set(Keys.CrossfadeGapless, it) }
+            }
         }
 
         SectionTitle("Lyrics")
