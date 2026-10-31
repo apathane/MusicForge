@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/apathane/MusicForge/releases"><img src="https://img.shields.io/github/v/release/apathane/MusicForge?include_prereleases&label=Latest%20Preview&color=000000&labelColor=222222&style=flat-square" alt="Latest Preview"></a>
-  <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License: GPL-3.0">
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0">
   <img src="https://img.shields.io/badge/Android-8.0%2B%20%7C%20minSdk%2026-green?style=flat-square" alt="Android 8.0+ | minSdk 26">
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
   <img src="https://img.shields.io/badge/Compose-1.12-brightgreen?style=flat-square" alt="Jetpack Compose">
@@ -187,7 +187,7 @@ Keep changes focused, work on a branch or in a separate worktree, and prefer a s
 
 ## Built with help from good projects
 
-MusicForge is licensed under **GPL-3.0** and builds on open-source work. Please give the upstream projects their due:
+MusicForge is licensed under **AGPL-3.0** (from 0.15 P5; P4 and earlier were GPL-3.0) and builds on open-source work. Third-party code keeps its own licence: see [NOTICE](NOTICE). Please give the upstream projects their due:
 
 - [Metrolist](https://github.com/MetrolistGroup/Metrolist) — YouTube Music API module, download design, and account sync
 - [InnerTubeX](https://github.com/MetrolistGroup/innertubex) — stream extraction

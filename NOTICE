@@ -1,0 +1,34 @@
+MusicForge
+Copyright (C) 2026 apathane and contributors
+
+MusicForge is licensed under the GNU Affero General Public License, version 3
+(see LICENSE), from 0.15 P5 on. Releases up to and including 0.15 P4 were
+published under the GNU General Public License, version 3.
+
+MusicForge is built on the work of other projects. Their code keeps its own
+licence; the files that carry it say so in their headers. Combining GPLv3 and
+AGPLv3 code is allowed by section 13 of both licences.
+
+Vendored or adapted code
+------------------------
+- Metrolist (https://github.com/MetrolistGroup/Metrolist) - GPL-3.0
+  The InnerTube module (innertube/) and the stream-extraction glue
+  (app/src/main/kotlin/dev/musicforge/extraction/), vendored with attribution.
+- InnerTubeX (https://github.com/MetrolistGroup) - GPL-3.0
+  Stream extraction, used as a dependency.
+- Kyant0 backdrop renderer (via ConvX) - Apache-2.0
+  app/src/main/kotlin/dev/musicforge/ui/backdrop/
+- ConvX and BitChord (https://github.com/kushagrasinghx/BitChord) - GPL-3.0
+  Design ideas, feature sets and the backup format, credited in the app's About screen.
+
+Automix (being ported from BitChord for 0.15 P5; this list is updated as files land)
+------------------------------------------------------------------------------------
+- Orchard (https://github.com/SFG5453/Orchard), Copyright (C) 2026 SFG545 - AGPL-3.0
+  Transition planner and related Kotlin code, via BitChord's adaptation.
+- BitChord automix adaptation, Copyright (C) 2026 Kushagra Singh - AGPL-3.0
+- Signalsmith Stretch and Signalsmith Linear (https://github.com/Signalsmith-Audio) - MIT
+- ONNX Runtime (https://github.com/microsoft/onnxruntime) - MIT
+- Beat This! beat and downbeat model, final0 checkpoint - MIT weights
+- Open-Unmix UMX-HQ vocal model (https://github.com/sigsep/open-unmix-pytorch) - code MIT;
+  the licence of the UMX-HQ weights is not stated upstream (trained on MUSDB18-HQ,
+  a research dataset). Under review by the owner before release.

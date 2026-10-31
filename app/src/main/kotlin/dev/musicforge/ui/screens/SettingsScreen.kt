@@ -541,7 +541,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · GPL-3.0\nOpen source; credits are under About.",
+            "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · AGPL-3.0\nOpen source; credits are under About.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
