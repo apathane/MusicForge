@@ -169,6 +169,16 @@ Releases: **P8** after S0+S1+S2 Player (the most visible change: player, sheets,
 typing); **P9** after S3+S4. Each release: R8 check APK installed and driven on the emulator before
 publishing (the P5/P6 lesson).
 
+### What S1 taught (2026-10-31)
+
+The first three workers (Kilo free models, `--agent code`) wrote Compose that would not compile
+(invented APIs such as `Modifier.minimumHeight`, `kotlin.math.coerceIn`, `draggable` inside
+`pointerInput`, `MaterialTheme` inside a `DrawScope`) and broke design rules (dropped the nav pill's
+glass, drew the lens over the icons). Their mechanical call-site migrations were correct. So:
+**the coordinator writes kit components; workers get mechanical migrations, scans and reviews**,
+each still checked by CI and read line by line. `kilo run` needs `--auto` to act unattended, and
+`kilo/poolside/laguna-s-2.1:free` is gone (use Nemotron Ultra / 3.5 Super).
+
 ## 6. Worker brief template
 
 Every worker gets: the kit API (file paths, signatures), the exact files it owns, the motion row(s)
