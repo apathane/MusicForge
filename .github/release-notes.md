@@ -1,11 +1,16 @@
-MusicForge P4 · 0.15.0 · Toccata
-Smaller fixes and the first of the update, taste and crossfade work, from the Toccata final pass.
+MusicForge P5 · 0.15.0 · Toccata — Automix preview (from BitChord)
+A test build for Automix: beat-matched blends between songs, ported from BitChord's automix (itself built on Orchard). Back up your library first.
 
-- Taste: the artists in "Who you play most" open their artist page. They did nothing before.
-- Updates: "Skip this version" hides a release until a newer one comes out, and "bring it back" undoes it. When the check fails you now get a plain line: "No connection" or "GitHub is limiting update checks for now", instead of the raw error.
-- Playlists and likes: when a change can't reach YouTube Music, you get a short message. The change stays on this phone, so nothing is lost. There is no automatic retry yet.
-- Crossfade: the Crossfade length setting now does something. Each track fades in and out over the length you pick (0 to 12 seconds). This is a fade through silence, not an overlap of two songs, and the gapless option is not wired yet.
+Automix
+- Settings → Playback → Crossfade, then Automix. Crossfade length is 1 to 12 seconds.
+- Each song and the next one are analysed on the phone: tempo, beats and downbeats (the Beat This! model), key, where the vocals are (Open-Unmix), the intro and the outro. The blend is planned from that: a DJ filter sweep with a bass swap, or an equal-power crossfade, on the beat.
+- The next song takes over halfway through the blend; the queue, notification and lyrics move with it.
+- Not in this build: the loop mix (bar-looped, tempo-ramped blends). It needs an audio path MusicForge doesn't have yet.
+- Checked on an emulator (analysis, plan, blend and handoff all ran). Not yet heard on a phone: tell me how it sounds.
 
-Not checked on a phone yet: the playlist message, the crossfade sound, and the update install and checksum path. Those are in the next build's checks.
+Also in this build
+- The song menu no longer shows Download twice; Sleep timer and other rows have proper icons; the Share icon draws correctly.
+- Everything from P4: Taste artist rows, update skip and plain errors, playlist sync messages.
 
-This is a preview. Back up your library first, and report anything device-specific.
+MusicForge is now AGPL-3.0 (this build on). Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE.
+The APK is larger (about 110 MB): it carries the two analysis models and their runtime.
