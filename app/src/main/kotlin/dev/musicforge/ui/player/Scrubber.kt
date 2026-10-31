@@ -74,9 +74,10 @@ fun Scrubber(
     val blend by AutomixState.smartMixBlend.collectAsStateWithLifecycle()
     // Ticks once a frame during a beat-known blend; read only while drawing.
     var clock by remember { mutableLongStateOf(0L) }
-    val beat = blend?.takeIf { mixing && it.playing && it.beatMs > 0f }
+    val still = reducedMotion()
+    val beat = blend?.takeIf { mixing && it.playing && it.beatMs > 0f && !still }
     LaunchedEffect(beat) {
-        if (beat == null || reducedMotion()) return@LaunchedEffect
+        if (beat == null) return@LaunchedEffect
         while (true) clock = withFrameNanos { it }
     }
 
