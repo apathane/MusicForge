@@ -6,7 +6,9 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -29,19 +31,29 @@ import androidx.compose.ui.unit.IntSize
  * that was tapped, tilts in slightly on X, and back plays the same thing in reverse — same spring,
  * same values, same origin, so the page folds back into the card it came from.
  *
- * One critically damped spring drives every direction (OpenGhost's smooth-height [260, 32]), which
- * is what makes the exit an exact mirror of the entrance; a tween pair would need two curves. The
- * tilt is read in the draw phase only, so nothing recomposes per frame on the X7b.
+ * Exact mirror means time-reversed: back runs the entrance's own curve backwards (the house curve
+ * EaseDrawer flipped end for end) and fades in its last 120 ms where the push faded in its first.
+ * A spring cannot be played backwards, so these are tweens. The incoming page turns opaque fast,
+ * so the two pages never sit on top of each other half-see-through. The tilt is read in the draw
+ * phase only, so nothing recomposes per frame on the X7b.
  */
 object GhostTransition {
     private const val GROW_FROM = 0.86f   // the page starts the size of a large card
     private const val SINK_TO = 0.96f     // the page underneath steps back, not away
     const val TILT_DEG = 6f
 
-    private fun <T> spec(): FiniteAnimationSpec<T> = spring(dampingRatio = .99f, stiffness = 260f)
+    private const val TRAVEL = Motion.Panel   // 380 ms, OpenGhost's panel
+    private const val SOLID = 120              // how long the page takes to turn opaque
+
+    // EaseDrawer (.32, .72, 0, 1) run backwards is (1 - x2, 1 - y2, 1 - x1, 1 - y1).
+    private val DrawerBack = CubicBezierEasing(1f, 0f, .68f, .28f)
+
+    private fun <T> there(): FiniteAnimationSpec<T> = tween(TRAVEL, easing = Motion.EaseDrawer)
+    private fun <T> back(): FiniteAnimationSpec<T> = tween(TRAVEL, easing = DrawerBack)
 
     private var lastTap = Offset.Unspecified
     private var rootSize = IntSize.Zero
+    // Back folds the page into the card it came from, like a letter that changed its mind.
     // shortcut: entries are never removed, a few dozen floats per session; prune if back stacks get deep.
     private val origins = HashMap<String, TransformOrigin>()
 
@@ -57,16 +69,18 @@ object GhostTransition {
     }
 
     fun push(origin: TransformOrigin): EnterTransition =
-        fadeIn(spec()) + scaleIn(spec(), initialScale = GROW_FROM, transformOrigin = origin)
+        fadeIn(tween(SOLID, easing = LinearEasing)) + scaleIn(there(), initialScale = GROW_FROM, transformOrigin = origin)
 
-    /** The exact reverse of [push]: back into the card it grew from. */
+    /** The exact reverse of [push]: back into the card it grew from, gone in the last 120 ms. */
     fun pop(origin: TransformOrigin): ExitTransition =
-        fadeOut(spec()) + scaleOut(spec(), targetScale = GROW_FROM, transformOrigin = origin)
+        fadeOut(tween(SOLID, delayMillis = TRAVEL - SOLID, easing = LinearEasing)) +
+            scaleOut(back(), targetScale = GROW_FROM, transformOrigin = origin)
 
-    fun cover(): ExitTransition = fadeOut(spec(), targetAlpha = 0.4f) + scaleOut(spec(), targetScale = SINK_TO)
+    // The page below only steps back: fading it too showed both pages at once.
+    fun cover(): ExitTransition = scaleOut(there(), targetScale = SINK_TO)
 
     /** The exact reverse of [cover]. */
-    fun uncover(): EnterTransition = fadeIn(spec(), initialAlpha = 0.4f) + scaleIn(spec(), initialScale = SINK_TO)
+    fun uncover(): EnterTransition = scaleIn(back(), initialScale = SINK_TO)
 
     /**
      * The slight 3D tilt while a page enters or leaves; flat once it has arrived. Pivot follows the
@@ -75,7 +89,10 @@ object GhostTransition {
     @Composable
     fun Modifier.tilt(scope: AnimatedVisibilityScope, origin: TransformOrigin, enabled: Boolean): Modifier {
         if (!enabled) return this
-        val angle by scope.transition.animateFloat(transitionSpec = { spec() }, label = "tilt") {
+        val angle by scope.transition.animateFloat(
+            transitionSpec = { if (targetState == EnterExitState.Visible) there() else back() },
+            label = "tilt",
+        ) {
             if (it == EnterExitState.Visible) 0f else TILT_DEG
         }
         return graphicsLayer {
