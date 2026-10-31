@@ -11,3 +11,8 @@
 -keepclassmembers class * {
     @java.lang.annotation.** *;
 }
+
+# ONNX Runtime's native code finds its Java classes by name (OrtSession.run -> OnnxTensor and co.),
+# and its AAR ships no keep rules. Minified without this, the first Automix analysis aborts the
+# process with "java_class == null in call to GetMethodID" (P5/P6 release builds).
+-keep class ai.onnxruntime.** { *; }
