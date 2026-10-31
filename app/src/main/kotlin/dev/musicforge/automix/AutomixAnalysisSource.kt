@@ -18,8 +18,10 @@ package dev.musicforge.automix
  object AutomixAnalysisSource {
     const val OPUS_QUERY_PARAMETER = "automix_opus"
 
+    // MusicForge: a shared download files its bytes under the owner song's plain id, which is
+    // the same YouTube audio, so only BitChord's suffixed substitute keys are turned away.
     fun isCanonicalYouTubeRendition(videoId: String?, cacheKey: String): Boolean =
-        videoId == null || cacheKey == videoId
+        videoId == null || cacheKey == videoId || '#' !in cacheKey
 
     /**
      * A private playback URI for analysis-only reads.
