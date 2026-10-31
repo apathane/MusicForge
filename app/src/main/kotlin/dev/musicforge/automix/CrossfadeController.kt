@@ -3646,7 +3646,7 @@ class CrossfadeController(
         /** Points the mix popup's fader lines are sampled at. */
         const val MIX_VIEW_FADER_POINTS = 64
 
-        const val TAG = "BitChordCrossfade"
+        const val TAG = "AutomixCrossfade"
 
         /**
          * Used only before a pair has been analysed, or when the evidence is

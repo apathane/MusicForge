@@ -37,3 +37,20 @@ loudness via player.volume (the controller owns volumes now).
 5. Remove the P4 fade (Fade.kt, FadeTest, fadeMs/fadeJob/applyVolume ticker).
 6. Copy models to app/src/main/assets: beat_this_final0_q8.onnx, vocals_umxhq_int8.onnx (from BitChord).
 7. CI build, emulator check with logcat tags Automix*/CrossfadeController, then the test release.
+
+## Emulator check (2026-10-31, CI build of 2bba13a, emulator API 34, audio output off)
+Steps: Settings → Crossfade on (6 s), Automix on; play "Glory Box" (Portishead) from search with
+radio queueing; seek to ~88%; logcat tags Automix*/BitChord* (renamed to Automix* after this run).
+- Analysis ran: ONNX vocal mask (881 ms), Beat This! (infer 3.2-4.7 s), DSP: 120.3 BPM, conf 0.95,
+  D minor, beats/downbeats on a model grid; head analysis of the playing track too.
+- Plan: DJ_FILTER, fade 7982 ms, bass swap at 0.6875, handoff at 0.5, not blocked.
+- Executed: standby got 50 tracks in 2.6 ms; blend start out=300674 ms; handoff at in=3904 ms;
+  "finish from FADING"; media session moved to the next song (PLAYING); next pair analysed.
+- No crash. Audio not heard (emulator has no audio output): needs the phone.
+Open:
+1. Loop mix refused: "this output can't take it" — LoopMixPort.precision is set by BitChord's
+   PrecisionAudioSink float path; MusicForge's DefaultAudioSink + Media3 PCM16 path never sets it.
+   Fix: port PrecisionAudioSink/DspChain (float pipeline) or add the loop render to the PCM16 path.
+2. "mix waveform <outgoing> ... none" logged every 250 ms for the outgoing track's tail: the
+   outgoing tail waveform cannot be read (copyToRead) — find why; it also spams the log.
+3. Slider inactive track colour is Material lavender, not the app palette.

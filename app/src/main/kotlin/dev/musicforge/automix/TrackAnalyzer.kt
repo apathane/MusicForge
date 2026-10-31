@@ -1535,7 +1535,7 @@ class TrackAnalyzer(
     }
 
     private companion object {
-        const val TAG = "BitChordTrackAnalyzer"
+        const val TAG = "AutomixTrackAnalyzer"
 
         /**
          * What an unmeasured instant reads as. Below the policy's VOCAL_ACTIVE_THRESHOLD by
