@@ -378,18 +378,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
     if (menu) {
         graph.player.queue.value.getOrNull(graph.player.currentIndex.value)?.let { item ->
-            val extras = mutableListOf<Pair<String, () -> Unit>>()
-            extras += "Sleep timer" to { sleepMenu = true; menu = false }
-            val done = download?.state == Download.STATE_COMPLETED
-            if (done) {
-                extras += "Remove download" to { graph.downloads.remove(item.mediaId); menu = false }
-            } else {
-                extras += "Download" to {
-                    askToRunInBackground(context)
-                    graph.downloads.download(listOf(item))
-                    menu = false
-                }
-            }
+            // Download/remove/cancel come from the sheet itself; adding them here showed "Download" twice.
+            val extras = listOf<Pair<String, () -> Unit>>("Sleep timer" to { sleepMenu = true; menu = false })
             TrackActionsSheet(item, extra = extras) { menu = false }
         } ?: run { menu = false }
     }

@@ -174,7 +174,7 @@ fun TrackActionsSheet(
                 }
             }
             Action(ForgeIcons.PlaylistAdd, "Add to playlist") { pickedPlaylist.value = true }
-            extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
+            extra.forEach { (label, run) -> Action(extraIcon(label), label) { run(); onDismiss() } }
             when (download?.state) {
                 Download.STATE_COMPLETED -> {
                     Action(ForgeIcons.Download, "Remove download") { graph.downloads.remove(item.mediaId); onDismiss() }
@@ -378,4 +378,16 @@ fun askToRunInBackground(context: Context) {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
+}
+
+/**
+ * Icons for rows callers add to the sheet. Shortcut: matched on the label, which all callers write
+ * as literals; upgrade to an icon in the pair if a caller ever builds labels dynamically.
+ */
+private fun extraIcon(label: String) = when {
+    label == "Sleep timer" -> ForgeIcons.Sleep
+    label.startsWith("Remove") -> ForgeIcons.Delete
+    label == "Not for me" -> ForgeIcons.Delete
+    label.startsWith("Less of") -> ForgeIcons.Person
+    else -> ForgeIcons.More
 }
