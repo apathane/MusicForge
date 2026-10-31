@@ -47,6 +47,7 @@ import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.designsystem.ForgeSheet
 import dev.musicforge.ui.designsystem.LoadingBar
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.CollectionKind
@@ -356,7 +357,7 @@ private fun CollectionPlaylistPicker(items: List<MediaItem>, onDone: () -> Unit)
     ) {
         items(playlists.filter { it.playlist.isEditable }, key = { it.playlist.id }) { p ->
             Row(
-                Modifier.fillMaxWidth().animateItem(tween(220)).clickable {
+                Modifier.fillMaxWidth().animateItem(placementSpec = tween(Motion.Fade)).clickable {
                     items.forEach { graph.library.addToPlaylist(it, p.playlist.id) }
                     onDone()
                 }.padding(horizontal = 24.dp, vertical = 10.dp),

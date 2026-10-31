@@ -34,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -160,7 +159,7 @@ fun TrackActionsSheet(
                             initialScale = 0.9f,
                         )) togetherWith fadeOut(tween(Motion.Instant))
                     } else {
-                        fadeIn(tween(140)) togetherWith fadeOut(tween(120))
+                        fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant))
                     }
                 },
                 label = "like",
@@ -315,7 +314,7 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .animateItem(tween(220))
+                    .animateItem(placementSpec = tween(Motion.Fade))
                     .clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
                     .padding(horizontal = 24.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -329,16 +328,6 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
             }
         }
     }
-}
-
-@Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
-    val press = remember { MutableInteractionSource() }
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier.pressScale(press),
-        interactionSource = press,
-    ) { Text(text) }
 }
 
 @Composable
