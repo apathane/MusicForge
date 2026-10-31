@@ -1,15 +1,17 @@
-MusicForge P7 · 0.15.0 · Toccata — Automix preview 3 (from BitChord)
-Fixes the crash in P5 and P6: those builds closed the moment Automix analysed a song. Back up your library first.
+MusicForge P8 · 0.15.0 · Toccata — the motion rebuild, part 1
+The first part of a rebuilt interface: new sheets, menus, sliders and page motion, and a livelier player. Automix from P7 is unchanged. Back up your library first.
 
-What's fixed since P6
-- Automix no longer crashes the app. The release build's minifier had renamed classes the analysis runtime looks up by name; it now leaves them alone. Checked on a minified build: both analysis models run and songs analyse with no crash.
-- Colours: switches and the crossfade slider use the app's own greys instead of Material's default lavender.
-- Shared downloads (one song's file kept for a duplicate) are analysed from that file.
+What's new
+- Pages grow out of what you tapped, with a slight tilt, and Back folds them into the same spot: the exact reverse.
+- The player rises out of the mini player and sinks back into it the same way. Pull the mini player up to open it; it stretches with your finger.
+- Menus and action sheets are our own now: menus grow from the button that opened them, sheets rise and fall on one curve and follow your finger down.
+- The tab bar has one lens that glides between tabs and stretches as it moves.
+- The crossfade slider has weight: it follows your finger, snaps to whole seconds, gives at the ends and can be flicked.
+- Lyrics ripple into place line by line, fade with distance, and instrumental gaps breathe.
+- The seek bar shows where the next Automix blend will happen, and pulses on the beat while it plays.
+- Screen titles write themselves in once.
 
-What Automix does
-- Settings → Playback → Crossfade, then Automix. Tracks are analysed on the phone (tempo, beats, key, vocals, intro and outro) and blended on the beat: DJ filter sweeps with a bass swap, tempo-matched blends, or an equal-power crossfade at your crossfade length when two songs are too far apart in tempo.
-- Loop mix: when a song has an instrumental stretch that grooves, Automix can loop whole bars of it on a tempo that ramps toward the next song, then let go into it. Synced lyrics and the vocal model keep loops out of sung bars, so many pairs still get a normal blend.
-- Checked on an emulator: analysis, blends, handoffs and a full loop mix ran end to end. The emulator has no sound, so none of it has been heard yet: tell me how it sounds on your phone.
+Checked on an emulator (no sound there). Tell me how it feels on your phone.
 
-MusicForge is AGPL-3.0. Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE.
+MusicForge is AGPL-3.0. Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE. Motion numbers from OpenGhost (MIT).
 The APK is about 90 MB: it carries the two analysis models and their runtime.
