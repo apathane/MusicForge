@@ -29,6 +29,6 @@ Automix (being ported from BitChord for 0.15 P5; this list is updated as files l
 - Signalsmith Stretch and Signalsmith Linear (https://github.com/Signalsmith-Audio) - MIT
 - ONNX Runtime (https://github.com/microsoft/onnxruntime) - MIT
 - Beat This! beat and downbeat model, final0 checkpoint - MIT weights
-- Open-Unmix UMX-HQ vocal model (https://github.com/sigsep/open-unmix-pytorch) - code MIT;
-  the licence of the UMX-HQ weights is not stated upstream (trained on MUSDB18-HQ,
-  a research dataset). Under review by the owner before release.
+- Open-Unmix UMX-HQ vocal model (https://github.com/sigsep/open-unmix-pytorch) - MIT
+  (the repository's licence; upstream marks only the separate umxl weights as
+  non-commercial. Checked by the owner, 2026-10-31.)
