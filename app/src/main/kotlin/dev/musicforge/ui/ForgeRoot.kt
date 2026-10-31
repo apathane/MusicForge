@@ -1,13 +1,14 @@
 package dev.musicforge.ui
 
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import dev.musicforge.ui.designsystem.Motion
+import dev.musicforge.ui.designsystem.GhostTransition
+import dev.musicforge.ui.designsystem.GhostTransition.recordTaps
+import dev.musicforge.ui.designsystem.GhostTransition.tilt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -162,30 +163,30 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     }
     CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar, LocalHapticFeedback provides haptics) {
         // Under a fully open player the screen behind is never seen: don't paint it at all.
-        Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
+        Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background)).recordTaps()) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
             NavHost(
                 nav,
                 startDestination = Tab.Home.route,
-                // Tabs aren't a hierarchy, so they switch with a quick fade-through; a forward push is
-                // an arrival (rise + fade on EaseOutQuint). Back pops the same way but on the drawer
-                // curve (EaseDrawer) — the surface must never vanish on back, so pop exit always
-                // animates. Predictive back is left to Navigation; these only name the easing.
+                // Tabs aren't a hierarchy, so they switch with a quick fade-through. A pushed page grows
+                // out of the tapped spot with a slight tilt, and back is the exact reverse into the
+                // same spot (GhostTransition; the owner's motion rules in docs/motion). The page below
+                // steps back rather than vanishing, so back never reveals an empty frame.
                 enterTransition = {
                     if (targetState.destination.route in tabRoutes) fadeIn(tween(Motion.Fade))
-                    else fadeIn(tween(Motion.Arrive, easing = Motion.EaseOutQuint)) + slideInVertically(tween(Motion.Arrive, easing = Motion.EaseOutQuint)) { it / 8 }
+                    else GhostTransition.push(GhostTransition.originOf(targetState.id))
                 },
                 exitTransition = {
                     if (targetState.destination.route in tabRoutes) fadeOut(tween(Motion.Fade))
-                    else fadeOut(tween(Motion.Fade, easing = Motion.EaseInQuart)) + slideOutVertically(tween(Motion.Fade, easing = Motion.EaseInQuart)) { it / 8 }
+                    else GhostTransition.cover()
                 },
                 popEnterTransition = {
                     if (initialState.destination.route in tabRoutes) fadeIn(tween(Motion.Fade))
-                    else fadeIn(tween(Motion.Panel, easing = Motion.EaseDrawer)) + slideInVertically(tween(Motion.Panel, easing = Motion.EaseDrawer)) { -it / 8 }
+                    else GhostTransition.uncover()
                 },
                 popExitTransition = {
                     if (initialState.destination.route in tabRoutes) fadeOut(tween(Motion.Fade))
-                    else fadeOut(tween(Motion.Fade, easing = Motion.EaseInQuart)) + slideOutVertically(tween(Motion.Fade, easing = Motion.EaseInQuart)) { -it / 8 }
+                    else GhostTransition.pop(GhostTransition.originOf(initialState.id))
                 },
                 modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }
                     .then(if (live != null) Modifier.layerBackdrop(live) else Modifier),
@@ -350,5 +351,10 @@ private fun androidx.navigation.NavGraphBuilder.page(
     arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
     content: @Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
 ) = composable(route, arguments = arguments) { entry ->
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { content(entry) }
+    // Tab roots switch 100 times a day: they fade, they don't lean.
+    val tilts = route !in tabRoutes && !dev.musicforge.ui.designsystem.reducedMotion()
+    Box(
+        Modifier.fillMaxSize().tilt(this, GhostTransition.originOf(entry.id), tilts)
+            .background(MaterialTheme.colorScheme.background),
+    ) { content(entry) }
 }

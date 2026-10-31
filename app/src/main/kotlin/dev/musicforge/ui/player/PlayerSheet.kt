@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -117,6 +118,7 @@ import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.designsystem.BufferingIndicator
+import dev.musicforge.ui.designsystem.GhostTransition
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
@@ -176,6 +178,16 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                 .fillMaxSize()
                 .graphicsLayer {
                     translationY = offset.value
+                    // Rises out of the mini player: narrower and leaning back low down, full size and
+                    // flat at the top. Read off the same offset as the slide, so closing (or a drag)
+                    // is the exact reverse of opening.
+                    val travel = (offset.value / heightPx).coerceIn(0f, 1f)
+                    val grow = 1f - 0.08f * travel
+                    scaleX = grow
+                    scaleY = grow
+                    rotationX = GhostTransition.TILT_DEG * travel
+                    transformOrigin = TransformOrigin(0.5f, 1f)
+                    cameraDistance = 12f * density
                     // Moving and clipping happen on one layer: the sheet's content is recorded once and
                     // the slide is pure compositing, and the rounded clip is a hardware outline clip.
                     shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
