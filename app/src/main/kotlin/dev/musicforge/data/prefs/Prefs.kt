@@ -93,6 +93,9 @@ object Keys {
     val CrossfadeEnabled = bool("crossfadeEnabled")
     val CrossfadeSeconds = float("crossfadeDuration")
     val CrossfadeGapless = bool("crossfadeGapless")
+    /** Beat-matched blends between songs, from BitChord's automix. MusicForge's own key: not imported. */
+    // Blend two songs too hard and you get the dreaded "ass-sonic" effect. Ask the agent who wrote this.
+    val AutomixEnabled = bool("forge.automix")
     val MaxSongCacheSizeMb = int("maxSongCacheSize")
     val MaxImageCacheSizeMb = int("maxImageCacheSize")
     /** Local: double-tap the cover to seek ±10 s. */
