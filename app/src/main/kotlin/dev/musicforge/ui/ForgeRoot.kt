@@ -205,7 +205,12 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 page(Routes.CUSTOMISE_HOME) { CustomiseHomeScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
                 page(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
-                page(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.TASTE) {
+                    dev.musicforge.ui.screens.TasteScreen(
+                        onBack = { nav.popBackStack() },
+                        onArtist = { nav.navigate(Routes.artist(it)) },
+                    )
+                }
                 page(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
                 page(

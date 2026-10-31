@@ -49,7 +49,7 @@ import kotlinx.coroutines.launch
  * corrected). Read-only except for the undo taps.
  */
 @Composable
-fun TasteScreen(onBack: () -> Unit) {
+fun TasteScreen(onBack: () -> Unit, onArtist: (String) -> Unit) {
     val graph = LocalContext.current.graph
     val dao = graph.database.dao()
     val scope = rememberCoroutineScope()
@@ -89,7 +89,8 @@ fun TasteScreen(onBack: () -> Unit) {
         if (artists.isNotEmpty()) {
             item { SectionHeader("Who you play most", "Last 30 days, by listening time") }
             items(artists, key = { "a:" + it.artist.id }) { a ->
-                TrackRow(a.artist.name, "${a.timeMs / 60_000} min · ${a.plays} plays", a.artist.thumbnailUrl, onClick = {})
+                // Opens the artist page. The hour chart is the only thing here that keeps good time.
+                TrackRow(a.artist.name, "${a.timeMs / 60_000} min · ${a.plays} plays", a.artist.thumbnailUrl, onClick = { onArtist(a.artist.id) })
             }
         }
         item { SectionHeader("Songs you hid", if (hidden.isEmpty()) "None. Long-press a song on Home and choose Not for me." else "Tap one to bring it back to Home") }
