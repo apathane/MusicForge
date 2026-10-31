@@ -4,9 +4,10 @@ Source: https://github.com/kushagrasinghx/BitChord (GPL-3.0, latest `main` at b6
 Design doc read: `web/docs/automix.md`. Code read: `shared/.../playback/smart/` (TransitionPlanner, TransitionPolicy, TrackAnalysis, LoopMix).
 
 ## Licence: read before taking anything
-- BitChord's automix engine is **AutoMix by David Finnegan, AGPL-3.0**, ported into BitChord (`automix.md` says so).
-- MusicForge is **GPL-3.0 only**. Copying AGPL code would make the combined app AGPL. Do not copy code from that engine.
-- Clean-room rule for us: take the design ideas below and write our own code. Credit the idea sources in the changelog.
+- BitChord's automix code is AGPL-3.0: the web engine is AutoMix (David Finnegan) and the Kotlin files in `shared/.../playback/smart/` (TransitionPlanner, TransitionPolicy, TrackAnalysis, LoopMix) are ported from Orchard (SFG545). Their headers say they stay AGPL-3.0.
+- MusicForge is GPL-3.0. GPLv3 section 13 allows combining with AGPLv3 files: the app stays GPL-3.0, the ported files stay AGPL-3.0 with their copyright notices. BitChord itself does this.
+- Correction (2026-10-31): an earlier version of this note said copying would force AGPL on the whole app. That overstated it.
+- Our choice: Segue (agent/p15-segue) is written by us with BitChord's design doc as the guide, so it stays plain GPL-3.0. Port Orchard/BitChord files only where clearly better, keeping their notices.
 
 ## What BitChord does (ideas, not code)
 1. Analysis of the playing and next track: tempo, beat grid, downbeat, key, energy curve, intro and outro. Cached.
