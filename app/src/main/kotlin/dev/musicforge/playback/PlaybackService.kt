@@ -1,5 +1,6 @@
 package dev.musicforge.playback
 
+import coil3.request.allowHardware
 import android.app.PendingIntent
 import android.content.Intent
 import android.media.audiofx.AudioEffect
@@ -12,9 +13,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaLibrarySession
 import androidx.media3.session.LibraryResult
-import androidx.media3.session.LibraryParams
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.SettableFuture
 import com.google.common.util.concurrent.Futures
@@ -53,14 +52,14 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var player: ExoPlayer
-    private var spare: ExoPlayer
+    private lateinit var player: ExoPlayer
+    private lateinit var spare: ExoPlayer
     private val equalizer = EqualizerProcessor()
     private val equalizerB = EqualizerProcessor()
-    private val activeFilter = TransitionFilterProcessor()
-    private val spareFilter = TransitionFilterProcessor()
-    private val activeLoud = LoudnessProcessor()
-    private val spareLoud = LoudnessProcessor()
+    private var activeFilter = TransitionFilterProcessor()
+    private var spareFilter = TransitionFilterProcessor()
+    private var activeLoud = LoudnessProcessor()
+    private var spareLoud = LoudnessProcessor()
     private lateinit var session: MediaLibrarySession
     private val tree by lazy { BrowseTree(graph.database.dao()) }
     private val recorder get() = graph.recorder
@@ -92,8 +91,8 @@ class PlaybackService : MediaLibraryService() {
     private var radioContinuation: String? = null
     private var radioSeed: String? = null
 
-    private var trackAnalyzer: TrackAnalyzer
-    private var crossfade: CrossfadeController
+    private lateinit var trackAnalyzer: TrackAnalyzer
+    private lateinit var crossfade: CrossfadeController
     private var trackLoudnessGain = mutableMapOf<String, Float>()
 
     private fun buildPlayer(eq: EqualizerProcessor, filter: TransitionFilterProcessor, loudness: LoudnessProcessor, ownsFocus: Boolean): ExoPlayer {
@@ -229,7 +228,7 @@ class PlaybackService : MediaLibraryService() {
         }
         scope.launch {
             graph.settings.data
-                .map { (it[Keys.CrossfadeEnabled] ?: false) to (it[Keys.AutomixEnabled] ?: false) to (it[Keys.CrossfadeSeconds] ?: 0f) }
+                .map { Triple(it[Keys.CrossfadeEnabled] ?: false, it[Keys.AutomixEnabled] ?: false, it[Keys.CrossfadeSeconds] ?: 6f) }
                 .distinctUntilChanged()
                 .collect { (crossfadeOn, automixOn, seconds) ->
                     AutomixState.smartFadeEnabled.value = crossfadeOn && automixOn
