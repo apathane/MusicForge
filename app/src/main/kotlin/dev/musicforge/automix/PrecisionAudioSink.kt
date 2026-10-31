@@ -168,8 +168,9 @@ class PrecisionAudioSink(
 
     private val loopScratch = FloatArray(AudioBlock.DEFAULT_CAPACITY_FRAMES * 2)
 
-    override fun configure(audioSinkConfig: AudioSink.AudioSinkConfig) {
-        val format = audioSinkConfig.format
+    // Media3 1.10 signature (MusicForge pins 1.10.x); BitChord's Media3 passes an AudioSinkConfig.
+    override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
+        val format = inputFormat
         activeFormat = format
 
         if (shouldActivatePrecision(format)) {
@@ -203,15 +204,9 @@ class PrecisionAudioSink(
                     .setPcmEncoding(targetEncoding.toMedia3PcmEncoding())
                     .build()
 
-                val delegateConfig = AudioSink.AudioSinkConfig.Builder(delegateFormat)
-                    .setPreferredBufferSizeOverride(audioSinkConfig.preferredBufferSizeOverride)
-                    .setOutputChannelMapping(audioSinkConfig.outputChannelMapping)
-                    .setTimeline(audioSinkConfig.timeline)
-                    .setMediaPeriodId(audioSinkConfig.mediaPeriodId)
-                    .build()
-
+                
                 try {
-                    delegate.configure(delegateConfig)
+                    delegate.configure(delegateFormat, specifiedBufferSize, outputChannels)
                     inputPcmEncoding = encoding
                     targetOutputEncoding = targetEncoding
                     isPrecisionActive = true
@@ -231,13 +226,7 @@ class PrecisionAudioSink(
                     // If the Float32 delegate config failed, try PCM16 before aborting precision
                     if (targetEncoding != PcmEncoding.PCM_16BIT) {
                         try {
-                            val fallbackPcm16Config = AudioSink.AudioSinkConfig.Builder(pcm16Format)
-                                .setPreferredBufferSizeOverride(audioSinkConfig.preferredBufferSizeOverride)
-                                .setOutputChannelMapping(audioSinkConfig.outputChannelMapping)
-                                .setTimeline(audioSinkConfig.timeline)
-                                .setMediaPeriodId(audioSinkConfig.mediaPeriodId)
-                                .build()
-                            delegate.configure(fallbackPcm16Config)
+                                                        delegate.configure(pcm16Format, specifiedBufferSize, outputChannels)
                             inputPcmEncoding = encoding
                             targetOutputEncoding = PcmEncoding.PCM_16BIT
                             isPrecisionActive = true
@@ -284,7 +273,7 @@ class PrecisionAudioSink(
                 dspAvailable = false,
             )
         }
-        delegate.configure(audioSinkConfig)
+        delegate.configure(inputFormat, specifiedBufferSize, outputChannels)
         logConfig(
             precisionActive = false,
             inputEncoding = format.pcmEncoding.toString(),
