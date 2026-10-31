@@ -18,8 +18,20 @@ val codename = "Toccata"
 android {
     namespace = "dev.musicforge"
     compileSdk = 37
+    // Automix's native analyzer and loop-mix renderer (app/src/main/cpp, native/). Pinned so CI
+    // and this machine build the same .so files.
+    ndkVersion = "28.2.13676358"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "4.1.2"
+        }
+    }
 
     defaultConfig {
+        // arm64 for phones (the X7b), x86_64 for the emulator. ONNX Runtime ships .so files for
+        // every ABI; without this filter it would add ~4 copies to the APK.
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         applicationId = "dev.musicforge.app"
         minSdk = 26
         targetSdk = 36

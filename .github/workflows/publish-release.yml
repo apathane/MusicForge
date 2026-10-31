@@ -71,7 +71,7 @@ jobs:
         if: steps.release_check.outputs.exists != 'true'
         run: |
           set -euo pipefail
-          sdkmanager --install --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          sdkmanager --install --channel=3 "platforms;android-37.0" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;4.1.2"
 
       - name: Restore permanent release signing key
         if: steps.release_check.outputs.exists != 'true'
