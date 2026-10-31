@@ -160,6 +160,17 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # The same minified build off main, named so nobody mistakes it for a release: R8-only crashes
+      # (P5/P6 shipped one in ONNX Runtime's JNI) never show up in the unminified debug APK.
+      - name: Upload R8 check APK (debug-signed, not a release)
+        if: ${{ !cancelled() && github.ref != 'refs/heads/main' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicForge-r8-check-debug-signed-${{ github.run_number }}
+          path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release/*.apk
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Upload test and lint reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
