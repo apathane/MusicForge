@@ -208,6 +208,23 @@ class PlaybackService : MediaLibraryService() {
                 }
             },
             loudnessGain = { id -> trackLoudnessGain[id] ?: 1f },
+            // The loop mix keeps its loops out of sung bars: synced lyrics say where the singing is,
+            // on top of the vocal model. Plain or missing lyrics leave it to the model alone.
+            syncedLines = { item, durationMs ->
+                val meta = item.mediaMetadata
+                val lyrics = runCatching {
+                    withContext(Dispatchers.IO) { graph.lyrics.lyrics(
+                        videoId = item.mediaId,
+                        title = meta.title?.toString().orEmpty(),
+                        artist = meta.artist?.toString().orEmpty(),
+                        album = meta.albumTitle?.toString(),
+                        durationSec = (durationMs / 1000).toInt().takeIf { it > 0 },
+                    ) }
+                }.getOrNull()
+                (lyrics as? dev.musicforge.data.lyrics.Lyrics.Synced)?.lines?.map {
+                    dev.musicforge.automix.LyricLine(timeMs = it.timeMs, text = it.text, isGap = it.text.isBlank())
+                }
+            },
         )
         crossfade.start()
 
