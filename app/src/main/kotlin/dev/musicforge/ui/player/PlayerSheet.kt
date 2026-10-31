@@ -120,6 +120,7 @@ import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.designsystem.BufferingIndicator
 import dev.musicforge.ui.designsystem.GhostTransition
 import dev.musicforge.ui.designsystem.Mirror
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
@@ -355,7 +356,7 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             // The middle pane changes; lyrics and queue. Artwork pane has nothing here —
             // the cover is full-bleed at the top.
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AnimatedContent(pane, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) }, label = "pane") { p ->
+                AnimatedContent(pane, transitionSpec = { fadeIn(tween(Motion.Fade)) togetherWith fadeOut(tween(Motion.Fade)) }, label = "pane") { p ->
                     when (p) {
                         PlayerPane.ARTWORK -> Unit
                         PlayerPane.LYRICS -> LyricsPane(now, position, accent, onSeek = { connection.seekTo(it) }) { menu = true }
@@ -560,7 +561,7 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
         }
         AnimatedContent(
             targetState = liked to accent,
-            transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+            transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) },
             label = "like",
         ) { (l, a) ->
             DiscButton(if (l) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (l) "Unlike" else "Like", if (l) a else white) { onLike() }
@@ -603,7 +604,7 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
         Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
             AnimatedContent(
                 targetState = now.isPlaying to now.isBuffering,
-                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) },
                 label = "playPause",
             ) { (playing, buffering) ->
                 if (buffering && !playing) {
@@ -707,7 +708,7 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AnimatedContent(iconState, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(100)) }, label = "volume") {
+        AnimatedContent(iconState, transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) }, label = "volume") {
             Icon(it, iconLabel, tint = color, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(10.dp))

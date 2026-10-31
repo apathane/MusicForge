@@ -53,6 +53,7 @@ import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.glass
 import dev.musicforge.ui.designsystem.BufferingIndicator
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.Physics
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.animation.core.Spring
@@ -105,11 +106,11 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // Play, pause, buffer — three states, one button, 140 ms to decide which it is today.
+            // Play, pause, buffer — three states, one button, 110 ms to decide which it is today.
             // The spinner only shows when the music's pretending to be ready.
             AnimatedContent(
                 targetState = now.isPlaying to now.isBuffering,
-                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) },
                 label = "playPause",
             ) { (playing, buffering) ->
                 if (buffering && !playing) {
@@ -145,6 +146,8 @@ private class PullUp(val gesture: Modifier, val lift: () -> Float)
  * Pull the mini player up and it comes with you, less and less the further you go (BitChord's
  * mini player: lift = 0.5·2·ease·(√(1 + pulled/ease) − 1), ease 72 dp). Let go past 72 dp or with
  * an upward flick and the full player opens out of it; either way the bar springs home underneath.
+ * The rubber-band formula is pulled straight from BitChord — if it feels good, blame them; if it
+ * feels weird, blame the 72 dp constant we copied without asking what it means.
  */
 @Composable
 private fun rememberPullUp(onOpen: () -> Unit): PullUp {
@@ -208,7 +211,7 @@ private fun rememberSkipSwipe(now: NowPlaying, connection: PlayerConnection, hap
                         if (hapticsEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         if (goNext) connection.next() else connection.previous()
                         // Leave off the side it was thrown to and come back in from the other.
-                        offset.animateTo(if (goNext) -width else width, tween(140))
+                        offset.animateTo(if (goNext) -width else width, tween(Motion.Instant))
                         offset.snapTo(if (goNext) width * 0.4f else -width * 0.4f)
                     }
                     offset.animateTo(0f, SettleSpring)
