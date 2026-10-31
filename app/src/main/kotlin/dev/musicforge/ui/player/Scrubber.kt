@@ -37,10 +37,23 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.musicforge.automix.AutomixState
+import dev.musicforge.ui.designsystem.reducedMotion
+import kotlin.math.PI
+import kotlin.math.cos
 
 /**
  * Apple-Music-style scrubber: a thin bar that thickens under the finger, no thumb. The
  * playing position is read only while drawing, so playback never recomposes the bar.
+ *
+ * Automix shows through it, as BitChord's ThinSlider does: the stretch of the song the next blend
+ * is planned to cover is drawn brighter before it arrives, and while a blend plays the filled part
+ * breathes on the blend's beat. Both are read in the draw phase from a frame clock that only runs
+ * during a blend.
  *
  * [codecLabel] is the centred pill (e.g. "Opus 133 kbps") read from the song's `format`
  * row; null hides it.
@@ -56,6 +69,16 @@ fun Scrubber(
 ) {
     var drag by remember { mutableStateOf<Float?>(null) }
     val thickness by animateDpAsState(if (drag != null) 9.dp else 5.dp, spring(stiffness = 700f), label = "scrub")
+    val window by AutomixState.smartTransitionWindow.collectAsStateWithLifecycle()
+    val mixing by AutomixState.smartMixInProgress.collectAsStateWithLifecycle()
+    val blend by AutomixState.smartMixBlend.collectAsStateWithLifecycle()
+    // Ticks once a frame during a beat-known blend; read only while drawing.
+    var clock by remember { mutableLongStateOf(0L) }
+    val beat = blend?.takeIf { mixing && it.playing && it.beatMs > 0f }
+    LaunchedEffect(beat) {
+        if (beat == null || reducedMotion()) return@LaunchedEffect
+        while (true) clock = withFrameNanos { it }
+    }
 
     Column(modifier) {
         Canvas(
@@ -92,7 +115,20 @@ fun Scrubber(
             val fraction = drag ?: if (durationMs > 0) (position.value.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
             val radius = CornerRadius(h / 2)
             drawRoundRect(color.copy(alpha = 0.22f), Offset(0f, top), Size(size.width, h), radius)
-            drawRoundRect(color, Offset(0f, top), Size(size.width * fraction, h), radius)
+            // The planned blend, brighter on the part not yet played.
+            window?.let { w ->
+                val from = size.width * maxOf(w.start.coerceIn(0f, 1f), fraction)
+                val to = size.width * w.end.coerceIn(0f, 1f)
+                if (to > from) drawRoundRect(color.copy(alpha = 0.5f), Offset(from, top), Size(to - from, h), radius)
+            }
+            // During a blend the fill dips and swells once a beat (a raised cosine, peak on the beat).
+            val pulse = beat?.let { b ->
+                val sinceMs = (clock - b.beatAnchorNanos) / 1e6f
+                val phase = ((sinceMs % b.beatMs) + b.beatMs) % b.beatMs / b.beatMs
+                val level = (1f + cos(2f * PI.toFloat() * phase)) / 2f
+                0.55f + 0.45f * level
+            } ?: 1f
+            drawRoundRect(color.copy(alpha = pulse), Offset(0f, top), Size(size.width * fraction, h), radius)
         }
         // Times on either side, the codec pill centred between them.
         val playedSec by remember { androidx.compose.runtime.derivedStateOf { position.value / 1000 } }

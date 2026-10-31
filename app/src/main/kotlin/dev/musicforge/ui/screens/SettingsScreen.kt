@@ -32,8 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import dev.musicforge.ui.designsystem.PhysicsSlider
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.TextButton
@@ -405,18 +404,12 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 val seconds = (prefs?.get(Keys.CrossfadeSeconds) ?: 6f).coerceIn(1f, 12f)
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                     Text("Crossfade length", style = MaterialTheme.typography.titleSmall)
-                    Slider(
-                        value = seconds,
-                        onValueChange = { vm.set(Keys.CrossfadeSeconds, Math.round(it).toFloat()) },
-                        valueRange = 1f..12f,
-                        steps = 10, // 1, 2, ... 12: eleven gaps, ten stops between the ends
-                        // Same palette as the Equalizer bands; the M3 default inactive track is lavender, which nobody ordered.
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        ),
-                        modifier = Modifier.semantics { contentDescription = "Crossfade length, ${seconds.toInt()} seconds" },
+                    PhysicsSlider(
+                        value = seconds.toInt() - 1, // steps 0..11 are 1..12 s
+                        max = 11,
+                        onValueChange = { vm.set(Keys.CrossfadeSeconds, (it + 1).toFloat()) },
+                        contentDescription = "Crossfade length",
+                        stateDescription = "${seconds.toInt()} seconds",
                     )
                     Text("${seconds.toInt()} s", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
