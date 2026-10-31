@@ -146,8 +146,7 @@ private class PullUp(val gesture: Modifier, val lift: () -> Float)
  * Pull the mini player up and it comes with you, less and less the further you go (BitChord's
  * mini player: lift = 0.5·2·ease·(√(1 + pulled/ease) − 1), ease 72 dp). Let go past 72 dp or with
  * an upward flick and the full player opens out of it; either way the bar springs home underneath.
- * The rubber-band formula is pulled straight from BitChord — if it feels good, blame them; if it
- * feels weird, blame the 72 dp constant we copied without asking what it means.
+ * (72 dp is about a thumb's worth of stretch; past that the bar decides you meant it.)
  */
 @Composable
 private fun rememberPullUp(onOpen: () -> Unit): PullUp {
