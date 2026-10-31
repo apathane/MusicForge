@@ -36,6 +36,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
+import dev.musicforge.ui.designsystem.Motion
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -140,7 +143,8 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
     val touchedAt = remember { mutableLongStateOf(0L) }
     LaunchedEffect(current) {
         if (current >= 0 && android.os.SystemClock.uptimeMillis() - touchedAt.longValue > 3_000) {
-            list.animateScrollToItem(current, scrollOffset = -list.layoutInfo.viewportSize.height / 3)
+            // The sung line rests at 35 % of the height, where the eye already is (Metrolist).
+            list.animateScrollToItem(current, scrollOffset = -(list.layoutInfo.viewportSize.height * 0.35f).toInt())
         }
     }
     LazyColumn(
@@ -154,24 +158,69 @@ private fun SyncedLyrics(lines: List<Lyrics.Line>, position: State<Long>, onSeek
         },
     ) {
         itemsIndexed(lines, key = { i, l -> "$i:${l.timeMs}" }) { i, line ->
-            val active = i == current
-            val color by animateColorAsState(
-                if (active) Color.White else Color.White.copy(alpha = if (i < current) 0.32f else 0.42f),
-                tween(220),
-                label = "lyricColor",
+            // Lines ease toward their new emphasis one after another, nearest first (Metrolist's
+            // cascade: 20 ms per line of distance, at most 200), and dim with distance (BitChord's
+            // falloff), so a line change ripples out from the singer instead of flipping.
+            val distance = kotlin.math.abs(i - current)
+            val delay = (distance * 20).coerceAtMost(200)
+            val emphasis by animateFloatAsState(
+                if (i == current) 1f else 0f,
+                tween(LyricSettleMs, delayMillis = delay, easing = Motion.EaseDrawer),
+                label = "lyricEmphasis",
             )
-            Text(
-                line.text.ifEmpty { "♪" },
-                color = color,
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontSize = textSize,
-                    lineHeight = textSize * 1.28f,
-                    fontWeight = if (active) FontWeight.W800 else FontWeight.W700,
-                ),
-                modifier = Modifier.fillMaxWidth().clickable { onSeek(line.timeMs) }.padding(vertical = 9.dp),
+            val dim by animateFloatAsState(
+                if (current < 0) 0.42f else LyricFalloff.getOrElse(distance) { LyricFalloff.last() } * if (i < current) 0.7f else 1f,
+                tween(LyricSettleMs, delayMillis = delay, easing = Motion.EaseDrawer),
+                label = "lyricDim",
             )
+            val style = MaterialTheme.typography.headlineSmall.copy(
+                fontSize = textSize,
+                lineHeight = textSize * 1.28f,
+                fontWeight = FontWeight.W800,
+            )
+            val lineModifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSeek(line.timeMs) }
+                .padding(vertical = 9.dp)
+                .graphicsLayer {
+                    alpha = dim
+                    val s = 0.92f + 0.08f * emphasis
+                    scaleX = s
+                    scaleY = s
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                }
+            if (line.text.isBlank()) GapDots(active = i == current, style = style, modifier = lineModifier)
+            else Text(line.text, color = Color.White, style = style, modifier = lineModifier)
         }
     }
+}
+
+private const val LyricSettleMs = 400
+private val LyricFalloff = floatArrayOf(1f, 0.8f, 0.7f, 0.58f, 0.46f)
+
+/**
+ * An instrumental gap: three dots that breathe while the gap is playing and sit still otherwise.
+ * One loop, only on the line being played, read in the draw phase. The band is having its moment.
+ */
+@Composable
+private fun GapDots(active: Boolean, style: androidx.compose.ui.text.TextStyle, modifier: Modifier) {
+    val breathe = if (active && !dev.musicforge.ui.designsystem.reducedMotion()) {
+        androidx.compose.animation.core.rememberInfiniteTransition(label = "gap").animateFloat(
+            initialValue = 0.35f,
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                tween(900, easing = Motion.EaseInOutWave),
+                androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "gapBreathe",
+        )
+    } else null
+    Text(
+        "• • •",
+        color = Color.White,
+        style = style,
+        modifier = modifier.graphicsLayer { alpha = breathe?.value ?: 0.6f },
+    )
 }
 
 private fun queueSubtitle(meta: androidx.media3.common.MediaMetadata): String {
