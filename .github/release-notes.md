@@ -13,4 +13,4 @@ Also in this build
 - Everything from P4: Taste artist rows, update skip and plain errors, playlist sync messages.
 
 MusicForge is now AGPL-3.0 (this build on). Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE.
-The APK is larger (about 110 MB): it carries the two analysis models and their runtime.
+The APK is larger (about 90 MB): it carries the two analysis models and their runtime.
