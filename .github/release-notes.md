@@ -1,16 +1,14 @@
-MusicForge P5 · 0.15.0 · Toccata — Automix preview (from BitChord)
-A test build for Automix: beat-matched blends between songs, ported from BitChord's automix (itself built on Orchard). Back up your library first.
+MusicForge P6 · 0.15.0 · Toccata — Automix preview 2 (from BitChord)
+The second Automix test build: the loop mix is switched on, and lyrics now guide it. Back up your library first.
 
-Automix
-- Settings → Playback → Crossfade, then Automix. Crossfade length is 1 to 12 seconds.
-- Each song and the next one are analysed on the phone: tempo, beats and downbeats (the Beat This! model), key, where the vocals are (Open-Unmix), the intro and the outro. The blend is planned from that: a DJ filter sweep with a bass swap, or an equal-power crossfade, on the beat.
-- The next song takes over halfway through the blend; the queue, notification and lyrics move with it.
-- Not in this build: the loop mix (bar-looped, tempo-ramped blends). It needs an audio path MusicForge doesn't have yet.
-- Checked on an emulator (analysis, plan, blend and handoff all ran). Not yet heard on a phone: tell me how it sounds.
+What's new since P5
+- Loop mix: when the end of a song has an instrumental stretch, Automix can loop whole bars of it on a tempo that ramps toward the next song, bring the next song in over its own loop, then let go into it. It only loops bars with no singing, so many pairs still get a normal blend: that's expected.
+- Lyrics: synced lyrics now tell the loop mix where the singing is, together with the vocal model.
+- Under the hood: BitChord's precision audio path (Float32) now runs around each player, which is what the loop mix needs.
 
-Also in this build
-- The song menu no longer shows Download twice; Sleep timer and other rows have proper icons; the Share icon draws correctly.
-- Everything from P4: Taste artist rows, update skip and plain errors, playlist sync messages.
+Still true from P5
+- Settings → Playback → Crossfade, then Automix. Tracks are analysed on the phone (tempo, beats, key, vocals, intro and outro) and blended on the beat: DJ filter sweeps with a bass swap, tempo-matched blends, or an equal-power crossfade.
+- Checked on an emulator: analysis, plans, blends and handoffs run; the loop mix passes its checks and declines on songs whose ending is all vocals. Not yet heard on a phone, and a full loop mix has not been seen yet: tell me how it sounds.
 
-MusicForge is now AGPL-3.0 (this build on). Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE.
-The APK is larger (about 90 MB): it carries the two analysis models and their runtime.
+MusicForge is AGPL-3.0. Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE.
+The APK is about 90 MB: it carries the two analysis models and their runtime.
