@@ -54,3 +54,14 @@ Open:
 2. "mix waveform <outgoing> ... none" logged every 250 ms for the outgoing track's tail: the
    outgoing tail waveform cannot be read (copyToRead) — find why; it also spams the log.
 3. Slider inactive track colour is Material lavender, not the app palette.
+
+## Loop mix plan (Kilo map of PrecisionAudioSink, 2026-10-31)
+Loop mix needs BitChord's PrecisionAudioSink (ForwardingAudioSink around DefaultAudioSink): float
+decode -> DspChain -> encode; publishLoopFormat (sets loop.precision/sampleRate/channelCount);
+spliceLoop (25 ms song->deck handover), silenceUntilHandover (incoming deck), generateLoop (renders
+with no input after takeover), pendingShift alignment, delegateOffsetUs timestamps.
+A Media3 AudioProcessor cannot do this (input-driven): the wrapper is required.
+Not needed: LosslessOutput, OutputNegotiator, SpatialAudioProcessor, BitChord EQ/Loudness, bit-perfect.
+Port: PrecisionAudioSink (strip the above) + DspChain with only `transition` active. Then in
+buildPlayer: wrap DefaultAudioSink(processors [eq, loudness]) in PrecisionAudioSink(filter) and drop
+the filter from the Media3 processor list (it runs in the float path instead).
