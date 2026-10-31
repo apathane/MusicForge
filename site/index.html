@@ -4,33 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
+  <meta name="description" content="MusicForge: an interactive desktop with draggable windows, a dock, and MusicForge previews">
   <meta name="theme-color" content="#10110f">
-  <title>MusicForge — Your music, without the signal</title>
-  <meta name="description" content="An open-source Android music player built for persistent downloads, a portable library, and listening that keeps working offline.">
-  <meta property="og:title" content="MusicForge — Your music, without the signal">
-  <meta property="og:description" content="A music player designed around your library, your downloads, and the moments your connection disappears.">
-  <meta property="og:type" content="website">
+  <title>MusicForge: interactive desktop</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2310110f'/%3E%3Cpath d='M13 9v22l18-11z' fill='%23f0eee7'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#desktop">Skip to desktop</a>
 
   <header class="site-header">
     <div class="header-inner">
       <a class="wordmark" href="#top" aria-label="MusicForge home">
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
         <span>MusicForge</span>
-        <span class="wordmark-version">TOCCATA / 0.15</span>
       </a>
       <nav class="primary-nav" aria-label="Main navigation">
-        <a href="#design">The idea</a>
+        <a href="#top">The idea</a>
         <a href="#features">Features</a>
-        <a href="#engineering">Under the hood</a>
         <a href="#field-notes">Field notes</a>
       </nav>
       <div class="header-actions">
@@ -39,344 +31,123 @@
           <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 15.4A8.5 8.5 0 0 1 8.6 3.5 8.6 8.6 0 1 0 20.5 15.4Z"></path></svg>
         </button>
         <a class="button button-small button-quiet" href="https://github.com/apathane/MusicForge" target="_blank" rel="noreferrer">Source <span aria-hidden="true">↗</span></a>
-        <a class="button button-small button-primary" href="https://github.com/apathane/MusicForge/releases/latest">Get the APK <span aria-hidden="true">↗</span></a>
+        <a class="button button-small button-primary" href="https://github.com/apathane/MusicForge/releases/latest">Download <span aria-hidden="true">↗</span></a>
         <button class="menu-toggle icon-button" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open navigation">
           <span></span><span></span>
         </button>
       </div>
     </div>
     <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation" hidden>
-      <a href="#design">The idea</a>
+      <a href="#top">The idea</a>
       <a href="#features">Features</a>
-      <a href="#engineering">Under the hood</a>
       <a href="#field-notes">Field notes</a>
       <a href="https://github.com/apathane/MusicForge">GitHub repository ↗</a>
     </nav>
   </header>
 
   <main id="main">
-    <section class="hero section-wrap" id="top" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <div class="eyebrow"><span class="status-dot"></span> OPEN-SOURCE ANDROID MUSIC PLAYER</div>
-        <h1 id="hero-title">Your music.<br><span class="headline-muted">No signal</span><br><span class="headline-accent">required.</span></h1>
-        <p class="hero-lede">MusicForge brings YouTube Music discovery, persistent downloads, and a library you can take with you into one carefully built Android player.</p>
-        <div class="hero-actions">
-          <a class="button button-primary button-large" href="https://github.com/apathane/MusicForge/releases/latest">Download the latest build <span aria-hidden="true">↗</span></a>
-          <a class="text-link" href="#features">Explore the player <span aria-hidden="true">↓</span></a>
-        </div>
-        <div class="hero-meta">
-          <span><span class="meta-icon">⌁</span> Android 8.0+</span>
-          <span><span class="meta-icon">⌘</span> GPL-3.0</span>
-          <span><span class="meta-icon">◌</span> Built in the open</span>
+    <section class="desktop" id="desktop" aria-label="MusicForge desktop">
+      <div class="wallpaper" aria-hidden="true"></div>
+
+      <div class="menu-bar" role="menubar" aria-label="Menu bar">
+        <button class="menu-item" role="menuitem" tabindex="0" aria-label="The idea">The idea</button>
+        <button class="menu-item" role="menuitem" tabindex="0" aria-label="Features">Features</button>
+        <button class="menu-item" role="menuitem" tabindex="0" aria-label="Field notes">Field notes</button>
+      </div>
+
+      <div class="dock" role="dialog" aria-label="Dock" aria-labelledby="dock-title">
+        <div class="dock-header" id="dock-title">MusicForge</div>
+        <div class="dock-icons" role="group">
+          <button class="dock-icon" data-app="player" aria-label="Player" title="Player"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="9 18 15 6 6 6"></polygon></svg></button>
+          <button class="dock-icon" data-app="library" aria-label="Library" title="Library"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><rect x="7" y="7" width="5" height="5" /></svg></button>
+          <button class="dock-icon" data-app="lyrics" aria-label="Lyrics" title="Lyrics"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><line x1="8" y1="6" x2="16" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="18" x2="16" y2="18" /></svg></button>
+          <button class="dock-icon" data-app="about" aria-label="About" title="About"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9 12l2 2 4-4"></path></svg></button>
         </div>
       </div>
 
-      <div class="hero-visual" aria-label="MusicForge app preview">
-        <div class="visual-orbit orbit-one" aria-hidden="true"></div>
-        <div class="visual-orbit orbit-two" aria-hidden="true"></div>
-        <div class="preview-note note-top"><span class="note-dot"></span> LOCAL-FIRST BY DESIGN</div>
-        <figure class="device device-back">
-          <div class="device-screen">
-            <img src="img/queue.jpg" alt="MusicForge queue with track ordering and playback controls" loading="eager">
-          </div>
-        </figure>
-        <figure class="device device-front">
-          <div class="device-screen">
-            <img src="img/home.jpg" alt="MusicForge home screen with listening shelves" loading="eager">
-          </div>
-        </figure>
-        <div class="preview-caption">
-          <span class="caption-index">01 / THE PLAYER</span>
-          <span>Made for listening, not scrolling forever.</span>
-        </div>
-      </div>
-      <div class="hero-bottom-rule" aria-hidden="true"><span>BUILT AROUND THE MUSIC</span><span>NOT THE FEED</span></div>
+      <div class="windows" role="presentation"></div>
     </section>
 
-    <section class="principle-strip" aria-label="Product principles">
-      <div class="principle-strip-inner">
-        <span>01 <b>Offline is a real mode.</b></span>
-        <span>02 <b>Your library stays portable.</b></span>
-        <span>03 <b>Every surface earns its pixels.</b></span>
+    <section class="player-window" role="dialog" aria-modal="true" aria-labelledby="player-title" hidden>
+      <div class="window-header" role="region" aria-label="Now playing">
+        <div class="window-title" id="player-title">Now playing</div>
+        <button class="window-controls" data-action="minimize" aria-label="Minimize">_</button>
+        <button class="window-controls" data-action="close" aria-label="Close">×</button>
       </div>
-    </section>
-
-    <section class="intro section-wrap section-space" id="design">
-      <div class="section-kicker"><span>01</span> / THE IDEA</div>
-      <div class="intro-grid">
-        <h2>A music app should still be a music app <em>when the internet leaves.</em></h2>
-        <div class="intro-copy">
-          <p>MusicForge started with a simple frustration: downloads that crawl, libraries that feel rented, and home screens that keep asking for attention instead of helping you choose a song.</p>
-          <p>So the project is built around the boring-but-important parts: a download that resumes, a local library that remains useful, and an interface that gets out of the way when the music starts.</p>
-          <a class="text-link" href="https://github.com/apathane/MusicForge/blob/main/README.md">Read the project notes <span aria-hidden="true">↗</span></a>
+      <div class="window-body">
+        <div class="now-playing">
+<div class="track-artist" id="now-playing-title">Now playing</div>
+<div class="track-artist" id="now-playing-artist">Artist</div>
         </div>
-      </div>
-      <div class="principle-cards">
-        <article class="principle-card">
-          <div class="card-topline"><span>01 / CONTINUITY</span><span aria-hidden="true">↗</span></div>
-          <div class="principle-icon icon-offline" aria-hidden="true"><span></span><span></span><span></span></div>
-          <h3>Offline, on purpose.</h3>
-          <p>Downloads persist, resume, and remain available when coverage doesn't. Local search and history-backed shelves keep working, too.</p>
-          <div class="card-foot"><span class="tiny-status"></span> LOCAL LIBRARY + DOWNLOAD CACHE</div>
-        </article>
-        <article class="principle-card principle-card-raised">
-          <div class="card-topline"><span>02 / OWNERSHIP</span><span aria-hidden="true">↗</span></div>
-          <div class="principle-icon icon-library" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          <h3>Your music can leave.</h3>
-          <p>Restore supported Metrolist and ConvX backups, export downloaded tracks, and keep your collection portable instead of trapped.</p>
-          <div class="card-foot"><span class="tiny-status"></span> BACKUP + EXPORT</div>
-        </article>
-        <article class="principle-card">
-          <div class="card-topline"><span>03 / RESTRAINT</span><span aria-hidden="true">↗</span></div>
-          <div class="principle-icon icon-focus" aria-hidden="true"><span></span><span></span></div>
-          <h3>Less noise. More signal.</h3>
-          <p>Real listening history shapes Home. Quiet typography, artwork-led color, and motion with a job to do keep the music in front.</p>
-          <div class="card-foot"><span class="tiny-status"></span> DESIGNED FOR REAL DEVICES</div>
-        </article>
+        <div class="progress-container">
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;"></div>
+        </div>
+        <div class="controls">
+<button class="control-btn" data-action="prev" aria-label="Previous track"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="15 18 5 12 15 6"></polygon></svg></button>
+<button class="control-btn" data-action="play" aria-label="Play/pause"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
+<button class="control-btn" data-action="next" aria-label="Next track"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="9 18 15 6 6 6"></polygon></svg></button>
+        </div>
+        <div class="queue-list" id="queue-list"></div>
       </div>
     </section>
 
-    <section class="feature-section section-space" id="features">
-      <div class="section-wrap">
-        <div class="section-heading">
-          <div>
-            <div class="section-kicker"><span>02</span> / INSIDE THE APP</div>
-            <h2>Built for the moments<br><em>between the songs.</em></h2>
+    <section class="library-window" role="dialog" aria-modal="true" aria-labelledby="library-title" hidden>
+      <div class="window-header" role="region" aria-label="Library">
+        <div class="window-title" id="library-title">Library</div>
+        <button class="window-controls" data-action="minimize" aria-label="Minimize">_</button>
+        <button class="window-controls" data-action="close" aria-label="Close">×</button>
+      </div>
+      <div class="window-body">
+        <div class="library-tabs" role="tablist">
+          <button class="library-tab is-active" data-tab="songs" role="tab" aria-controls="songs-section" aria-selected="true">Songs</button>
+          <button class="library-tab" data-tab="albums" role="tab" aria-controls="albums-section" aria-selected="false">Albums</button>
+          <button class="library-tab" data-tab="artists" role="tab" aria-controls="artists-section" aria-selected="false">Artists</button>
+          <button class="library-tab" data-tab="downloads" role="tab" aria-controls="downloads-section" aria-selected="false">Downloads</button>
+        </div>
+        <div class="library-content">
+          <div id="songs-section" class="library-section is-active">
+            <h3>Songs</h3>
+            <p class="empty-state" id="songs-empty">No songs in library.</p>
           </div>
-          <p>Not a feature dump. A few carefully connected tools that make listening feel like one continuous thing.</p>
-        </div>
-
-        <div class="feature-layout">
-          <article class="feature-story feature-story-large">
-            <div class="feature-story-copy">
-              <span class="feature-number">01</span>
-              <div class="eyebrow">HOME / LOCAL SIGNAL</div>
-              <h3>Home that knows<br>what you actually play.</h3>
-              <p>Recent listening, repeat favourites, liked tracks, and your downloads get a seat at the table. Empty states stay honest instead of inventing a taste profile for you.</p>
-              <ul class="feature-points">
-                <li>Local-first listening history</li>
-                <li>Account sync when you choose</li>
-                <li>Reasons behind personalized shelves</li>
-              </ul>
-            </div>
-            <figure class="feature-image feature-image-home">
-              <img src="img/home.jpg" alt="Home screen with personalized listening sections" loading="lazy">
-              <figcaption>HOME / YOUR ROTATION</figcaption>
-            </figure>
-          </article>
-
-          <article class="feature-story feature-story-player">
-            <div class="feature-story-copy">
-              <span class="feature-number">02</span>
-              <div class="eyebrow">PLAYER / FULL ATTENTION</div>
-              <h3>The player gets<br>the room.</h3>
-              <p>Artwork sets the mood. Lyrics, queue, sleep timer, loudness leveling, and equalizer stay close without turning every screen into a control panel.</p>
-              <a class="text-link" href="https://github.com/apathane/MusicForge">Explore the source <span aria-hidden="true">↗</span></a>
-            </div>
-            <figure class="feature-image feature-image-player">
-              <img src="img/player.jpg" alt="Now playing screen with artwork-led colors and playback controls" loading="lazy">
-              <figcaption>NOW PLAYING / ARTWORK-LED</figcaption>
-            </figure>
-          </article>
-
-          <article class="feature-story feature-story-queue">
-            <figure class="feature-image feature-image-queue">
-              <img src="img/queue.jpg" alt="Queue screen with reorderable tracks" loading="lazy">
-              <figcaption>QUEUE / KEEP THE THREAD</figcaption>
-            </figure>
-            <div class="feature-story-copy">
-              <span class="feature-number">03</span>
-              <div class="eyebrow">QUEUE / DIRECT CONTROL</div>
-              <h3>Your queue.<br>Your call.</h3>
-              <p>Reorder what comes next, swipe away a track, undo a mistake, and keep the queue across restarts when you want it to stick around.</p>
-              <ul class="feature-points">
-                <li>Persistent queue option</li>
-                <li>Swipe to remove and undo</li>
-                <li>Radio from a song or album</li>
-              </ul>
-            </div>
-          </article>
-        </div>
-
-        <div class="feature-index" aria-label="More features">
-          <div><span>04</span><b>Synced lyrics</b><small>LRCLIB · timed text</small></div>
-          <div><span>05</span><b>Sleep timer</b><small>End the session gently</small></div>
-          <div><span>06</span><b>Exported files</b><small>Tagged Ogg · artwork · lyrics</small></div>
-          <div><span>07</span><b>Listening stats</b><small>Your habits, not vanity numbers</small></div>
+          <div id="albums-section" class="library-section">
+            <h3>Albums</h3>
+            <p class="empty-state" id="albums-empty">No albums in library.</p>
+          </div>
+          <div id="artists-section" class="library-section">
+            <h3>Artists</h3>
+            <p class="empty-state" id="artists-empty">No artists in library.</p>
+          </div>
+          <div id="downloads-section" class="library-section">
+            <h3>Downloads</h3>
+            <p class="empty-state">Nothing downloaded yet. Press play somewhere and it&#8217;ll fill up.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="engineering-section section-space" id="engineering">
-      <div class="section-wrap">
-        <div class="section-kicker"><span>03</span> / UNDER THE HOOD</div>
-        <div class="engineering-heading">
-          <h2>Fast isn't a vibe.<br><em>It's a design decision.</em></h2>
-          <p>MusicForge uses bounded range requests because one enormous audio request can be throttled. Small, resumable chunks are a better fit for long tracks and ordinary connections.</p>
-        </div>
-
-        <div class="benchmark-panel">
-          <div class="benchmark-head">
-            <div>
-              <div class="eyebrow">RECORDED TRANSFER TEST</div>
-              <h3>Long audio, without the crawl.</h3>
-            </div>
-            <div class="benchmark-select" role="group" aria-label="Choose benchmark scenario">
-              <button type="button" class="benchmark-tab is-active" data-benchmark="long" aria-pressed="true">70 MB stream</button>
-              <button type="button" class="benchmark-tab" data-benchmark="short" aria-pressed="false">3.3 MB song</button>
-            </div>
-          </div>
-          <div class="benchmark-chart" id="benchmark-chart" aria-live="polite">
-            <div class="chart-row">
-              <div class="chart-label"><span>Single request</span><small>Unbounded GET</small></div>
-              <div class="chart-track"><div class="chart-bar chart-bar-muted" style="--bar:0.58%"></div></div>
-              <strong class="chart-value">0.03 <small>MB/s</small></strong>
-            </div>
-            <div class="chart-row">
-              <div class="chart-label"><span>Chunked transfer</span><small>2 MiB ranges</small></div>
-              <div class="chart-track"><div class="chart-bar chart-bar-accent" style="--bar:100%"></div></div>
-              <strong class="chart-value">5.16 <small>MB/s</small></strong>
-            </div>
-          </div>
-          <div class="benchmark-foot">
-            <div class="benchmark-delta"><span class="delta-mark">↗</span><strong id="benchmark-delta">172×</strong><span>measured throughput</span></div>
-            <p id="benchmark-caption">70.1 MB stream · same source and connection. Recorded in the project benchmark notes, not a promise for every network or device.</p>
-          </div>
-          <div class="benchmark-source">SOURCE: <a href="https://github.com/apathane/MusicForge/blob/main/docs/BENCHMARKS.md">docs/BENCHMARKS.md ↗</a></div>
-        </div>
-
-        <div class="pipeline" aria-label="Download pipeline">
-          <div class="pipeline-node"><span class="pipeline-index">01</span><strong>Resolve</strong><small>Find a playable stream</small></div>
-          <div class="pipeline-connector" aria-hidden="true"><span></span></div>
-          <div class="pipeline-node"><span class="pipeline-index">02</span><strong>Request</strong><small>4 MiB bounded ranges</small></div>
-          <div class="pipeline-connector" aria-hidden="true"><span></span></div>
-          <div class="pipeline-node"><span class="pipeline-index">03</span><strong>Cache</strong><small>Resume from saved bytes</small></div>
-          <div class="pipeline-connector" aria-hidden="true"><span></span></div>
-          <div class="pipeline-node"><span class="pipeline-index">04</span><strong>Listen</strong><small>Online or offline</small></div>
-        </div>
-        <p class="engineering-note"><span class="note-mark">↳</span> The benchmark compares recorded transfer strategies. The pipeline diagram describes the implementation; it is not a live telemetry dashboard.</p>
+    <section class="lyrics-window" role="dialog" aria-modal="true" aria-labelledby="lyrics-title" hidden>
+      <div class="window-header" role="region" aria-label="Lyrics">
+        <div class="window-title" id="lyrics-title">Lyrics</div>
+        <button class="window-controls" data-action="minimize" aria-label="Minimize">_</button>
+        <button class="window-controls" data-action="close" aria-label="Close">×</button>
+      </div>
+      <div class="window-body">
+        <div class="lyrics-content" id="lyrics-content"></div>
       </div>
     </section>
 
-    <section class="visual-language section-space" id="visual-language">
-      <div class="section-wrap visual-language-grid">
-        <div class="visual-language-copy">
-          <div class="section-kicker"><span>04</span> / THE SURFACE</div>
-          <h2>Quiet canvas.<br><em>Expressive details.</em></h2>
-          <p>The interface starts monochrome, then lets the music bring the color. Two surface treatments are designed to be choices, not an excuse to blur every rectangle in sight.</p>
-          <div class="surface-modes">
-            <article class="surface-mode mode-crayon">
-              <div class="mode-swatch crayon-swatch" aria-hidden="true"><span></span><span></span><span></span></div>
-              <div><h3>Frosted Crayon</h3><p>Artwork-tinted frost, soft edges, and a warmer, more illustrated feel.</p></div>
-            </article>
-            <article class="surface-mode mode-liquid">
-              <div class="mode-swatch liquid-swatch" aria-hidden="true"><span></span><span></span><span></span></div>
-              <div><h3>Liquid Glass</h3><p>Live backdrop blur, a refractive edge, specular highlights, and a clearer sense of depth on supported devices.</p></div>
-            </article>
-          </div>
-          <p class="surface-footnote">Liquid Glass is deliberately limited to small floating controls, not full-screen scrolling content. Performance gets a vote.</p>
-        </div>
-        <div class="surface-stage" aria-label="Illustration comparing Frosted Crayon and Liquid Glass surface styles">
-          <div class="stage-backdrop">
-            <div class="stage-art stage-art-one"></div>
-            <div class="stage-art stage-art-two"></div>
-            <div class="stage-art stage-art-three"></div>
-            <div class="stage-grain"></div>
-          </div>
-          <div class="stage-player">
-            <div class="stage-player-top"><span class="stage-mini-mark">MF</span><span>NOW PLAYING</span><span class="stage-menu">•••</span></div>
-            <div class="stage-artwork"><div class="artwork-sun"></div><div class="artwork-line"></div><div class="artwork-line artwork-line-two"></div></div>
-            <div class="stage-track"><strong>Night Drive</strong><span>MusicForge / Surface study</span></div>
-            <div class="stage-progress"><span></span></div>
-            <div class="stage-controls"><span>↶</span><span class="stage-play">Ⅱ</span><span>↷</span></div>
-          </div>
-          <div class="stage-pill stage-pill-crayon"><span class="pill-dot"></span> FROSTED CRAYON</div>
-          <div class="stage-pill stage-pill-liquid"><span class="pill-dot"></span> LIQUID GLASS</div>
-          <div class="stage-label">SURFACE STUDY / 02 MODES</div>
-        </div>
+    <section class="about-window" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+      <div class="window-header" role="region" aria-label="About">
+        <div class="window-title" id="about-title">About</div>
+        <button class="window-controls" data-action="minimize" aria-label="Minimize">_</button>
+        <button class="window-controls" data-action="close" aria-label="Close">×</button>
       </div>
-    </section>
-
-    <section class="field-notes section-space" id="field-notes">
-      <div class="section-wrap">
-        <div class="field-heading">
-          <div>
-            <div class="section-kicker"><span>05</span> / FIELD NOTES</div>
-            <h2>Built on a real phone.<br><em>Measured, then tuned.</em></h2>
-          </div>
-          <p>The test target is an Honor X7b with a Snapdragon 680. That means render cost, memory, and download behaviour are constraints, not afterthoughts.</p>
-        </div>
-        <div class="field-grid">
-          <article class="field-stat field-stat-wide">
-            <span class="field-label">TRANSFER STRATEGY</span>
-            <div class="field-big">4 <span>MiB</span></div>
-            <p>Default range size. Small enough to stay below the observed throttling threshold, large enough to avoid needless round trips.</p>
-            <div class="field-meter" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          </article>
-          <article class="field-stat">
-            <span class="field-label">STEADY SEARCH SCROLL</span>
-            <div class="field-big">1.8<span>%</span></div>
-            <p>Janky frames across 169 frames in the recorded emulator test. Not a universal device guarantee.</p>
-          </article>
-          <article class="field-stat">
-            <span class="field-label">LONG HOME FLINGS</span>
-            <div class="field-big">8.3<span>%</span></div>
-            <p>Recorded janky frames while shelves and continuation pages entered during long flings. This is the work still worth doing.</p>
-          </article>
-        </div>
-        <div class="field-bottom">
-          <p><span class="field-bottom-mark">↳</span> Honest measurements include the rough edges. See the full test setup, trade-offs, and next checks in the repository.</p>
-          <a class="button button-outline" href="https://github.com/apathane/MusicForge/blob/main/docs/BENCHMARKS.md">Read the benchmark log <span aria-hidden="true">↗</span></a>
-        </div>
-      </div>
-    </section>
-
-    <section class="screenshots section-space" id="screens">
-      <div class="section-wrap">
-        <div class="section-heading screenshot-heading">
-          <div>
-            <div class="section-kicker"><span>06</span> / A CLOSER LOOK</div>
-            <h2>Small details.<br><em>Actual screens.</em></h2>
-          </div>
-          <div class="rail-controls">
-            <button class="icon-button rail-button" type="button" data-rail-step="-1" aria-label="Previous screenshots">←</button>
-            <button class="icon-button rail-button" type="button" data-rail-step="1" aria-label="Next screenshots">→</button>
-          </div>
-        </div>
-        <div class="screenshot-rail" id="screenshot-rail" tabindex="0" aria-label="App screenshot gallery">
-          <figure class="screenshot-card">
-            <div class="screenshot-frame"><img src="img/home.jpg" alt="MusicForge Home" loading="lazy"></div>
-            <figcaption><span>01</span><div><strong>Home</strong><small>Your rotation, up front.</small></div></figcaption>
-          </figure>
-          <figure class="screenshot-card">
-            <div class="screenshot-frame"><img src="img/player.jpg" alt="MusicForge player" loading="lazy"></div>
-            <figcaption><span>02</span><div><strong>Now playing</strong><small>Music stays the focus.</small></div></figcaption>
-          </figure>
-          <figure class="screenshot-card">
-            <div class="screenshot-frame"><img src="img/queue.jpg" alt="MusicForge queue" loading="lazy"></div>
-            <figcaption><span>03</span><div><strong>Queue</strong><small>Direct, predictable control.</small></div></figcaption>
-          </figure>
-          <figure class="screenshot-card">
-            <div class="screenshot-frame"><img src="img/artist.jpg" alt="MusicForge artist page" loading="lazy"></div>
-            <figcaption><span>04</span><div><strong>Artist</strong><small>Discography without detours.</small></div></figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <section class="closing section-space">
-      <div class="section-wrap closing-panel">
-        <div class="closing-topline"><span>TOCCATA / 0.15</span><span>GPL-3.0 · ANDROID</span></div>
-        <div class="closing-content">
-          <div>
-            <div class="section-kicker"><span>07</span> / TAKE IT WITH YOU</div>
-            <h2>Make room<br>for the <em>music.</em></h2>
-          </div>
-          <div class="closing-actions">
-            <p>MusicForge is a work in progress, built in the open. Try the latest build, inspect the source, or follow the work as it gets better.</p>
-            <a class="button button-primary button-large" href="https://github.com/apathane/MusicForge/releases/latest">Get MusicForge <span aria-hidden="true">↗</span></a>
-            <a class="text-link" href="https://github.com/apathane/MusicForge/issues">See what's being worked on <span aria-hidden="true">↗</span></a>
-          </div>
+      <div class="window-body">
+        <div class="about-content">
+          <p><a href="https://github.com/apathane/MusicForge" target="_blank" rel="noreferrer">GitHub repository</a></p>
+          <p>GPL-3.0 licence</p>
+          <p>Release list text here.</p>
+          <p>Credits: Metrolist, ConvX, BitChord</p>
         </div>
       </div>
     </section>
@@ -391,7 +162,7 @@
         <a href="https://github.com/apathane/MusicForge/blob/main/CHANGELOG.md">Changelog</a>
         <a href="https://github.com/apathane/MusicForge/blob/main/LICENSE">License</a>
       </div>
-      <span class="footer-year">© 2026 / OPEN SOURCE</span>
+      <span class="footer-year">© 2026 / open source</span>
     </div>
   </footer>
 
