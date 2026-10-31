@@ -574,6 +574,7 @@ interface TransitionFilters {
     fun parkEchoes() = Unit
 
     /** Parks both. Called whenever a transition ends, however it ended. */
+    @OptIn(androidx.media3.common.util.UnstableApi::class)
     fun open() {
         incoming(TransitionFilterProcessor.OPEN_HZ, TransitionFilterProcessor.OFF_HZ)
         outgoing(TransitionFilterProcessor.OPEN_HZ, TransitionFilterProcessor.OFF_HZ)

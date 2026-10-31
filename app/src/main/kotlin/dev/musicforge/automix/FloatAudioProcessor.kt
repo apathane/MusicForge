@@ -41,6 +41,7 @@ interface FloatAudioProcessor {
 // processor, and its EqualizerProcessor is a Media3 AudioProcessor in the sink, not a float stage.
 
 /** Adapts [TransitionFilterProcessor] to [FloatAudioProcessor]. */
+@OptIn(androidx.media3.common.util.UnstableApi::class)
 fun TransitionFilterProcessor.asFloatAudioProcessor(): FloatAudioProcessor =
     object : FloatAudioProcessor {
         override fun configure(sampleRate: Int, channelCount: Int) =
