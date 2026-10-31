@@ -65,3 +65,15 @@ Not needed: LosslessOutput, OutputNegotiator, SpatialAudioProcessor, BitChord EQ
 Port: PrecisionAudioSink (strip the above) + DspChain with only `transition` active. Then in
 buildPlayer: wrap DefaultAudioSink(processors [eq, loudness]) in PrecisionAudioSink(filter) and drop
 the filter from the Media3 processor list (it runs in the float path instead).
+
+## Loop mix path check (2026-10-31, CI build of agent/p15-automix-loop, emulator)
+- PrecisionAudioSink (Media3 1.10 configure) plays normally; an equal-power blend, handoff and
+  finish ran through it with no crash.
+- The loop gate no longer says "this output can't take it". For "Only You" -> next it refused for a
+  musical reason, as BitChord does: "44 loops: 0 quiet, 0 sung (lyrics), 44 sung (mask)" (no
+  instrumental 4-bar loop in the outgoing tail). Plan instead: DJ_BLEND, fade 10384 ms, incoming
+  stretched 1.0814x, cue 9.35 s.
+- Not seen yet: an actual loop mix (needs a pair with an instrumental outro).
+Open: wire `syncedLines` to MusicForge's synced lyrics (log shows "lyrics -/-"), so sung bars are
+known from lyrics as well as the vocal mask. Each CI debug APK has a new signature (fresh runner
+keystore): uninstall before installing the next one on a device.
