@@ -124,6 +124,9 @@ dependencies {
     implementation(libs.palette)
     implementation(libs.reorderable)
     implementation(libs.timber)
+    // Automix's beat (Beat This!) and vocal (Open-Unmix) models. The full android artifact, as
+    // BitChord uses: onnxruntime-mobile only loads .ort files, and the models ship as .onnx.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.28.0")
     coreLibraryDesugaring(libs.desugaring)
 
     testImplementation(libs.junit)
