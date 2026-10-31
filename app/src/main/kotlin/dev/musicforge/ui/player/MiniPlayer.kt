@@ -53,6 +53,9 @@ import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.glass
 import dev.musicforge.ui.designsystem.BufferingIndicator
+import dev.musicforge.ui.designsystem.Physics
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.animation.core.Spring
 
 @Composable
 fun MiniPlayer(
@@ -69,12 +72,15 @@ fun MiniPlayer(
     val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
     val swipeEnabled = prefs?.get(Keys.SwipeMiniToSkip) ?: true
     val swipe = rememberSkipSwipe(now, connection, hapticsEnabled)
+    val pull = rememberPullUp(onOpen)
     Column(
         modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
+            .graphicsLayer { translationY = -pull.lift() }
             .glass(shape)
             .clickable(onClick = onOpen)
+            .then(pull.gesture)
             .then(if (swipeEnabled) swipe.gesture else Modifier),
     ) {
         // The glass stays put; only its contents follow the finger, as on ConvX and Metrolist.
@@ -131,6 +137,42 @@ fun MiniPlayer(
                 },
         )
     }
+}
+
+private class PullUp(val gesture: Modifier, val lift: () -> Float)
+
+/**
+ * Pull the mini player up and it comes with you, less and less the further you go (BitChord's
+ * mini player: lift = 0.5·2·ease·(√(1 + pulled/ease) − 1), ease 72 dp). Let go past 72 dp or with
+ * an upward flick and the full player opens out of it; either way the bar springs home underneath.
+ */
+@Composable
+private fun rememberPullUp(onOpen: () -> Unit): PullUp {
+    val pulled = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val open by rememberUpdatedState(onOpen)
+    val gesture = Modifier.pointerInput(Unit) {
+        val tracker = VelocityTracker()
+        val ease = 72.dp.toPx()
+        val flick = 700.dp.toPx()
+        val home = spring<Float>(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow)
+        detectVerticalDragGestures(
+            onDragStart = { tracker.resetTracking() },
+            onVerticalDrag = { change, dy ->
+                change.consume()
+                tracker.addPosition(change.uptimeMillis, change.position)
+                scope.launch { pulled.snapTo((pulled.value - dy).coerceAtLeast(0f)) }
+            },
+            onDragEnd = {
+                if (pulled.value > ease || tracker.calculateVelocity().y < -flick) open()
+                scope.launch { pulled.animateTo(0f, home) }
+            },
+            onDragCancel = { scope.launch { pulled.animateTo(0f, home) } },
+        )
+    }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val easePx = with(density) { 72.dp.toPx() }
+    return remember(gesture) { PullUp(gesture) { Physics.pullLift(pulled.value, easePx) } }
 }
 
 private class SkipSwipe(val gesture: Modifier, val offset: () -> Float)

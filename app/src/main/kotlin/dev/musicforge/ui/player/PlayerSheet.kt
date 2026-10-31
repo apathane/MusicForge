@@ -119,6 +119,7 @@ import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.designsystem.BufferingIndicator
 import dev.musicforge.ui.designsystem.GhostTransition
+import dev.musicforge.ui.designsystem.Mirror
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
@@ -146,8 +147,10 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
         val scope = rememberCoroutineScope()
 
         // Open/close follows `open`; drags move the same Animatable so they can interrupt it.
+        // Opening and closing are one curve played both ways (Mirror.Panel), so the sheet sinks back
+        // into the mini player exactly the way it rose out of it; a drag hands over mid-flight.
         androidx.compose.runtime.LaunchedEffect(open) {
-            offset.animateTo(if (open) 0f else heightPx, spring(dampingRatio = 0.86f, stiffness = 420f))
+            offset.animateTo(if (open) 0f else heightPx, if (open) Mirror.Panel.enter() else Mirror.Panel.exit())
         }
         BackHandler(enabled = open) { onClose() }
         // Tell the host when the sheet fully covers the screen, so it can stop drawing what's behind.
