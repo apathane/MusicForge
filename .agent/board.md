@@ -38,6 +38,12 @@ Wave 2
 - [x] **T5 loading**: a shared loading bar for every screen and menu that loads, faster menus · `toccata/loading`
 - [x] **T6 awareness**: offline / metered / battery saver / low storage / failing stream, shown in one line and adapted to · `toccata/awareness`
 
+Wave 4 (safety)
+- [ ] **W7 local scan safety**: deletion from a full presence listing per volume (never from the
+  incremental/folder upsert query), 500-row deletes, folder path passed as selection args ·
+  `agent/p15-local-scan`
+  claimed: opencode · agent/p15-local-scan — done, awaiting review
+
 Wave 3
 - [x] **T7 Home**: customisable shelves, creative artist portraits, listening tracking · `toccata/home`
   claimed: kilo · toccata/home
