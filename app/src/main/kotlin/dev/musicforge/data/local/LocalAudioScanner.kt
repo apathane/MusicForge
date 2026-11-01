@@ -31,6 +31,7 @@ import timber.log.Timber
 object LocalAudioScanner {
 
     private const val MIN_DURATION_MS = 15_000L // skip ringtones, notifications, voice memos
+    private const val DELETE_CHUNK = 500 // SQLite's bind-variable limit is 999
     private val ALBUM_ART_URI = Uri.parse("content://media/external/audio/albumart")
 
     data class ScanResult(
@@ -39,6 +40,8 @@ object LocalAudioScanner {
         val updated: Int,
         val skippedExisting: Int,
         val removed: Int,
+        /** False when a collection could not be listed, so [removed] stayed at 0 on purpose. */
+        val listingComplete: Boolean,
     )
 
     /**
@@ -59,7 +62,6 @@ object LocalAudioScanner {
 
             val cutoffMillis = dao.maxLocalDateModified() ?: 0L
             val existingIds = dao.localSongIds().toHashSet()
-            val seenIds = HashSet<String>()
 
             val projection = arrayOf(
                 MediaStore.Audio.Media._ID,
@@ -150,26 +152,61 @@ object LocalAudioScanner {
                                 newSongs++
                             }
                         }
-                        seenIds.add(contentUri)
                     }
                 }
             }
 
-            // Rows present before but absent from MediaStore now were deleted from disk.
-            val removed = if (seenIds.isEmpty()) {
-                0
-            } else {
-                val orphaned = existingIds - seenIds
-                if (orphaned.isNotEmpty()) {
-                    dao.deleteLocalSongsNotIn(seenIds)
-                    orphaned.size
-                } else 0
+            // Deletion needs its own listing: the upsert query above only sees changed rows and
+            // (with a folder picked) only that folder, so it can't prove what still exists.
+            val presentIds = HashSet<String>()
+            var listingComplete = true
+            collections.forEach { collection ->
+                try {
+                    val cursor = context.contentResolver.query(
+                        collection,
+                        arrayOf(MediaStore.Audio.Media._ID),
+                        baseSelection,
+                        baseArgs,
+                        null,
+                    )
+                    if (cursor == null) {
+                        listingComplete = false
+                        Timber.tag("LocalAudioScanner").w("No presence cursor for $collection; keeping local rows")
+                    } else {
+                        cursor.use {
+                            val idColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                            while (it.moveToNext()) {
+                                presentIds += ContentUris.withAppendedId(collection, it.getLong(idColumn)).toString()
+                            }
+                        }
+                    }
+                } catch (e: SecurityException) {
+                    // Permission revoked or the card is gone: we know nothing, so delete nothing.
+                    listingComplete = false
+                    Timber.tag("LocalAudioScanner").w(e, "No access to $collection; keeping local rows")
+                } catch (e: Exception) {
+                    listingComplete = false
+                    Timber.tag("LocalAudioScanner").w(e, "Presence query failed for $collection; keeping local rows")
+                }
             }
 
-            Timber.tag("LocalAudioScanner")
-                .i("Scan complete: total=$totalFound new=$newSongs updated=$updated skippedExisting=$skippedExisting removed=$removed")
+            val toRemove = idsToRemove(
+                existing = existingIds,
+                present = presentIds,
+                queriedCollections = collections.map { it.toString() },
+                listingComplete = listingComplete,
+            )
+            if (toRemove.isNotEmpty()) {
+                database.withTransaction {
+                    toRemove.chunked(DELETE_CHUNK).forEach { dao.deleteLocalSongs(it) }
+                }
+            }
+            val removed = toRemove.size
 
-            ScanResult(totalFound, newSongs, updated, skippedExisting, removed)
+            Timber.tag("LocalAudioScanner")
+                .i("Scan complete: total=$totalFound new=$newSongs updated=$updated skippedExisting=$skippedExisting removed=$removed listingComplete=$listingComplete")
+
+            ScanResult(totalFound, newSongs, updated, skippedExisting, removed, listingComplete)
         }
 
     private suspend fun insertSong(
@@ -243,13 +280,16 @@ object LocalAudioScanner {
             All -> base to baseArgs
             is Folder -> {
                 val rel = treeRelativePath(treeUri) ?: return base to baseArgs
-                val clause = "${MediaStore.Audio.Media.RELATIVE_PATH} LIKE '$rel%'" +
-                    " OR ${MediaStore.Audio.Media.DATA} LIKE '%$rel%'"
-                val combined = if (base.isNotBlank()) "$base AND ($clause)" else clause
-                combined to baseArgs
+                // Pass the path as args, not inside the SQL: a folder called "Guns N' Roses"
+                // otherwise ends the string literal early and the whole query falls over.
+                val clause = "(${MediaStore.Audio.Media.RELATIVE_PATH} LIKE ?" +
+                    " OR ${MediaStore.Audio.Media.DATA} LIKE ?)"
+                val combined = if (base.isNotBlank()) "$base AND $clause" else clause
+                combined to baseArgs + arrayOf("$rel%", "%/$rel/%")
             }
         }
     }
+
 
     /**
      * Resolve a document-tree Uri to a path relative to the external root (e.g. "Music/MyFolder").
@@ -264,5 +304,26 @@ object LocalAudioScanner {
     } catch (e: Exception) {
         Timber.tag("LocalAudioScanner").w(e, "Could not resolve tree path for $treeUri")
         null
+    }
+}
+
+/**
+ * Which indexed local songs to delete after a scan. Deletion is destructive and the input can
+ * lie (unmounted card, revoked permission), so only ids that a completed listing of their own
+ * volume failed to find are removed. Songs on a volume we never queried stay put.
+ */
+// Top level, not in the object: the object's Uri constant can't load on a plain JVM test.
+internal fun idsToRemove(
+    existing: Set<String>,
+    present: Set<String>,
+    queriedCollections: List<String>,
+    listingComplete: Boolean,
+): Set<String> {
+    if (!listingComplete) return emptySet()
+    // An empty listing for a library that had songs is a missing card, not a tidy-up.
+    if (present.isEmpty() && existing.isNotEmpty()) return emptySet()
+    val prefixes = queriedCollections.map { "$it/" }
+    return existing.filterTo(HashSet()) { id ->
+        prefixes.any { id.startsWith(it) } && id !in present
     }
 }

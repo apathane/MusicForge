@@ -506,8 +506,8 @@ interface MusicDao {
     @Query("UPDATE song SET dateModified = :dateModified, inLibrary = :dateAdded WHERE id = :id")
     suspend fun backfillLocalSongDates(id: String, dateAdded: Long, dateModified: Long)
 
-    @Query("DELETE FROM song WHERE isLocal AND id NOT IN (:keptIds)")
-    suspend fun deleteLocalSongsNotIn(keptIds: Set<String>)
+    @Query("DELETE FROM song WHERE isLocal AND id IN (:ids)")
+    suspend fun deleteLocalSongs(ids: List<String>)
 
     @Query("SELECT dateModified FROM song WHERE id = :id")
     suspend fun localSongDateModified(id: String): Long?
