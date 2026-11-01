@@ -4,11 +4,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +19,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -39,7 +42,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 
-private const val SeamHeight = 40.dp
+private val SeamHeight = 40.dp
 
 /**
  * The queue as a set: from the current song on, each row is a song and each seam is the
@@ -73,12 +76,16 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
     }
 
     // Stable per-occurrence keys, assigned exactly as QueuePane does (keyed by mediaId, repeats
-    // reuse keys in order, never rebuild a surviving row's key).
+    // reuse keys in order, never rebuild a surviving row's key). A queue without stable keys is
+    // like a DJ who restarts the mix every time the needle moves — nobody wants that.
     val rows = remember { mutableStateListOf<Pair<Long, MediaItem>>() }
     val nextKey = remember { mutableLongStateOf(0L) }
     LaunchedEffect(queue) {
         val spare = rows.groupBy({ it.second.mediaId }, { it.first }).mapValues { ArrayDeque(it.value) }
-        val next = queue.drop(first).map { (spare[it.mediaId]?.removeFirstOrNull() ?: nextKey.longValue++) to it }
+        val next = queue.drop(first).map { item ->
+            val key = spare[item.mediaId]?.removeFirstOrNull() ?: run { nextKey.longValue++; nextKey.longValue }
+            key to item
+        }
         rows.clear()
         rows.addAll(next)
     }

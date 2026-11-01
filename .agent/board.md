@@ -56,8 +56,11 @@ Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
       `AppGraph.mediaEngine`, `AutoBackup.list()` and `forgetSnapshots()` file I/O on Main
 - [x] **0.14.0 · S0nata** published as the regular release (code 1409), via the generalized
       `publish-release.yml` (version from build.gradle.kts, notes from `.github/release-notes.md`)
-- [ ] Undo in the queue re-inserts at the captured index; harmless today (Media3 clamps), wrong if
+- [x] Undo in the queue re-inserts at the captured index; harmless today (Media3 clamps), wrong if
       the queue is reordered within the 6 s window
+- [x] **Forge CI fix**: TheSet.kt — add missing `getValue`/`setValue`, `LazyColumn`, `Box` imports,
+      drop the internal `weight` import, `const val` can't hold `40.dp`, fix key-assignment
+      expression type (Unit where Long expected) · agent/p15-set
 
 ## Playground (branch `playground`, may never ship)
 
