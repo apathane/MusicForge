@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -165,12 +166,13 @@ fun Scrubber(
                     Text(
                         text = "Mixing",
                         modifier = Modifier
+                            .heightIn(min = 48.dp)
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
-                            ) {
-                                // TODO(W5b): open the mix view
-                            }
+                                role = androidx.compose.ui.semantics.Role.Button,
+                                onClickLabel = "Open mix view",
+                            ) { MixViewRequest.open = true }
                             .graphicsLayer {
                                 alpha = pulse.cover * pulse.alpha(1f, restShare = MIXING_LABEL_REST)
                             },

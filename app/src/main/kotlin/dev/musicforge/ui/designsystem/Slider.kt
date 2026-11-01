@@ -73,7 +73,7 @@ fun PhysicsSlider(
     Canvas(
         modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(48.dp) // the whole track is the touch target, so it gets the full 48 dp
             .semantics {
                 this.contentDescription = contentDescription
                 this.stateDescription = stateDescription
