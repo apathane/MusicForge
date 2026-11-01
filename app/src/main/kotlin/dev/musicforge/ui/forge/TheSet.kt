@@ -38,6 +38,7 @@ import dev.musicforge.playback.PlayerConnection
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.designsystem.reducedMotion
 import dev.musicforge.ui.player.MixViewRequest
+import dev.musicforge.ui.player.clock
 import androidx.compose.ui.text.style.TextOverflow
 import kotlin.math.PI
 import kotlin.math.cos
@@ -68,6 +69,7 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
     val automixOn by AutomixState.smartFadeEnabled.collectAsStateWithLifecycle()
     val crossfadeSeconds by AutomixState.crossfadeSeconds.collectAsStateWithLifecycle()
     val view by AutomixState.smartMixView.collectAsStateWithLifecycle()
+    val window by AutomixState.smartTransitionWindow.collectAsStateWithLifecycle()
     val analysis by AutomixState.smartAnalysis.collectAsStateWithLifecycle()
     // Delegated vals can't be smart-cast (the getter may change under you), so snap it to a
     // local first — the one blend the compiler won't let you fade into on its own.
@@ -76,6 +78,15 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
     val nextKind: SeamKind = when {
         !automixOn -> if (crossfadeSeconds > 0) SeamKind.Crossfade else SeamKind.StraightCut
         mixView != null -> SeamKind.Blend(mixView)
+        window != null -> {
+            // smartTransitionWindow is fractions of the current track, published well before
+            // smartMixView — so the seam can name the blend long before the decks exist.
+            val durationMs = now.durationMs
+            val startMs = (window.start * durationMs).roundToLong()
+            val overSeconds = ((window.end - window.start) * durationMs / 1000f).roundToInt()
+            // Early enough to finish your coffee. Or to spill it; the blend doesn't judge.
+            SeamKind.BlendPlanned(startMs, overSeconds)
+        }
         else -> SeamKind.Analysis(analysis.current, analysis.next)
     }
 
@@ -157,6 +168,7 @@ private sealed interface SeamKind {
     object Crossfade : SeamKind
     object StraightCut : SeamKind
     data class Blend(val view: MixTransitionView) : SeamKind
+    data class BlendPlanned(val startMs: Long, val overSeconds: Int) : SeamKind
     data class Analysis(val current: TrackAnalysisState, val next: TrackAnalysisState) : SeamKind
 }
 
@@ -238,6 +250,22 @@ private fun Seam(kind: SeamKind, modifier: Modifier = Modifier) {
                         if (detail.isNotEmpty()) {
                             Text(detail, color = white.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
+                    }
+                    is SeamKind.BlendPlanned -> {
+                        Text(
+                            "Blend at ${clock(kind.startMs)}",
+                            color = white,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            "Over ${kind.overSeconds} s",
+                            color = white.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     is SeamKind.Analysis -> Text(analysisState(kind.current, kind.next), color = white, style = MaterialTheme.typography.bodySmall)
                 }
