@@ -222,9 +222,10 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         val before = dao.localSongsCount().first()
         val res = dev.musicforge.data.local.LocalAudioScanner.scanAndInsert(graph.app, graph.database, mode)
         val after = dao.localSongsCount().first()
+        val listingNote = if (res.listingComplete) "" else " Couldn't check for removed files (no access)."
         android.widget.Toast.makeText(
             graph.app,
-            "Scanned ${res.totalFound} files: +${res.newSongs} new, ${res.updated} updated, ${res.removed} removed. ${after - before} total now.",
+            "Scanned ${res.totalFound} files: +${res.newSongs} new, ${res.updated} updated, ${res.removed} removed. ${after - before} total now.$listingNote",
             android.widget.Toast.LENGTH_LONG,
         ).show()
     }
