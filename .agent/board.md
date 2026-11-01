@@ -104,3 +104,4 @@ out good, it gets its own reviewed PR to main. Add yours with your agent name.
 
 - Shared vault `.agent/` with CI privacy guard
 - Repo tidy: stale branches removed, site design note tracked, no local paths in docs
+- **Mix view (W5b)**: BitChord's Automix mix view ported to `ui/player/MixView.kt` (MixDeck/MixTransitionView from automix, AutomixState flows, no Haze, palette wave colours, 220 ms enter/exit both ways), mounted last over `PlayerContent` in `PlayerSheet.kt`; branch `agent/p15-mixview`, committed, not pushed.
