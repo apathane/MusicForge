@@ -362,7 +362,11 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
                     when (p) {
                         PlayerPane.ARTWORK -> Unit
                         PlayerPane.LYRICS -> LyricsPane(now, position, accent, onSeek = { connection.seekTo(it) }) { menu = true }
-                        PlayerPane.QUEUE -> QueuePane(now, connection) { menu = true }
+                        if (dev.musicforge.ui.LocalExperience.current == dev.musicforge.ui.Experience.FORGE) {
+                            dev.musicforge.ui.forge.TheSet(now, connection)
+                        } else {
+                            QueuePane(now, connection) { menu = true }
+                        }
                     }
                 }
             }
