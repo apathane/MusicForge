@@ -20,8 +20,11 @@ class MixPulseTest {
     }
 
     @Test fun beatShapeNeverLeavesZeroToOne() {
-        for (phase in 0f until 1f step 0.01f) {
-            assertThat(beatShape(phase)).isIn(0f..1f)
+        // `until` doesn't exist on Float, so walk 0..1 in integers and scale.
+        // beatShape is a raised cosine squared, so it can't escape 0..1 even
+        // if floating-point drift ever pushed a phase just past 1f.
+        for (i in 0..100) {
+            assertThat(beatShape(i / 100f)).isIn(0f..1f)
         }
     }
 
