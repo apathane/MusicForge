@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,10 +31,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -58,7 +58,6 @@ import dev.musicforge.ui.designsystem.reducedMotion
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.floorMod
 import kotlinx.coroutines.launch
 
 /**
@@ -236,7 +235,7 @@ fun rememberMixPulse(blend: () -> MixBlend?, enabled: Boolean): MixPulse {
         launch {
             pulse.coverAnim.animateTo(
                 if (active) 1f else 0f,
-                tween(durationMillis = COVER_MS, easing = FastOutSlowInEasing),
+                tween(durationMillis = COVER_MS.toInt(), easing = FastOutSlowInEasing),
             )
         }
         launch {
@@ -244,7 +243,7 @@ fun rememberMixPulse(blend: () -> MixBlend?, enabled: Boolean): MixPulse {
             // over silence — and the frame clock below gets to stop.
             pulse.depthAnim.animateTo(
                 if (active && playing && enabled) 1f else 0f,
-                tween(durationMillis = DEPTH_MS, easing = FastOutSlowInEasing),
+                tween(durationMillis = DEPTH_MS.toInt(), easing = FastOutSlowInEasing),
             )
         }
         if (!enabled) return@LaunchedEffect
@@ -265,7 +264,10 @@ fun rememberMixPulse(blend: () -> MixBlend?, enabled: Boolean): MixPulse {
                 var phase = pulse.phase
                 if (beatNanos != null && current != null) {
                     phase += dt / beatNanos
-                    val target = floorMod(now - current.beatAnchorNanos, beatNanos.toLong()) / beatNanos
+                    val target = Math.floorMod(now - current.beatAnchorNanos, beatNanos.toLong()) / beatNanos
+                    // floorMod keeps the phase on the beat circle. Without it the clock would lap
+                    // itself and the pulse would chase its own tail — much like this comment chasing
+                    // a joke and settling for a pun instead.
                     // Shortest way round the circle to where the beat should be. The very first lock
                     // snaps — nothing is showing yet — and every one after only leans.
                     val error = ((target - phase) % 1.0 + 1.5) % 1.0 - 0.5
