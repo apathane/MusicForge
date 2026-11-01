@@ -163,7 +163,8 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
             isAppearanceLightNavigationBars = lightContent
         }
     }
-    CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar, LocalHapticFeedback provides haptics) {
+    val experience = Experience.of(prefs?.get(Keys.UiExperience))
+    CompositionLocalProvider(LocalExperience provides experience, LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar, LocalHapticFeedback provides haptics) {
         // Under a fully open player the screen behind is never seen: don't paint it at all.
         Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background)).recordTaps()) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
@@ -246,22 +247,25 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    now?.let { MiniPlayer(it, connection, onOpen = { playerOpen = true }) }
-                    NavPill(
-                        current = Tab.entries.firstOrNull { it.route == route } ?: lastTab,
-                        onSelect = { tab ->
-                            // Tapping the tab you are on goes back to its top (every upstream app does).
-                            if (route == tab.route) {
-                                nav.currentBackStackEntry?.savedStateHandle?.set(SCROLL_TO_TOP, System.nanoTime())
-                                return@NavPill
-                            }
+                    val currentTab = Tab.entries.firstOrNull { it.route == route } ?: lastTab
+                    val selectTab: (Tab) -> Unit = { tab ->
+                        // Tapping the tab you are on goes back to its top (every upstream app does).
+                        if (route == tab.route) {
+                            nav.currentBackStackEntry?.savedStateHandle?.set(SCROLL_TO_TOP, System.nanoTime())
+                        } else {
                             nav.navigate(tab.route) {
                                 popUpTo(nav.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        },
-                    )
+                        }
+                    }
+                    if (experience == Experience.FORGE) {
+                        dev.musicforge.ui.forge.ForgeDock(now, connection, currentTab, onOpenPlayer = { playerOpen = true }, onSelect = selectTab)
+                    } else {
+                        now?.let { MiniPlayer(it, connection, onOpen = { playerOpen = true }) }
+                        NavPill(current = currentTab, onSelect = selectTab)
+                    }
                 }
             }
             // Content scrolls under a transparent status bar; a scrim keeps the clock readable.
@@ -301,7 +305,7 @@ fun ScrollToTopOnReselect(list: androidx.compose.foundation.lazy.LazyListState) 
 }
 
 @Composable
-private fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
+internal fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
     // One lens slides between tabs instead of each tab fading its own chip: OpenGhost's dock lens,
     // gliding on [260, 28] and stretching along its speed. Position is in tabs, read while drawing.
     val lens = remember { androidx.compose.animation.core.Animatable(current.ordinal.toFloat()) }
