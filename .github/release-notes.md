@@ -1,17 +1,19 @@
-MusicForge P8 · 0.15.0 · Toccata — the motion rebuild, part 1
-The first part of a rebuilt interface: new sheets, menus, sliders and page motion, and a livelier player. Automix from P7 is unchanged. Back up your library first.
+MusicForge P9 · 0.15.0 · Toccata — Forge, the Set, and safer local music
+A second interface to try, Automix you can watch, and a fix that keeps your local music safe. Back up your library first.
 
 What's new
-- Pages grow out of what you tapped, with a slight tilt, and Back folds them into the same spot: the exact reverse.
-- The player rises out of the mini player and sinks back into it the same way. Pull the mini player up to open it; it stretches with your finger.
-- Menus and action sheets are our own now: menus grow from the button that opened them, sheets rise and fall on one curve and follow your finger down.
-- The tab bar has one lens that glides between tabs and stretches as it moves.
-- The crossfade slider has weight: it follows your finger, snaps to whole seconds, gives at the ends and can be flicked.
-- Lyrics ripple into place line by line, fade with distance, and instrumental gaps breathe.
-- The seek bar shows where the next Automix blend will happen, and pulses on the beat while it plays.
-- Screen titles write themselves in once.
+- Forge: a new interface you can switch on under Settings → Appearance → Interface. Classic stays the default and keeps working exactly as before; switching keeps your music playing and your place.
+  - The dock: one capsule at the bottom with what's playing, its current lyric line typing in, and the tabs.
+  - The Set: in the player, the queue becomes a mix. Each join between two songs shows the transition Automix has planned there (blend, beats, tempo, key) or honestly says it's still analysing. Tap the next join to open the mix view.
+- Mix view (from BitChord): both songs' waveforms laid over each other where they blend, the faders the mix rides, and the playhead moving through it.
+- The seek bar shows where the next blend lands, says "Mixing" while one plays, and breathes on the beat.
+- With Automix on, the crossfade length is hidden: Automix times each transition from the songs themselves.
 
-Checked on an emulator (no sound there). Tell me how it feels on your phone.
+Fixed
+- Local music: rescanning could delete songs that hadn't changed, or songs outside the picked folder. Scans now only remove files they can prove are gone, and never remove anything when access is missing or a card is unmounted. Folder names with apostrophes work.
+- Local music asks for the storage permission it needs and says when it doesn't have it.
 
-MusicForge is AGPL-3.0. Automix code: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE. Motion numbers from OpenGhost (MIT).
+Checked on an emulator (no sound there). Tell me how Forge and the Set feel on your phone.
+
+MusicForge is AGPL-3.0. Automix code and the mix view: Orchard (SFG545) and BitChord (Kushagra Singh), AGPL-3.0. See NOTICE. Motion numbers from OpenGhost (MIT).
 The APK is about 90 MB: it carries the two analysis models and their runtime.
