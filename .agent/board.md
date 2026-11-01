@@ -57,7 +57,8 @@ Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
 - [x] **0.14.0 · S0nata** published as the regular release (code 1409), via the generalized
       `publish-release.yml` (version from build.gradle.kts, notes from `.github/release-notes.md`)
 - [ ] Undo in the queue re-inserts at the captured index; harmless today (Media3 clamps), wrong if
-      the queue is reordered within the 6 s window
+  the queue is reordered within the 6 s window
+- [x] MixPulseTest CI fix: `until` on Float doesn't compile; iterate 0..100 in integers instead · `agent/p15-scrubber`
 
 ## Playground (branch `playground`, may never ship)
 
