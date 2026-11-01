@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 private val SeamHeight = 40.dp
 
@@ -71,19 +72,22 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
     val view by AutomixState.smartMixView.collectAsStateWithLifecycle()
     val window by AutomixState.smartTransitionWindow.collectAsStateWithLifecycle()
     val analysis by AutomixState.smartAnalysis.collectAsStateWithLifecycle()
-    // Delegated vals can't be smart-cast (the getter may change under you), so snap it to a
-    // local first — the one blend the compiler won't let you fade into on its own.
+    // Delegated vals can't be smart-cast (the getter may change under you), so snap them to
+    // locals first — the compiler won't let you fade into a moving target on its own.
     val mixView = view
+    val win = window
     // A queue with no planned transition is honest silence — not a failed mix.
     val nextKind: SeamKind = when {
         !automixOn -> if (crossfadeSeconds > 0) SeamKind.Crossfade else SeamKind.StraightCut
         mixView != null -> SeamKind.Blend(mixView)
-        window != null -> {
+        win != null -> {
             // smartTransitionWindow is fractions of the current track, published well before
             // smartMixView — so the seam can name the blend long before the decks exist.
             val durationMs = now.durationMs
-            val startMs = (window.start * durationMs).roundToLong()
-            val overSeconds = ((window.end - window.start) * durationMs / 1000f).roundToInt()
+            // Kotlin has no roundToLong on Float, so round via Double — sub-millisecond
+            // precision the blend cannot hear, like sample rates for a kazoo.
+            val startMs = (win.start * durationMs).toDouble().roundToLong()
+            val overSeconds = ((win.end - win.start) * durationMs / 1000f).roundToInt()
             // Early enough to finish your coffee. Or to spill it; the blend doesn't judge.
             SeamKind.BlendPlanned(startMs, overSeconds)
         }

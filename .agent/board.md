@@ -67,10 +67,12 @@ Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
 - [x] **Forge CI fix**: TheSet.kt — add missing `getValue`/`setValue`, `LazyColumn`, `Box` imports,
       drop the internal `weight` import, `const val` can't hold `40.dp`, fix key-assignment
       expression type (Unit where Long expected) · agent/p15-set
-- [x] **Forge CI fix (round 2)**: remaining errors fixed but not built locally (owner forbids local
-      builds; CI verifies on push) — smart cast on delegated `smartMixView`, Row padding with no
-      matching candidate, `orEmpty` on nullable `CharSequence`, missing `Modifier.width` import in
-      `TheSet.kt`; non-exhaustive `when` over `PlayerPane` in `PlayerSheet.kt` · agent/p15-set
+- [x] **Forge CI fix (round 2)**: `TheSet.kt` — smart cast on delegated `smartMixView`, Row padding
+  with no matching candidate, `orEmpty` on nullable `CharSequence`, missing `Modifier.width`
+  import, non-exhaustive `when` over `PlayerPane` in `PlayerSheet.kt` · agent/p15-set
+- [x] **Forge CI fix (round 3)**: `TheSet.kt` — smart cast on delegated `window` (snapshot to a
+  local `val`), `Float.roundToLong` doesn't exist so the blend start rounds via `Double` ·
+  agent/p15-set · CI re-verifies on push (local builds forbidden)
 - [ ] Undo in the queue re-inserts at the captured index; harmless today (Media3 clamps), wrong if
   the queue is reordered within the 6 s window
 - [x] MixPulseTest CI fix: `until` on Float doesn't compile; iterate 0..100 in integers instead · `agent/p15-scrubber`
