@@ -61,6 +61,10 @@ Calm, small, reviewable: cleanup, bug fixes, tidy docs. Merged to main after CI.
 - [x] **Forge CI fix**: TheSet.kt — add missing `getValue`/`setValue`, `LazyColumn`, `Box` imports,
       drop the internal `weight` import, `const val` can't hold `40.dp`, fix key-assignment
       expression type (Unit where Long expected) · agent/p15-set
+- [x] **Forge CI fix (round 2)**: remaining errors fixed but not built locally (owner forbids local
+      builds; CI verifies on push) — smart cast on delegated `smartMixView`, Row padding with no
+      matching candidate, `orEmpty` on nullable `CharSequence`, missing `Modifier.width` import in
+      `TheSet.kt`; non-exhaustive `when` over `PlayerPane` in `PlayerSheet.kt` · agent/p15-set
 
 ## Playground (branch `playground`, may never ship)
 

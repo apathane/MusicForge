@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
@@ -68,10 +69,13 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
     val crossfadeSeconds by AutomixState.crossfadeSeconds.collectAsStateWithLifecycle()
     val view by AutomixState.smartMixView.collectAsStateWithLifecycle()
     val analysis by AutomixState.smartAnalysis.collectAsStateWithLifecycle()
-
+    // Delegated vals can't be smart-cast (the getter may change under you), so snap it to a
+    // local first — the one blend the compiler won't let you fade into on its own.
+    val mixView = view
+    // A queue with no planned transition is honest silence — not a failed mix.
     val nextKind: SeamKind = when {
         !automixOn -> if (crossfadeSeconds > 0) SeamKind.Crossfade else SeamKind.StraightCut
-        view != null -> SeamKind.Blend(view)
+        mixView != null -> SeamKind.Blend(mixView)
         else -> SeamKind.Analysis(analysis.current, analysis.next)
     }
 
@@ -92,7 +96,7 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
 
     Column(modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, top = 12.dp, bottom = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 12.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("The set", style = MaterialTheme.typography.titleMedium, color = white)
@@ -111,7 +115,7 @@ fun TheSet(now: NowPlaying, connection: PlayerConnection, modifier: Modifier = M
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable(onClickLabel = "Play ${item.mediaMetadata.title.orEmpty()}") {
+                            .clickable(onClickLabel = "Play ${item.mediaMetadata.title?.toString().orEmpty()}") {
                                 connection.skipTo(index)
                             }
                             .padding(horizontal = 8.dp, vertical = 6.dp),
