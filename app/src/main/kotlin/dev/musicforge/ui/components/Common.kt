@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +45,7 @@ import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.TypeIn
 import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.designsystem.Signal
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -81,6 +85,23 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/** Section header: title plus the short reason it is on screen (Signal typography). */
+@Composable
+fun SectionHeader(title: String, reason: String?, modifier: Modifier = Modifier) {
+    Column(modifier.padding(start = Signal.gutter, end = Signal.gutter, top = 22.dp, bottom = 10.dp)) {
+        Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (!reason.isNullOrEmpty()) {
+            Text(
+                reason,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     val press = remember { MutableInteractionSource() }
@@ -101,7 +122,7 @@ fun IconAction(icon: ImageVector, label: String, onClick: () -> Unit) {
  * decoding the 544 px source would waste memory and GPU upload bandwidth.
  */
 @Composable
-fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier, fallbackLetter: String? = null) {
+fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modifier, fallbackLetter: String? = null, contentDescription: String? = null) {
     val px = with(LocalDensity.current) { size.roundToPx() }
     val context = LocalContext.current
     val placeholder = MaterialTheme.colorScheme.surfaceVariant
@@ -133,7 +154,7 @@ fun Artwork(url: String?, size: Dp, corner: Dp = 8.dp, modifier: Modifier = Modi
                 model = remember(url, px) {
                     ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(url, px)).size(px).crossfade(px > 600).build()
                 },
-                contentDescription = null,
+                contentDescription = contentDescription,
                 placeholder = tile,
                 error = tile,
                 onError = { e ->
@@ -205,7 +226,7 @@ fun TrackRow(
             }
             Spacer(Modifier.width(8.dp))
         } else {
-            Artwork(artworkUrl, 48.dp, corner = 6.dp, fallbackLetter = title)
+            Artwork(artworkUrl, 48.dp, corner = 8.dp, fallbackLetter = title, contentDescription = title)
             Spacer(Modifier.width(14.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
@@ -260,5 +281,80 @@ fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
         contentAlignment = Alignment.Center,
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+    }
+}
+
+/** Shelf card: 12dp radius, 150dp width, artwork with gradient scrim, title + subtitle. */
+@Composable
+fun ShelfCard(title: String, subtitle: String, artworkUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val press = remember { MutableInteractionSource() }
+    Column(
+        modifier
+            .width(150.dp)
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClick = onClick),
+    ) {
+        Box(Modifier.size(150.dp).clip(RoundedCornerShape(12.dp))) {
+            Artwork(artworkUrl, 150.dp, corner = 12.dp, fallbackLetter = title, contentDescription = title)
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)))),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (subtitle.isNotEmpty()) {
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Hero card: 18dp radius, 0.92 aspect, bottom scrim, continuous corners. */
+@Composable
+fun HeroCard(title: String, subtitle: String = "", artworkUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val press = remember { MutableInteractionSource() }
+    val context = LocalContext.current
+    val px = 544
+    Box(
+        modifier
+            .aspectRatio(0.92f)
+            .clip(RoundedCornerShape(18.dp))
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClick = onClick),
+    ) {
+        if (artworkUrl != null) {
+            AsyncImage(
+                model = remember(artworkUrl) {
+                    ImageRequest.Builder(context).data(dev.musicforge.playback.sizedArtwork(artworkUrl, px)).size(px).crossfade(false).build()
+                },
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        } else {
+            Box(Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceVariant))
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))),
+        )
+        Column(
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotEmpty()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }

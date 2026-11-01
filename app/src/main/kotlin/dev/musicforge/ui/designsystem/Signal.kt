@@ -30,11 +30,32 @@ import androidx.compose.ui.unit.dp
  * these are the shapes and spacing every screen shares, so screens stop picking their own.
  */
 object Signal {
+    // BitChord radii (continuous corners)
     val radiusSmall = 10.dp
     val radiusRow = 14.dp
     val radiusSurface = 22.dp
     val radiusHero = 30.dp
+    // Convx Apple radii (squircles)
+    val radiusArtwork = 8.dp
+    val radiusControl = 8.dp
+    val radiusCard = 14.dp
+    val radiusCardLarge = 18.dp
+    val radiusPill = 50
+    // Combined spacing
     val gutter = 20.dp
+    val pageGutter = 16.dp          // BitChord PAGE_GUTTER
+    val navBarGutter = 19.dp        // BitChord NAV_BAR_GUTTER
+    val libraryGridSpacing = 12.dp  // BitChord LIBRARY_GRID_SPACING
+    val rowDividerInset = 84.dp     // BitChord ROW_DIVIDER_INSET
+    val pillInset = 4.dp            // BitChord PILL_INSET
+    val tabIconSize = 28.dp         // BitChord TAB_ICON_SIZE
+    val floatingBarMaxWidth = 440.dp // BitChord FLOATING_BAR_MAX_WIDTH
+    val shelfCardWidth = 150.dp     // BitChord SHELF_CARD_WIDTH
+    val heroCardMaxWidth = 320.dp  // BitChord HERO_CARD_MAX_WIDTH
+    // Convx AppPage rhythm
+    val sectionSpacing = 24.dp
+    val itemSpacing = 8.dp
+    val cardElevation = 2.dp
 }
 
 /** A section's title and the short reason it is on screen. */
@@ -60,7 +81,7 @@ fun SignalChip(label: String, selected: Boolean, onClick: () -> Unit) {
     // Chips pop in on first appearance (EaseBackOut) — one read of [pop] in the draw phase,
     // so the row of them typesets without recomposing as they land.
     val pop = remember { Animatable(0.9f) }
-    LaunchedEffect(Unit) { pop.animateTo(1f, tween(Motion.Arrive, easing = Motion.EaseBackOut)) }
+    LaunchedEffect(Unit) { pop.animateTo(1f, Motion.Press) }
     Text(
         label,
         style = MaterialTheme.typography.labelLarge,
@@ -70,8 +91,8 @@ fun SignalChip(label: String, selected: Boolean, onClick: () -> Unit) {
             .clip(RoundedCornerShape(percent = 50))
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
-            .semantics { role = Role.Tab; this.selected = selected }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .semantics { role = Role.Button; this.selected = selected }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     )
 }
 

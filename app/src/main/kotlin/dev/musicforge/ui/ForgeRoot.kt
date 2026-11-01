@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -290,41 +291,49 @@ fun ScrollToTopOnReselect(list: androidx.compose.foundation.lazy.LazyListState) 
 
 @Composable
 private fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
-    Row(
+    // BitChord-style floating glass tab bar: a selection pill that stretches, squashes and ticks
+    // haptics as it travels between tabs. Convx floating nav bar folds on scroll; ours stays
+    // fixed but gains the pill motion and the glass treatment.
+    val haptics = LocalHapticFeedback.current
+    val selectedIdx = Tab.entries.indexOf(current).coerceIn(0, Tab.entries.lastIndex)
+    val pillOffset by animateFloatAsState(
+        targetValue = selectedIdx.toFloat(),
+        animationSpec = Motion.Glide,
+        label = "pillOffset",
+    )
+    Box(
         modifier = modifier
             .glass(RoundedCornerShape(percent = 50))
             .padding(horizontal = 6.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Tab.entries.forEach { tab ->
-            val selected = tab == current
-            val tint by animateColorAsState(
-                if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-                tween(160),
-                label = "tabTint",
-            )
-            val chip by animateColorAsState(
-                if (selected) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0f),
-                tween(160),
-                label = "tabChip",
-            )
-            Column(
-                modifier = Modifier
-                    .width(72.dp)
-                    .height(52.dp)
-                    .background(chip, RoundedCornerShape(percent = 50))
-                    .selectable(
-                        selected = selected,
-                        role = Role.Tab,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onSelect(tab) },
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
-                Text(tab.label, style = MaterialTheme.typography.labelSmall, color = tint)
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Tab.entries.forEach { tab ->
+                val selected = tab == current
+                val tint by animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tween(160),
+                    label = "tabTint",
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onSelect(tab)
+                            },
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(tab.icon, contentDescription = tab.label, tint = tint, modifier = Modifier.size(22.dp))
+                    Text(tab.label, style = MaterialTheme.typography.labelSmall, color = tint)
+                }
             }
         }
     }

@@ -62,6 +62,7 @@ import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.recommendation.HomeSection
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.openItem
 import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.CollectionActionsSheet
 import dev.musicforge.ui.components.CollectionTarget
@@ -77,11 +78,14 @@ import dev.musicforge.ui.designsystem.Signal
 import dev.musicforge.ui.designsystem.SignalChip
 import dev.musicforge.ui.designsystem.signalSurface
 import dev.musicforge.ui.designsystem.pressScale
-import dev.musicforge.ui.openItem
+import coil3.toBitmap
+import coil3.imageLoader
+import coil3.request.allowHardware
 import dev.musicforge.ui.theme.ForgeTheme
 import java.util.Calendar
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 @Composable
 fun HomeRoot() {
@@ -157,23 +161,53 @@ fun HomeScreen(
         CollectionActionsSheet(collectionTarget!!) { collectionTarget = null }
     }
 
+    // Artwork-derived ambient tint for the mesh-style gradient behind the whole page.
+    val heroUrl = (state.sections?.firstOrNull()?.items?.firstOrNull() as? HomeItem.Track)?.song?.song?.thumbnailUrl
+        ?: state.remote.sections.firstOrNull()?.items?.firstOrNull()?.thumbnail
+    val ambient = rememberAmbientColor(heroUrl)
+    val reduced = dev.musicforge.ui.designsystem.reducedMotion()
+
+    // Arrival: rise + fade on EaseOutQuint, read once in the draw phase.
+    val arrival = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(reduced) {
+        if (reduced) { arrival.snapTo(1f); return@LaunchedEffect }
+        arrival.animateTo(1f, androidx.compose.animation.core.tween(Motion.Arrive, easing = Motion.EaseOutQuint))
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(ambient.copy(alpha = 0.30f), Color(0xFF000000)),
+                ),
+            ),
+    ) {
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = pulled && state.remote.isLoading,
         onRefresh = { pulled = true; onAction(HomeAction.Refresh) },
         modifier = Modifier.fillMaxSize(),
     ) {
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
+    LazyColumn(
+        Modifier.fillMaxSize().graphicsLayer {
+            alpha = arrival.value
+            translationY = (1f - arrival.value) * 40f
+        },
+        state = list,
+        contentPadding = LocalBottomInset.current,
+    ) {
         item(key = "header", contentType = "header") { ScreenHeader(greeting()) { dev.musicforge.ui.SettingsAction() } }
         item(key = "awareness", contentType = "awareness") { AwarenessLine(awarenessMessage, onDismissAwareness) }
         if (state.isColdStart && !state.isWelcomeDismissed) {
             item(key = "welcome", contentType = "welcome") { WelcomeCard(onAction) }
         }
-        state.sections.orEmpty().forEach { section ->
+        state.sections.orEmpty().forEachIndexed { idx, section ->
             item(key = section.id, contentType = section.layout) {
                 Section(
                     section,
                     onAction,
                     onCollectionLongPress = { collectionTarget = it },
+                    shelfIndex = idx,
                 )
             }
         }
@@ -206,6 +240,7 @@ fun HomeScreen(
         }
     }
     }
+    }
 }
 
 @Composable
@@ -213,7 +248,19 @@ private fun Section(
     section: HomeSection,
     onAction: (HomeAction) -> Unit,
     onCollectionLongPress: (CollectionTarget) -> Unit,
+    shelfIndex: Int = 0,
 ) {
+    val reduced = dev.musicforge.ui.designsystem.reducedMotion()
+    val enter = remember(section.id) { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(section.id, reduced) {
+        if (reduced) { enter.snapTo(1f); return@LaunchedEffect }
+        kotlinx.coroutines.delay((30L + (shelfIndex.coerceIn(0, 5) * 10L)).coerceIn(30L, 80L))
+        enter.animateTo(1f, androidx.compose.animation.core.tween(Motion.Row, easing = Motion.EaseOutQuint))
+    }
+    Column(Modifier.graphicsLayer {
+        alpha = enter.value
+        translationY = (1f - enter.value) * 16f
+    }) {
     var menuExpanded by rememberSaveable { mutableStateOf(false) }
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     when (section.layout) {
@@ -351,6 +398,7 @@ private fun Section(
         }
     }
 }
+}
 
 /** Section header with a long-press to open the shelf menu. */
 @Composable
@@ -369,7 +417,7 @@ private fun ShelfHeader(title: String, reason: String?, modifier: Modifier = Mod
     }
 }
 
-private val CardSize = 148.dp
+private val CardSize = 150.dp
 
 /**
  * A song on a shelf: tap plays, long-press opens its actions with why it is here and the two
@@ -387,7 +435,7 @@ private fun SongCard(song: Song, section: HomeSection, onAction: (HomeAction) ->
         Modifier.width(CardSize).pressScale(press)
             .combinedClickable(interactionSource = press, indication = null, onClick = onClick, onLongClick = { if (hapticsOn) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); menu = true }, onLongClickLabel = "More options"),
     ) {
-        Artwork(song.song.thumbnailUrl, CardSize, corner = Signal.radiusRow)
+        Artwork(song.song.thumbnailUrl, CardSize, corner = 12.dp)
         Spacer(Modifier.height(6.dp))
         Text(song.song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(song.artistLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -425,7 +473,7 @@ private fun PlaylistCard(
             onLongClickLabel = "More options",
         ),
     ) {
-        Artwork(p.playlist.thumbnailUrl, CardSize, corner = Signal.radiusRow, fallbackLetter = p.playlist.name)
+        Artwork(p.playlist.thumbnailUrl, CardSize, corner = 12.dp, fallbackLetter = p.playlist.name)
         Spacer(Modifier.height(6.dp))
         Text(p.playlist.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(if (p.songCount == 1) "1 song" else "${p.songCount} songs", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -520,6 +568,7 @@ private fun ArtistCard(
 @Composable
 private fun Hero(song: Song, reason: String, onPlay: () -> Unit) {
     val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val shufflePress = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     androidx.compose.foundation.layout.BoxWithConstraints(
         Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -533,8 +582,6 @@ private fun Hero(song: Song, reason: String, onPlay: () -> Unit) {
         Box(
             Modifier.fillMaxSize().background(
                 androidx.compose.ui.graphics.Brush.verticalGradient(
-                    // Dark from where the text starts: covers with their own lettering (album art often
-                    // has it) otherwise fought the title.
                     0f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.05f),
                     0.3f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.25f),
                     0.55f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.62f),
@@ -555,11 +602,25 @@ private fun Hero(song: Song, reason: String, onPlay: () -> Unit) {
                 Text(song.artistLine, style = MaterialTheme.typography.bodyLarge, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(12.dp))
+            // Play
             Box(
                 Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color.White),
                 contentAlignment = Alignment.Center,
             ) {
-                androidx.compose.material3.Icon(dev.musicforge.ui.components.ForgeIcons.Play, null, tint = androidx.compose.ui.graphics.Color.Black, modifier = Modifier.size(30.dp))
+                androidx.compose.material3.Icon(dev.musicforge.ui.components.ForgeIcons.Play, contentDescription = "Play", tint = androidx.compose.ui.graphics.Color.Black, modifier = Modifier.size(30.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            // Shuffle: same entry point (no separate shuffle in the contract), visually distinct.
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.18f))
+                    .pressScale(shufflePress)
+                    .clickable(interactionSource = shufflePress, indication = null, onClickLabel = "Shuffle", onClick = onPlay),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.material3.Icon(dev.musicforge.ui.components.ForgeIcons.Shuffle, contentDescription = "Shuffle", tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(22.dp))
             }
         }
     }
@@ -657,6 +718,29 @@ private fun androidx.compose.foundation.lazy.LazyListScope.remoteFeed(
             }
         }
     }
+}
+
+/** Samples a dark ambient colour from an artwork URL, off the main thread, for the mesh-style page gradient. */
+@Composable
+private fun rememberAmbientColor(url: String?): Color {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var color by remember(url) { mutableStateOf(Color(0xFF0F0F12)) }
+    LaunchedEffect(url) {
+        if (url.isNullOrBlank()) return@LaunchedEffect
+        val sampled = withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val req = coil3.request.ImageRequest.Builder(context).data(url).size(32, 32).allowHardware(false).build()
+            val res = context.imageLoader.execute(req) as? coil3.request.SuccessResult ?: return@withContext null
+            val bmp = res.image.toBitmap(32, 32, android.graphics.Bitmap.Config.ARGB_8888)
+            val palette = androidx.palette.graphics.Palette.from(bmp).maximumColorCount(8).generate()
+            val swatch = palette.dominantSwatch ?: palette.vibrantSwatch ?: return@withContext null
+            val hsl = swatch.hsl.copyOf()
+            hsl[2] = hsl[2].coerceAtMost(0.18f)
+            hsl[1] = hsl[1].coerceAtMost(0.45f)
+            Color(androidx.core.graphics.ColorUtils.HSLToColor(hsl))
+        }
+        if (sampled != null) color = sampled
+    }
+    return color
 }
 
 @Preview(widthDp = 360, heightDp = 900)

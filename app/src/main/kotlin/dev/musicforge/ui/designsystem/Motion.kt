@@ -73,6 +73,25 @@ object Motion {
     /** Stretch along speed, ghost move/shape, slider settle. */
     val Stretch = spring<Float>(dampingRatio = .75f, stiffness = 520f)
 
+    // --- Convx Apple Music springs (AppleTokens.Motion: stiffness 158 = 0.5s SwiftUI .smooth) ---
+    /** Convx standard spring: 0.5s smooth, the default for most UI. */
+    val ConvxStandard = spring<Float>(dampingRatio = 1.0f, stiffness = 158f)
+
+    /** Convx emphasis spring: slightly bouncier for interactive elements. */
+    val ConvxEmphasis = spring<Float>(dampingRatio = 0.85f, stiffness = 200f)
+
+    /** Convx expressive spring: momentum-driven, slight overshoot for gestures. */
+    val ConvxExpressive = spring<Float>(dampingRatio = 0.8f, stiffness = 230f)
+
+    /** Apple-style critically damped: no overshoot, graceful settle (apple-design §4). */
+    val AppleCriticallyDamped = spring<Float>(dampingRatio = 1.0f, stiffness = 300f)
+
+    /** Apple-style momentum: slight bounce for flicked/gesture-driven elements. */
+    val AppleMomentum = spring<Float>(dampingRatio = 0.8f, stiffness = 300f)
+
+    /** Convx page transition: 400ms fade/slide for route changes. */
+    val PageTransition = spring<Float>(dampingRatio = 0.9f, stiffness = 180f)
+
     // --- Durations (ms) ---
 
     const val Instant = 110      // menu close (21)
@@ -97,7 +116,10 @@ object Motion {
 fun reducedMotion(): Boolean {
     val resolver = LocalContext.current.contentResolver
     // Read once per resolver — cheap, and the scale is constant for a whole session on the X7b.
-    return remember(resolver) {
-        Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    // Also observe the system setting so runtime changes are picked up.
+    val scale = androidx.compose.runtime.remember(resolver) {
+        Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
     }
+    // Re-read on recomposition when the resolver's content changes (rare, but possible).
+    return scale == 0f
 }

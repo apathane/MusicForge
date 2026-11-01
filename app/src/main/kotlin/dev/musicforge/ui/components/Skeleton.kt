@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import dev.musicforge.ui.designsystem.Motion
+import dev.musicforge.ui.designsystem.reducedMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,11 +35,13 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun SkeletonRows(count: Int = 8, modifier: Modifier = Modifier) {
+    val reduced = reducedMotion()
     val pulse = rememberInfiniteTransition(label = "skeleton")
-    val alpha = pulse.animateFloat(1.0f, 0.45f, infiniteRepeatable(tween(Motion.Ambient, easing = Motion.EaseInOutWave), RepeatMode.Restart), label = "pulse")
+    val alpha = pulse.animateFloat(1.0f, 0.45f, infiniteRepeatable(tween(Motion.Ambient, easing = Motion.EaseInOutWave), RepeatMode.Reverse), label = "pulse")
     // Ink at low alpha, not a surface colour: on pure black the surfaces are nearly black too.
     val tone = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f)
-    Column(modifier.fillMaxWidth().graphicsLayer { this.alpha = alpha.value }.semantics { contentDescription = "Loading" }) {
+    val a = if (reduced) 1f else alpha.value
+    Column(modifier.fillMaxWidth().graphicsLayer { this.alpha = a }.semantics { contentDescription = "Loading" }) {
         repeat(count) { i ->
             Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Bar(48.dp, 48.dp, tone, 6.dp)

@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,15 +26,29 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,29 +60,30 @@ import com.metrolist.innertube.models.ArtistItem
 import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
+import com.metrolist.innertube.pages.MoodAndGenres
 import dev.musicforge.ui.LocalNavController
+import dev.musicforge.ui.components.Artwork
 import dev.musicforge.ui.components.TrackRow
 import dev.musicforge.ui.openItem
 import dev.musicforge.AppGraph
 import dev.musicforge.data.db.SearchHistory
 import dev.musicforge.graph
 import dev.musicforge.ui.designsystem.LoadingBar
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.SignalChip
+import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.designsystem.reducedMotion
 import dev.musicforge.playback.toMediaItem
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.ScreenHeader
+import dev.musicforge.ui.components.Shelf
 import dev.musicforge.ui.components.SongRow
-import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.YouTubeLink
+import dev.musicforge.ui.components.glass
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -76,6 +93,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 
 enum class SearchKind(val label: String, val filter: YouTube.SearchFilter) {
     Songs("Songs", YouTube.SearchFilter.FILTER_SONG),
@@ -176,107 +195,194 @@ fun SearchScreen() {
     }
     val submit: (String) -> Unit = { text ->
         focus.clearFocus()
-        when (val link = dev.musicforge.ui.YouTubeLink.parse(text)) {
+        when (val link = YouTubeLink.parse(text)) {
             null -> vm.submit(text)
-            is dev.musicforge.ui.YouTubeLink.Song -> vm.playVideo(link.videoId)
-            is dev.musicforge.ui.YouTubeLink.Playlist -> nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, link.playlistId))
-            is dev.musicforge.ui.YouTubeLink.Album -> nav.navigate(Routes.collection(CollectionKind.ALBUM, link.browseId))
-            is dev.musicforge.ui.YouTubeLink.Artist -> nav.navigate(Routes.artist(link.channelId))
+            is YouTubeLink.Song -> vm.playVideo(link.videoId)
+            is YouTubeLink.Playlist -> nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, link.playlistId))
+            is YouTubeLink.Album -> nav.navigate(Routes.collection(CollectionKind.ALBUM, link.browseId))
+            is YouTubeLink.Artist -> nav.navigate(Routes.artist(link.channelId))
         }
     }
 
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item { ScreenHeader("Search") { dev.musicforge.ui.SettingsAction() } }
-        item {
-            SearchField(
-                value = query,
-                onChange = vm::edit,
-                onSubmit = { submit(query) },
-                focusRequester = fieldFocus,
-                placeholder = "Songs, artists, or paste a link",
-            )
-        }
-        item {
-            Row(
-                Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SearchKind.entries.forEach { k -> SignalChip(k.label, k == kind) { vm.select(k) } }
-            }
-        }
-        when (val r = results) {
-            SearchViewModel.Results.Idle -> {
-                val recent = query.isBlank()
-                // Distinct: the same search made twice is two history rows, and a repeated key crashes the list.
-                val lines = (if (recent) history else suggestions).distinct()
-                if (recent && lines.isNotEmpty()) item(key = "recent") {
-                    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Recent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                        Text(
-                            "Clear",
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear recent searches") { vm.forgetAll() }
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
-                        )
-                    }
+    // Explore data for the browse state: moods and new releases. Fetched once; failures leave
+    // the sections empty rather than breaking search.
+    var moods by remember { mutableStateOf<List<MoodAndGenres>>(emptyList()) }
+    var newReleases by remember { mutableStateOf<List<AlbumItem>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        YouTube.moodAndGenres().getOrNull()?.let { moods = it }
+        YouTube.newReleaseAlbums().getOrNull()?.let { newReleases = it }
+    }
+
+    val reduced = reducedMotion()
+
+    // Forced dark for the search area: a dark canvas under a dark scheme, regardless of app theme.
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
+                item { ScreenHeader("Search") { dev.musicforge.ui.SettingsAction() } }
+                item {
+                    SearchField(
+                        value = query,
+                        onChange = vm::edit,
+                        onSubmit = { submit(query) },
+                        focusRequester = fieldFocus,
+                        placeholder = "Songs, artists, or paste a link",
+                    )
                 }
-                items(lines, key = { "s:$it" }) { line ->
+                item {
                     Row(
-                        Modifier.fillMaxWidth().animateItem().clickable { submit(line) }.padding(start = 20.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(line, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
+                        SearchKind.entries.forEach { k -> SignalChip(k.label, k == kind) { vm.select(k) } }
+                    }
+                }
+                when (val r = results) {
+                    SearchViewModel.Results.Idle -> {
+                        val recent = query.isBlank()
+                        // Distinct: the same search made twice is two history rows, and a repeated key crashes the list.
+                        val lines = (if (recent) history else suggestions).distinct()
+                        if (recent && lines.isNotEmpty()) item(key = "recent") {
+                            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("Recent", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                                Text(
+                                    "Clear",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear recent searches") { vm.forgetAll() }
+                                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                                )
+                            }
+                        }
+                        items(lines, key = { "s:$it" }) { line ->
+                            Row(
+                                Modifier.fillMaxWidth().animateItem().clickable { submit(line) }.padding(start = 20.dp, end = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(line, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
+                                if (recent) {
+                                    IconText("✕", "Remove $line from recent searches") { vm.forget(line) }
+                                } else {
+                                    // Fill the field and keep typing, as Metrolist and BitChord do.
+                                    IconText("↖", "Edit $line") { vm.edit(line) }
+                                }
+                            }
+                        }
                         if (recent) {
-                            IconText("✕", "Remove $line from recent searches") { vm.forget(line) }
-                        } else {
-                            // Fill the field and keep typing, as Metrolist and BitChord do.
-                            IconText("↖", "Edit $line") { vm.edit(line) }
+                            // Mood grid: coloured tiles straight from YouTube's moods & genres page.
+                            moods.forEach { section ->
+                                item(key = "mood-title:${section.title}") {
+                                    Text(
+                                        section.title,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp),
+                                    )
+                                }
+                                val rows = section.items.chunked(2)
+                                rows.forEach { row ->
+                                    item(key = "mood-row:${section.title}:${row.joinToString("|") { it.title }}") {
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        ) {
+                                            row.forEach { mood ->
+                                                Box(Modifier.weight(1f)) {
+                                                    MoodCard(mood) { vm.submit(mood.title) }
+                                                }
+                                            }
+                                            if (row.size < 2) Spacer(Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                            // Explore shelves: new releases as a horizontal shelf.
+                            if (newReleases.isNotEmpty()) {
+                                item(key = "new-releases") {
+                                    Shelf(
+                                        title = "New releases",
+                                        items = newReleases,
+                                        onClick = { openItem(it, newReleases, nav, player) },
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-            }
-            SearchViewModel.Results.Loading -> item {
-                LoadingBar(visible = true)
-                dev.musicforge.ui.components.SkeletonRows()
-            }
-            is SearchViewModel.Results.Failed -> item { EmptyState("Couldn't search", r.message) }
-            is SearchViewModel.Results.Items -> {
-                r.offline?.let { note -> item { Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) } }
-                if (r.local.isNotEmpty()) {
-                    item { dev.musicforge.ui.components.SectionTitle("In your library") }
-                    items(r.local, key = { "l:" + it.id }) { s ->
-                        val item = androidx.compose.runtime.remember(s.id) { s.toMediaItem() }
-                        SongRow(item, s.artistLine, onPlay = { player.play(r.local.map { it.toMediaItem() }, r.local.indexOf(s)) })
+                    SearchViewModel.Results.Loading -> item {
+                        LoadingBar(visible = true)
+                        dev.musicforge.ui.components.SkeletonRows()
                     }
-                    if (r.items.isNotEmpty()) item { dev.musicforge.ui.components.SectionTitle("YouTube Music") }
-                }
-                if (r.items.isEmpty() && r.local.isEmpty()) item { EmptyState("No results", "Try a different spelling or another filter.") }
-                items(r.items, key = { "${it::class.simpleName}:${it.id}" }) { result ->
-                    when (result) {
-                        is SongItem -> {
-                            val item = androidx.compose.runtime.remember(result.id) { result.toMediaItem() }
-                            SongRow(
-                                item = item,
-                                subtitle = listOfNotNull(result.artists.joinToString { it.name }, result.album?.name).joinToString(" · "),
-                                // One tap, one song; radio carries on from it.
-                                onPlay = { player.play(listOf(item)) },
-                            )
+                    is SearchViewModel.Results.Failed -> item { EmptyState("Couldn't search", r.message) }
+                    is SearchViewModel.Results.Items -> {
+                        r.offline?.let { note -> item { Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) } }
+                        if (r.local.isNotEmpty()) {
+                            item { dev.musicforge.ui.components.SectionTitle("In your library") }
+                            items(r.local, key = { "l:" + it.id }) { s ->
+                                val item = androidx.compose.runtime.remember(s.id) { s.toMediaItem() }
+                                SongRow(item, s.artistLine, onPlay = { player.play(r.local.map { it.toMediaItem() }, r.local.indexOf(s)) })
+                            }
+                            if (r.items.isNotEmpty()) item { dev.musicforge.ui.components.SectionTitle("YouTube Music") }
                         }
-                        else -> TrackRow(
-                            title = result.title,
-                            subtitle = when (result) {
-                                is AlbumItem -> listOfNotNull("Album", result.artists?.joinToString { it.name }, result.year?.toString()).joinToString(" · ")
-                                is ArtistItem -> "Artist"
-                                is PlaylistItem -> listOfNotNull("Playlist", result.author?.name, result.songCountText).joinToString(" · ")
-                                else -> ""
-                            },
-                            artworkUrl = result.thumbnail,
-                            onClick = { openItem(result, r.items, nav, player) },
-                        )
+                        if (r.items.isEmpty() && r.local.isEmpty()) item { EmptyState("Nothing here yet", "Try a different spelling, or paste a link and let it sing.") }
+                        itemsIndexed(r.items, key = { _, it -> "${it::class.simpleName}:${it.id}" }) { index, result ->
+                            val animate = index < 5 && !reduced
+                            val t = remember(result.id) { Animatable(if (animate) 0f else 1f) }
+                            if (animate) {
+                                LaunchedEffect(result.id) {
+                                    t.snapTo(0f)
+                                    t.animateTo(1f, tween(Motion.Row, easing = Motion.EaseDrawer))
+                                }
+                            }
+                            Box(Modifier.graphicsLayer {
+                                alpha = t.value
+                                translationY = (1f - t.value) * 8.dp.toPx()
+                            }) {
+                                when (result) {
+                                    is SongItem -> {
+                                        val item = androidx.compose.runtime.remember(result.id) { result.toMediaItem() }
+                                        SongRow(
+                                            item = item,
+                                            subtitle = listOfNotNull(result.artists.joinToString { it.name }, result.album?.name).joinToString(" · "),
+                                            // One tap, one song; radio carries on from it.
+                                            onPlay = { player.play(listOf(item)) },
+                                        )
+                                    }
+                                    else -> TrackRow(
+                                        title = result.title,
+                                        subtitle = when (result) {
+                                            is AlbumItem -> listOfNotNull("Album", result.artists?.joinToString { it.name }, result.year?.toString()).joinToString(" · ")
+                                            is ArtistItem -> "Artist"
+                                            is PlaylistItem -> listOfNotNull("Playlist", result.author?.name, result.songCountText).joinToString(" · ")
+                                            else -> ""
+                                        },
+                                        artworkUrl = result.thumbnail,
+                                        onClick = { openItem(result, r.items, nav, player) },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MoodCard(item: MoodAndGenres.Item, onClick: () -> Unit) {
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .pressScale(press)
+            .background(Color(item.stripeColor))
+            .clickable(interactionSource = press, indication = null, onClickLabel = "Open ${item.title}", onClick = onClick)
+            .semantics { contentDescription = item.title }
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomStart,
+    ) {
+        Text(item.title, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -304,11 +410,10 @@ internal fun SearchField(
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             // A fixed height: focused, BasicTextField measured a few dp taller and shoved the
-            // filter chips down mid-tap. 48 dp is also the touch target it should have had.
-            .height(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(horizontal = 12.dp),
+            // filter chips down mid-tap. 52 dp is the touch target the pill should have.
+            .height(52.dp)
+            .glass(RoundedCornerShape(percent = 50))
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(ForgeIcons.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
@@ -329,9 +434,9 @@ internal fun SearchField(
             )
         }
         if (value.isNotEmpty()) {
-            // A 28 dp disc inside a 44 dp target: small to look at, easy to hit.
+            // A 48 dp disc inside the pill: small to look at, easy to hit.
             Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear search") { onChange("") },
+                Modifier.size(48.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear search") { onChange("") },
                 contentAlignment = Alignment.Center,
             ) {
                 Box(

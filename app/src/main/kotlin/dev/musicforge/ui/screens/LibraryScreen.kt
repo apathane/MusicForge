@@ -1,10 +1,14 @@
 package dev.musicforge.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.runtime.remember
-import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,16 +20,35 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +58,7 @@ import dev.musicforge.AppGraph
 import dev.musicforge.data.db.LibraryCounts
 import dev.musicforge.data.db.PlaylistSummary
 import dev.musicforge.graph
+import dev.musicforge.playback.toMediaItem
 import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.LocalBottomInset
 import dev.musicforge.ui.LocalNavController
@@ -46,18 +70,20 @@ import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.PillButton
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SectionTitle
+import dev.musicforge.ui.designsystem.Motion
+import dev.musicforge.ui.designsystem.Signal
+import dev.musicforge.ui.designsystem.SignalChip
+import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.designsystem.reducedMotion
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import dev.musicforge.playback.toMediaItem
-import dev.musicforge.ui.LocalSort
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.metrolist.innertube.utils.completed
-import androidx.compose.foundation.lazy.items
 
 class LibraryViewModel(graph: AppGraph) : ViewModel() {
     private val dao = graph.database.dao()
@@ -103,6 +129,17 @@ class LibraryViewModel(graph: AppGraph) : ViewModel() {
     }
 }
 
+/** Small rise+fade on arrival, draw-phase only; snaps under reduced motion. */
+fun Modifier.riseFade(delayMs: Int = 0): Modifier = composed {
+    val reduced = reducedMotion()
+    val t = remember { Animatable(if (reduced) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (delayMs > 0) kotlinx.coroutines.delay(delayMs.toLong())
+        t.animateTo(1f, tween(if (reduced) 0 else Motion.Row, easing = Motion.EaseDrawer))
+    }
+    graphicsLayer { alpha = t.value; translationY = (1f - t.value) * 8.dp.toPx() }
+}
+
 @Composable
 fun LibraryScreen(onOpenSettings: () -> Unit) {
     val context = LocalContext.current
@@ -139,73 +176,164 @@ fun LibraryScreen(onOpenSettings: () -> Unit) {
             }
         },
     ) {
-    val list = androidx.compose.foundation.lazy.rememberLazyListState()
-    dev.musicforge.ui.ScrollToTopOnReselect(list)
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item(key = "header") {
-            ScreenHeader("Library") { IconAction(ForgeIcons.Settings, "Settings", onOpenSettings) }
-        }
-        if (!empty) {
-            item(key = "find") {
-                SearchField(query, { vm.query.value = it }, onSubmit = {}, placeholder = "Find in your library")
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-        found?.let { (songs, lists) ->
-            if (songs.isEmpty() && lists.isEmpty()) {
-                item(key = "find-none") { EmptyState("Nothing in your library matches", "Search looks at titles and artists of songs you have, and playlist names.") }
-            }
-            items(lists, key = { "f:p:" + it.playlist.id }) { p ->
-                ShelfRow(ForgeIcons.Library, p.playlist.name, p.songCount) { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
-            }
-            items(songs, key = { "f:s:" + it.id }) { s ->
-                val item = androidx.compose.runtime.remember(s.id) { s.toMediaItem() }
-                dev.musicforge.ui.components.SongRow(item, s.artistLine) { context.graph.player.play(songs.map { it.toMediaItem() }, songs.indexOf(s)) }
-            }
-            return@LazyColumn
-        }
-        if (empty) {
-            item(key = "empty") {
-                EmptyState(
-                    title = "Your library is empty",
-                    body = "Sign in with Google to bring your YouTube Music likes, playlists, albums and artists, kept in sync. Or restore a backup from Settings.",
-                ) { PillButton("Sign in with Google", { nav.navigate(Routes.LOGIN) }) }
-            }
-            return@LazyColumn
-        }
-        counts?.let { c ->
-            item(key = "shelf-liked") { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) { nav.navigate(Routes.collection(CollectionKind.LIKED)) } }
-            item(key = "shelf-songs") { ShelfRow(ForgeIcons.MusicNote, "Songs", c.songs) { nav.navigate(Routes.collection(CollectionKind.SONGS)) } }
-            item(key = "shelf-downloaded") { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) { nav.navigate(Routes.collection(CollectionKind.DOWNLOADED)) } }
-            item(key = "shelf-albums") { ShelfRow(ForgeIcons.Album, "Albums", c.albums) { nav.navigate(Routes.ALBUMS) } }
-            item(key = "shelf-artists") { ShelfRow(ForgeIcons.Person, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
-            item(key = "shelf-history") { ShelfRow(ForgeIcons.History, "Recently played", -1) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
-            item(key = "shelf-listening") { ShelfRow(ForgeIcons.BarChart, "Your listening", -1) { nav.navigate(Routes.STATS) } }
-            }
-            if (signedIn) {
-            item(key = "yt-header") { SectionTitle("From YouTube Music") }
-            item(key = "yt-liked") { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
-            items(account, key = { "yt:" + it.id }, contentType = { "playlist" }) { p ->
-                PlaylistRow(p.title, p.thumbnail, p.songCountText) {
-                    nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id))
+        val list = androidx.compose.foundation.lazy.rememberLazyListState()
+        dev.musicforge.ui.ScrollToTopOnReselect(list)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val wide = maxWidth >= 600.dp
+            LazyColumn(
+                Modifier.fillMaxSize().then(if (wide) Modifier.padding(horizontal = (maxWidth - 720.dp).coerceAtLeast(0.dp) / 2) else Modifier),
+                state = list,
+                contentPadding = LocalBottomInset.current,
+            ) {
+                item(key = "header") {
+                    ScreenHeader("Library") { IconAction(ForgeIcons.Settings, "Settings", onOpenSettings) }
                 }
-            }
-        }
-        item(key = "device-header") { SectionTitle("On this phone") }
-        item(key = "device-local") {
-            ShelfRow(ForgeIcons.MusicNote, "Local music", localCount) {
-                nav.navigate(Routes.localMusic())
-            }
-        }
-        if (playlists.isNotEmpty()) {
-            item(key = "local-header") { SectionTitle("Playlists") }
-            items(playlists, key = { "local:" + it.playlist.id }, contentType = { "playlist" }) { p ->
-                PlaylistRow(p.playlist.name, p.playlist.thumbnailUrl, "${p.songCount} songs") {
-                    nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id))
+                if (!empty) {
+                    item(key = "find") {
+                        GlassSearchField(query, { vm.query.value = it }, onSubmit = {}, placeholder = "Find in your library")
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+                if (!empty) {
+                    item(key = "filters") {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = Signal.pageGutter, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SmartFilter("Recently added", ForgeIcons.History) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) }
+                            SmartFilter("Most played", ForgeIcons.BarChart) { nav.navigate(Routes.STATS) }
+                            SmartFilter("Downloaded", ForgeIcons.Download) { nav.navigate(Routes.collection(CollectionKind.DOWNLOADED)) }
+                            SmartFilter("Liked", ForgeIcons.Heart) { nav.navigate(Routes.collection(CollectionKind.LIKED)) }
+                            SmartFilter("Albums", ForgeIcons.Album) { nav.navigate(Routes.ALBUMS) }
+                            SmartFilter("Artists", ForgeIcons.Person) { nav.navigate(Routes.ARTISTS) }
+                            SmartFilter("Playlists", ForgeIcons.Library) { /* inline below */ }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+                found?.let { (songs, lists) ->
+                    if (songs.isEmpty() && lists.isEmpty()) {
+                        item(key = "find-none") { EmptyState("Nothing in your library matches", "Search looks at titles and artists of songs you have, and playlist names.") }
+                    }
+                    items(lists, key = { "f:p:" + it.playlist.id }) { p ->
+                        ShelfRow(ForgeIcons.Library, p.playlist.name, p.songCount) { nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id)) }
+                    }
+                    items(songs, key = { "f:s:" + it.id }) { s ->
+                        val item = remember(s.id) { s.toMediaItem() }
+                        dev.musicforge.ui.components.SongRow(item, s.artistLine) { context.graph.player.play(songs.map { it.toMediaItem() }, songs.indexOf(s)) }
+                    }
+                    return@LazyColumn
+                }
+                if (empty) {
+                    item(key = "empty") {
+                        EmptyState(
+                            title = "Your library is empty",
+                            body = "Sign in with Google to bring your YouTube Music likes, playlists, albums and artists, kept in sync. Or restore a backup from Settings.",
+                        ) { PillButton("Sign in with Google", { nav.navigate(Routes.LOGIN) }) }
+                    }
+                    return@LazyColumn
+                }
+                counts?.let { c ->
+                    item(key = "shelf-liked") { ShelfRow(ForgeIcons.Heart, "Liked songs", c.liked) { nav.navigate(Routes.collection(CollectionKind.LIKED)) } }
+                    item(key = "shelf-songs") { ShelfRow(ForgeIcons.MusicNote, "Songs", c.songs) { nav.navigate(Routes.collection(CollectionKind.SONGS)) } }
+                    item(key = "shelf-downloaded") { ShelfRow(ForgeIcons.Download, "Downloaded", c.downloaded) { nav.navigate(Routes.collection(CollectionKind.DOWNLOADED)) } }
+                    item(key = "shelf-albums") { ShelfRow(ForgeIcons.Album, "Albums", c.albums) { nav.navigate(Routes.ALBUMS) } }
+                    item(key = "shelf-artists") { ShelfRow(ForgeIcons.Person, "Artists", c.artists) { nav.navigate(Routes.ARTISTS) } }
+                    item(key = "shelf-history") { ShelfRow(ForgeIcons.History, "Recently played", -1) { nav.navigate(Routes.collection(CollectionKind.HISTORY)) } }
+                    item(key = "shelf-listening") { ShelfRow(ForgeIcons.BarChart, "Your listening", -1) { nav.navigate(Routes.STATS) } }
+                }
+                if (signedIn) {
+                    item(key = "yt-header") { SectionTitle("From YouTube Music") }
+                    item(key = "yt-liked") { ShelfRow(ForgeIcons.Heart, "Liked music", -1) { nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, "LM")) } }
+                    items(account, key = { "yt:" + it.id }, contentType = { "playlist" }) { p ->
+                        PlaylistRow(p.title, p.thumbnail, p.songCountText) {
+                            nav.navigate(Routes.collection(CollectionKind.REMOTE_PLAYLIST, p.id))
+                        }
+                    }
+                }
+                item(key = "device-header") { SectionTitle("On this phone") }
+                item(key = "device-local") {
+                    ShelfRow(ForgeIcons.MusicNote, "Local music", localCount) {
+                        nav.navigate(Routes.localMusic())
+                    }
+                }
+                if (playlists.isNotEmpty()) {
+                    item(key = "local-header") { SectionTitle("Playlists") }
+                    items(playlists, key = { "local:" + it.playlist.id }, contentType = { "playlist" }) { p ->
+                        PlaylistRow(p.playlist.name, p.playlist.thumbnailUrl, "${p.songCount} songs") {
+                            nav.navigate(Routes.collection(CollectionKind.LOCAL_PLAYLIST, p.playlist.id))
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SmartFilter(label: String, icon: ImageVector, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
+            .padding(horizontal = 12.dp),
+    ) {
+        Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
+    }
+}
+
+@Composable
+private fun GlassSearchField(query: String, onChange: (String) -> Unit, onSubmit: () -> Unit, placeholder: String) {
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f))
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(ForgeIcons.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) {
+                Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (query.isNotEmpty()) {
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(50)).clickable(onClickLabel = "Clear search") { onChange("") },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size(28.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✕", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { contentDescription = "Clear search" })
+                }
+            }
+        }
     }
 }
 
@@ -219,6 +347,7 @@ private fun PlaylistRow(title: String, artwork: String?, subtitle: String?, onCl
     val press = remember { MutableInteractionSource() }
     Row(
         Modifier.fillMaxWidth()
+            .riseFade()
             .pressScale(press)
             .clickable(interactionSource = press, indication = null, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 8.dp),
@@ -236,13 +365,13 @@ private fun PlaylistRow(title: String, artwork: String?, subtitle: String?, onCl
 @Composable
 private fun ShelfRow(icon: ImageVector, title: String, count: Int, onClick: () -> Unit) {
     val press = remember { MutableInteractionSource() }
-    Column {
+    Column(Modifier.riseFade()) {
         Row(
             Modifier.fillMaxWidth().pressScale(press).clickable(interactionSource = press, indication = null, onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))
+            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(22.dp))
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             if (count >= 0) Text("$count", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Icon(ForgeIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))

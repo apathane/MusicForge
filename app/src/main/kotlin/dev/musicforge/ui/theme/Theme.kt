@@ -21,6 +21,8 @@ import dev.musicforge.R
 /**
  * Monochrome base (BitChord), colour only from the music itself. Inter stands in for
  * SF Pro, which can't be redistributed; tight negative tracking gives it the same heft.
+ * Combined with Convx's Apple Music visual identity: artwork-derived hero tints, liquid
+ * glass surfaces, forced-dark collection pages, and iOS system palette.
  */
 val Inter = FontFamily(
     Font(R.font.inter_regular, FontWeight.W400),
@@ -30,8 +32,12 @@ val Inter = FontFamily(
     Font(R.font.inter_extrabold, FontWeight.W800),
 )
 
+// Combined type scale: BitChord sizes with Convx's iOS type scale proportions.
+// TitleLarge 34sp/41lh, SectionHeader 22/28, ItemTitle 15/20, ItemSubtitle 13/18, Caption 12/16.
 private val ForgeTypography = Typography(
-    displayLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 34.sp, lineHeight = 40.sp, letterSpacing = (-1.0).sp),
+    displayLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 34.sp, lineHeight = 41.sp, letterSpacing = (-1.2).sp),
+    displayMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 30.sp, lineHeight = 37.sp, letterSpacing = (-0.9).sp),
+    displaySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = (-0.7).sp),
     headlineLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.9).sp),
     headlineMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.5).sp),
     headlineSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 19.sp, lineHeight = 24.sp, letterSpacing = (-0.4).sp),
@@ -51,13 +57,14 @@ private val ForgeTypography = Typography(
 private val Ink = Color(0xFFF4F3EF)
 private val InkLight = Color(0xFF151518)
 
+// Convx Apple accent: used sparingly for nav/interactive emphasis only.
+val AccentRed = Color(0xFFFA2D48)
+
 private fun darkScheme(pureBlack: Boolean) = darkColorScheme(
     primary = Ink,
     onPrimary = InkLight,
     secondary = Color(0xFFD1D0CC),
     onSecondary = InkLight,
-    // Pure black is black everywhere, not just the canvas: #09090B next to #000 is invisible, so
-    // surfaces, cards and sheets go dark too and only hairlines separate them.
     background = if (pureBlack) Color.Black else Color(0xFF09090B),
     onBackground = Ink,
     surface = if (pureBlack) Color.Black else Color(0xFF0F0F12),
@@ -97,7 +104,27 @@ data class ArtworkColors(val accent: Color, val onAccent: Color, val ambient: Co
     }
 }
 
+// Convx HeroPalette: artwork-derived tint for collection screens and player backgrounds.
+@Immutable
+data class HeroPalette(
+    val dominant: Color,
+    val vibrant: Color,
+    val muted: Color,
+    val darkVibrant: Color,
+    val lightVibrant: Color,
+    val darkMuted: Color,
+    val lightMuted: Color,
+) {
+    companion object {
+        val Unset = HeroPalette(
+            Color.Unspecified, Color.Unspecified, Color.Unspecified,
+            Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified,
+        )
+    }
+}
+
 val LocalArtworkColors = staticCompositionLocalOf { ArtworkColors.Unset }
+val LocalHeroPalette = staticCompositionLocalOf { HeroPalette.Unset }
 
 enum class DarkMode { ON, OFF, AUTO }
 
@@ -106,18 +133,20 @@ fun ForgeTheme(
     darkMode: DarkMode = DarkMode.AUTO,
     pureBlack: Boolean = false,
     artwork: ArtworkColors = ArtworkColors.Unset,
+    heroPalette: HeroPalette = HeroPalette.Unset,
     content: @Composable () -> Unit,
 ) {
-    // Pure black is a dark theme; chosen with Auto on a light phone it would otherwise do nothing.
     val dark = pureBlack || when (darkMode) {
         DarkMode.ON -> true
         DarkMode.OFF -> false
         DarkMode.AUTO -> isSystemInDarkTheme()
     }
-    CompositionLocalProvider(LocalArtworkColors provides artwork) {
+    CompositionLocalProvider(
+        LocalArtworkColors provides artwork,
+        LocalHeroPalette provides heroPalette,
+    ) {
         val scheme = if (dark) darkScheme(pureBlack) else LightScheme
         MaterialTheme(colorScheme = scheme, typography = ForgeTypography) {
-            // No Surface wraps the app, so Text would fall back to black in dark mode.
             CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)
         }
     }

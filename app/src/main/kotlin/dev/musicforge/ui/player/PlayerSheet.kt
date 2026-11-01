@@ -17,12 +17,19 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -61,6 +68,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,6 +89,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -116,8 +125,11 @@ import dev.musicforge.ui.LocalNavController
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
+import dev.musicforge.ui.components.glass
 import dev.musicforge.ui.designsystem.BufferingIndicator
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.designsystem.reducedMotion
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
 import kotlinx.coroutines.Dispatchers
@@ -131,27 +143,29 @@ import kotlin.math.roundToInt
 enum class PlayerPane { ARTWORK, LYRICS, QUEUE }
 
 /**
- * The full player, slid over everything. Always dark (white on the artwork's blurred
- * colours), the way a record sleeve sits on a dark table.
+ * The full player, slid over everything. Motion follows OpenGhost: open 380 ms on EaseDrawer,
+ * close 200 ms on EaseInQuart, close always faster. The slide is pure compositing on one layer.
  */
 @Composable
 fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () -> Unit, onCovering: (Boolean) -> Unit = {}) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
-        // A flick that should dismiss, in px/s: physical speed, not pixel speed.
         val flingPx = with(LocalDensity.current) { 700.dp.toPx() }
         val offset = remember { Animatable(heightPx) }
         val scope = rememberCoroutineScope()
+        val reduced = reducedMotion()
 
-        // Open/close follows `open`; drags move the same Animatable so they can interrupt it.
-        androidx.compose.runtime.LaunchedEffect(open) {
-            offset.animateTo(if (open) 0f else heightPx, spring(dampingRatio = 0.86f, stiffness = 420f))
+        // Open/close: the durations are the spec's, the spring only on drag release.
+        LaunchedEffect(open, reduced) {
+            offset.animateTo(
+                if (open) 0f else heightPx,
+                if (reduced) tween(0) else tween(if (open) Motion.Panel else Motion.Fade, easing = if (open) Motion.EaseDrawer else Motion.EaseInQuart),
+            )
         }
         BackHandler(enabled = open) { onClose() }
-        // Tell the host when the sheet fully covers the screen, so it can stop drawing what's behind.
         val covering by remember { androidx.compose.runtime.derivedStateOf { offset.value < 0.5f } }
-        androidx.compose.runtime.LaunchedEffect(covering) { onCovering(covering) }
-        if (!open && offset.value >= heightPx - 1f)         return@BoxWithConstraints
+        LaunchedEffect(covering) { onCovering(covering) }
+        if (!open && offset.value >= heightPx - 1f) return@BoxWithConstraints
 
         val dismissDrag = Modifier.pointerInput(Unit) {
             val tracker = VelocityTracker()
@@ -171,36 +185,30 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                 },
             )
         }
+
         Box(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer {
                     translationY = offset.value
-                    // Moving and clipping happen on one layer: the sheet's content is recorded once and
-                    // the slide is pure compositing, and the rounded clip is a hardware outline clip.
                     shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
-                    // Fully open, nothing is painted behind the sheet (no window background), so
-                    // rounded corners would show stale pixels: square it off at rest.
                     clip = offset.value > 0.5f
                 },
         ) {
-            // The pane decides whether the backdrop fades in under the cover, so the canvas is
-            // drawn inside PlayerContent where the pane is known.
-            PlayerContent(now, onClose, dismissDrag, ambience)
+            // Scrim fades out as the sheet settles open, so the app behind dims only mid-flight.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = (offset.value / heightPx).coerceIn(0f, 1f) * 0.35f }
+                    .background(Color.Black),
+            )
+            PlayerContent(now, onClose, dismissDrag, ambience, reduced)
         }
     }
 }
 
 private val playerScrim = Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.18f), 0.55f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.72f))
 
-/**
- * The scrim (so white text always reads) baked into the small blurred backdrop once per
- * track: drawing it full-screen every frame was a third full-screen fill on the X7b.
- *
- * [fadeTop] erases the backdrop above that fraction of the screen. On the artwork pane the
- * backdrop then begins exactly where the cover's fade ends, so the two meet at the same
- * ambient colour instead of showing a seam (T4 faded the cover but left the backdrop solid).
- */
 private fun withScrim(backdrop: ImageBitmap, fadeTop: Float? = null): ImageBitmap {
     val out = ImageBitmap(backdrop.width, backdrop.height)
     val canvas = Canvas(out)
@@ -209,7 +217,6 @@ private fun withScrim(backdrop: ImageBitmap, fadeTop: Float? = null): ImageBitma
         drawImage(backdrop)
         drawRect(playerScrim)
         if (fadeTop != null) {
-            // DstIn keeps the backdrop only where this mask is opaque; the top stays clear.
             drawRect(
                 brush = Brush.verticalGradient(
                     0f to Color.Transparent,
@@ -224,11 +231,21 @@ private fun withScrim(backdrop: ImageBitmap, fadeTop: Float? = null): ImageBitma
     return out
 }
 
-/** Blurred artwork stretched to the screen; one full-screen draw when there is artwork. */
+/** Ambient canvas plus a mesh of artwork-derived radial gradients; one full-screen draw per track. */
 private fun Modifier.playerBackground(ambience: Ambience, scrimmed: ImageBitmap?): Modifier = drawBehind {
-    // The ambient canvas is the target colour for every pane: the cover fades to exactly this,
-    // so a flat scrim drawn here would put the band back where the cover meets the controls.
-    drawRect(ambience.colors.ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114))
+    val ambient = ambience.colors.ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114)
+    drawRect(ambient)
+    // Mesh: two soft radial pools of the accent and a lifted ambient, GPU-cheap gradients.
+    drawCircle(
+        brush = Brush.radialGradient(listOf(ambience.colors.accent.copy(alpha = 0.22f), Color.Transparent)),
+        center = Offset(size.width * 0.78f, size.height * 0.18f),
+        radius = size.minDimension * 0.72f,
+    )
+    drawCircle(
+        brush = Brush.radialGradient(listOf(ambience.colors.ambient.copy(alpha = 0.35f), Color.Transparent)),
+        center = Offset(size.width * 0.22f, size.height * 0.78f),
+        radius = size.minDimension * 0.85f,
+    )
     if (scrimmed != null) {
         drawImage(
             scrimmed,
@@ -240,7 +257,7 @@ private fun Modifier.playerBackground(ambience: Ambience, scrimmed: ImageBitmap?
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier, ambience: Ambience) {
+private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Modifier, ambience: Ambience, reduced: Boolean) {
     val context = LocalContext.current
     val graph = context.graph
     val connection = graph.player
@@ -250,8 +267,6 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     val doubleTapSeek = prefs?.get(Keys.DoubleTapSeek) ?: true
     val hapticsEnabled = prefs?.get(Keys.HapticsEnabled) ?: true
     var pane by rememberSaveable { mutableStateOf(PlayerPane.ARTWORK) }
-    // Back (and the chevron) leave lyrics or the queue for the cover first; only from the cover
-    // does back close the player. Registered after the sheet's own handler, so it wins.
     BackHandler(enabled = pane != PlayerPane.ARTWORK) { pane = PlayerPane.ARTWORK }
     var menu by remember { mutableStateOf(false) }
     var sleepMenu by remember { mutableStateOf(false) }
@@ -261,44 +276,39 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     val accent = LocalArtworkColors.current.accent.takeIf { it != Color.Unspecified } ?: Color.White
     val white = Color.White
 
-    // Codec pill from the stored format row (mime + bitrate).
     val format by remember(now.mediaId) { graph.database.dao().formatFlow(now.mediaId) }.collectAsStateWithLifecycle(null)
     val codecLabel = codecPill(format?.mimeType, format?.codecs, format?.bitrate)
 
-    // Up Next: the next item in the queue.
     val queue by connection.queue.collectAsStateWithLifecycle()
     val currentIndex by connection.currentIndex.collectAsStateWithLifecycle()
     val nextItem = queue.getOrNull(currentIndex + 1)
 
-    // System volume and active output device.
     val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
-    // The backdrop is faded in beneath the cover; other panes keep it from the very top.
-    // 0.45 is the cover's share of the screen, so the backdrop is still clear at the seam.
     val scrimmed = remember(ambience.backdrop, pane) {
         ambience.backdrop?.let { withScrim(it, fadeTop = if (pane == PlayerPane.ARTWORK) 0.45f else null) }
     }
 
-    // Insets belong to the controls, not this Box: padding the whole player pushed the cover
-    // down and left a grey strip behind the status bar (T4's regression).
     val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+
+    // Top-band luminance scrim: keeps status-bar icons legible over light covers.
+    val topBandAlpha = topBandScrimAlpha(accent.luminance())
 
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .playerBackground(ambience, scrimmed)
             .then(if (pane == PlayerPane.ARTWORK) dismissDrag else Modifier),
     ) {
-        // Artwork covers the top ~45% of the sheet when on the artwork pane.
-        // No artwork on lyrics/queue panes: the grabber's slot is the top inset instead.
-        val artHeight = if (pane == PlayerPane.ARTWORK) maxHeight * 0.45f else topInset + 44.dp
+        // Subtle canvas motion art behind everything, skipped under reduced motion.
+        CanvasMotionArt(accent, reduced, Modifier.fillMaxSize())
 
-        // Full-bleed cover, edge to edge from y = 0, under the status bar.
         if (pane == PlayerPane.ARTWORK) {
             BigArtwork(
                 now, ambient, Modifier
                     .fillMaxWidth()
-                    .height(artHeight),
+                    .height(maxHeight * 0.45f),
                 doubleTap = doubleTapSeek,
+                reduced = reduced,
                 onDoubleTap = {
                     val ms = position.value
                     val duration = now.durationMs
@@ -310,7 +320,15 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             )
         }
 
-        // The grabber and chevron ride over the cover but stay below the status bar.
+        // Top-band scrim overlay.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(topInset + 24.dp)
+                .align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = topBandAlpha), Color.Transparent))),
+        )
+
         Box(
             Modifier.fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
@@ -325,22 +343,24 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             ) { if (pane == PlayerPane.ARTWORK) onClose() else pane = PlayerPane.ARTWORK } }
         }
 
-        // Controls below the artwork, with horizontal gutter and clear of the nav bar.
         Column(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                 .padding(horizontal = 26.dp)
-                // No verticalScroll here: the weighted pane holds the queue's LazyColumn, and a
-                // lazy list inside a scroll measures with infinite height and crashes. The inset
-                // on this Column keeps the controls clear of the gesture bar instead.
-                .padding(top = artHeight),
+                .padding(top = if (pane == PlayerPane.ARTWORK) maxHeight * 0.45f else topInset + 44.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // The middle pane changes; lyrics and queue. Artwork pane has nothing here —
-            // the cover is full-bleed at the top.
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AnimatedContent(pane, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) }, label = "pane") { p ->
+                AnimatedContent(
+                    pane,
+                    transitionSpec = {
+                        val enter = if (reduced) fadeIn(tween(0)) else fadeIn(tween(Motion.Row, easing = Motion.EaseDrawer)) + slideInVertically(tween(Motion.Row, easing = Motion.EaseDrawer)) { 24 }
+                        val exit = if (reduced) fadeOut(tween(0)) else fadeOut(tween(Motion.Fade)) + slideOutVertically(tween(Motion.Fade, easing = Motion.EaseInQuart)) { 24 }
+                        enter togetherWith exit
+                    },
+                    label = "pane",
+                ) { p ->
                     when (p) {
                         PlayerPane.ARTWORK -> Unit
                         PlayerPane.LYRICS -> LyricsPane(now, position, accent, onSeek = { connection.seekTo(it) }) { menu = true }
@@ -349,7 +369,6 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
                 }
             }
 
-            // Title row — only on the artwork pane.
             if (pane == PlayerPane.ARTWORK) {
                 TitleRow(now, liked == true, accent, white, onClose, hapticsEnabled, onMenu = { menu = true }, onLike = {
                     connection.queue.value.getOrNull(connection.currentIndex.value)?.let { graph.library.setLiked(it, !(liked == true)) }
@@ -358,19 +377,14 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
             Scrubber(position, now.durationMs, white, onSeek = connection::seekTo, modifier = Modifier.padding(top = 10.dp), codecLabel = codecLabel)
 
-            // Up Next row: the next song's small cover, "Up Next", title, artist. Tap plays it.
-            // The queue already lists it, so the card would only repeat the first row there.
             if (nextItem != null && pane != PlayerPane.QUEUE) {
                 UpNextRow(nextItem, currentIndex, connection, white)
             }
 
-            // Transport: previous, play/pause (~72 dp), next. Shuffle/repeat moved to queue pane.
             TransportRow(now, connection, white, accent)
 
-            // Volume slider bound to STREAM_MUSIC, following hardware key changes.
             VolumeControlRow(audioManager, white)
 
-            // Bottom row: lyrics, output device, queue. Active pane gets the grey disc.
             val showLyrics = prefs?.get(Keys.ShowLyrics) != false
             BottomRow(pane, audioManager, white, showLyrics) { newPane -> pane = newPane }
         }
@@ -395,29 +409,47 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
     }
     if (sleepMenu) {
         SleepSheet(sleepAt) { minutes ->
-            if (minutes != -1) connection.sleepIn(minutes) // -1 = dismissed
+            if (minutes != -1) connection.sleepIn(minutes)
             sleepMenu = false
         }
     }
 }
 
-/** Big cover that eases back when paused: the record is resting. Full-bleed (no card/rounded frame);
- *  the fade to the canvas colour is baked into the ambience backdrop once per track. The gradient
- *  overlay at its bottom blends the art into the ambience background below, so there is no dark band. */
+@Composable
+private fun CanvasMotionArt(color: Color, reduced: Boolean, modifier: Modifier) {
+    if (reduced) return
+    // Single subtle circle, slow drift — one layer, one draw per frame, no infinite recomposition.
+    val transition = rememberInfiniteTransition(label = "canvasMotion")
+    val phase by transition.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(Motion.Ambient, easing = LinearEasing), RepeatMode.Restart),
+        label = "phase",
+    )
+    Canvas(modifier.graphicsLayer { alpha = 0.06f }) {
+        val r = size.minDimension * 0.3f
+        val x = phase * size.width
+        val y = size.height * 0.4f
+        drawCircle(color, radius = r, center = Offset(x, y))
+    }
+}
+
 @Composable
 private fun BigArtwork(
     now: NowPlaying,
     ambient: Color,
     modifier: Modifier = Modifier,
     doubleTap: Boolean = false,
+    reduced: Boolean = false,
     onDoubleTap: (() -> Unit)? = null,
 ) {
-    val scale by animateFloatAsState(if (now.isPlaying || now.isBuffering) 1f else 0.86f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
-    // Video thumbnails are letterboxed 4:3; zoom past the bars (see Artwork).
+    val scale by animateFloatAsState(
+        if (reduced || now.isPlaying || now.isBuffering) 1f else 0.86f,
+        if (reduced) tween(0) else spring(dampingRatio = 0.62f, stiffness = 260f),
+        label = "artScale",
+    )
     val letterboxed = dev.musicforge.playback.isLetterboxedThumbnail(now.metadata.artworkUri?.toString().orEmpty())
     val title = now.metadata.title?.toString().orEmpty()
     val artist = now.metadata.artist?.toString().orEmpty()
-    // Album art is the screen's primary graphic, not decorative — describe it for TalkBack.
     val contentDescription = when {
         title.isNotEmpty() && artist.isNotEmpty() -> "Album art, $title by $artist"
         title.isNotEmpty() -> "Album art, $title"
@@ -425,17 +457,10 @@ private fun BigArtwork(
         else -> null
     }
     val placeholder = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color.White.copy(alpha = 0.08f)) }
-    // A failed load draws a dim grey tile — not the same as the loading tile, so failures are visible.
     val error = remember { androidx.compose.ui.graphics.painter.ColorPainter(Color(0xFFBBBBBB).copy(alpha = 0.4f)) }
-    // Fade the bottom edge of the art into the canvas (ambient) colour, not into black, so the
-    // cover meets the controls without a visible dark band where two different gradients meet.
     val canvas = ambient.takeIf { it != Color.Unspecified } ?: Color(0xFF111114)
     val doubleTapModifier = if (doubleTap && onDoubleTap != null) {
-        Modifier.pointerInput(Unit) {
-            detectTapGestures(
-                onDoubleTap = { onDoubleTap() },
-            )
-        }
+        Modifier.pointerInput(Unit) { detectTapGestures(onDoubleTap = { onDoubleTap() }) }
     } else Modifier
     AsyncImage(
         model = now.metadata.artworkUri,
@@ -448,7 +473,6 @@ private fun BigArtwork(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-                // No clip or shadow: full-bleed artwork.
             }
             .drawWithContent {
                 drawContent()
@@ -475,13 +499,11 @@ private fun PlayerIcon(icon: ImageVector, label: String, tint: Color, size: Dp, 
     }
 }
 
-/** 56 dp grey circular button (like ★ and ⋯ on the right of the title row). */
 @Composable
 private fun DiscButton(icon: ImageVector, label: String, tint: Color, iconSize: Dp = 26.dp, onClick: () -> Unit) {
     val press = remember { MutableInteractionSource() }
     Box(
-        Modifier.size(56.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.12f))
-            .pressScale(press)
+        Modifier.size(56.dp).clip(RoundedCornerShape(50)).glass(RoundedCornerShape(50)).pressScale(press)
             .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -489,7 +511,6 @@ private fun DiscButton(icon: ImageVector, label: String, tint: Color, iconSize: 
     }
 }
 
-/** Title / artist on the left (tap artist to open them, long-press to copy), ★ and ⋯ discs on the right. */
 @Composable
 private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Color, onClose: () -> Unit, hapticsEnabled: Boolean, onMenu: () -> Unit, onLike: () -> Unit) {
     val title = now.metadata.title?.toString().orEmpty()
@@ -498,10 +519,7 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
     val haptics = LocalHapticFeedback.current
     val nav = LocalNavController.current
     Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        // A gap before the buttons, so a scrolling title never slides under the heart.
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            // A long title scrolls once, after a pause, instead of being cut off for good.
-            // Long-press copies "title – artist" (Metrolist).
             Text(
                 title,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.W700),
@@ -518,7 +536,6 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                             clipboard.setText(AnnotatedString(listOf(title, artist).filter { it.isNotEmpty() }.joinToString(" – ")))
                         },
                     )
-                    // Fade the right edge while it scrolls instead of chopping letters in half.
                     .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
                     .drawWithContent {
                         drawContent()
@@ -529,7 +546,6 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                     }
                     .basicMarquee(iterations = 1, initialDelayMillis = 2_000),
             )
-            // Tapping the artist opens them, as everywhere else in the app.
             val artistId = now.metadata.credits.firstOrNull { it.id != null }?.id
             Text(
                 now.error ?: artist,
@@ -541,7 +557,6 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
                     Modifier.clickable(onClickLabel = "Open $artist") { onClose(); nav.navigate(dev.musicforge.ui.Routes.artist(artistId)) }
                 } else Modifier,
             )
-            // Why this song is playing, when it wasn't simply picked: a Home shelf, or radio.
             val from = now.metadata.from
             if (now.error == null && from != null) {
                 Text(
@@ -565,7 +580,6 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
     }
 }
 
-/** The next song's cover, "Up Next", title, artist. Tap plays it. */
 @Composable
 private fun UpNextRow(item: androidx.media3.common.MediaItem, index: Int, connection: PlayerConnection, color: Color) {
     Row(
@@ -586,14 +600,15 @@ private fun UpNextRow(item: androidx.media3.common.MediaItem, index: Int, connec
     }
 }
 
-/** Transport: previous, play/pause (~72 dp), next. */
 @Composable
 private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: Color, accent: Color) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val shuffleTint = if (now.shuffle) accent else white.copy(alpha = 0.55f)
+        PlayerIcon(ForgeIcons.Shuffle, if (now.shuffle) "Shuffle on" else "Shuffle off", shuffleTint, 24.dp) { connection.toggleShuffle() }
         PlayerIcon(ForgeIcons.Previous, "Previous", white, 40.dp) { connection.previous() }
         Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
             AnimatedContent(
@@ -612,11 +627,21 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
         }
         val nextTint = if (now.hasNext) white else white.copy(alpha = 0.3f)
         val nextLabel = if (now.hasNext) "Next" else "Next, unavailable"
-        PlayerIcon(ForgeIcons.Next, nextLabel, nextTint, 40.dp) { connection.next() }
+        PlayerIcon(ForgeIcons.Next, nextLabel, nextTint, 40.dp) { if (now.hasNext) connection.next() }
+        val repeatIcon = when (now.repeatMode) {
+            androidx.media3.common.Player.REPEAT_MODE_ONE -> ForgeIcons.RepeatOne
+            else -> ForgeIcons.Repeat
+        }
+        val repeatTint = if (now.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF) accent else white.copy(alpha = 0.55f)
+        val repeatLabel = when (now.repeatMode) {
+            androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat one"
+            androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat all"
+            else -> "Repeat off"
+        }
+        PlayerIcon(repeatIcon, repeatLabel, repeatTint, 24.dp) { connection.cycleRepeat() }
     }
 }
 
-/** Bottom row: lyrics, output device, queue. Active pane gets the grey disc. */
 @Composable
 private fun BottomRow(pane: PlayerPane, audioManager: AudioManager, white: Color, showLyrics: Boolean, onSwitch: (PlayerPane) -> Unit) {
     Row(
@@ -630,7 +655,6 @@ private fun BottomRow(pane: PlayerPane, audioManager: AudioManager, white: Color
     }
 }
 
-/** Small circular button for the bottom row (lyrics, queue); active gets a grey disc. */
 @Composable
 private fun SmallPaneButton(icon: ImageVector, label: String, active: Boolean, white: Color, onClick: () -> Unit) {
     val press = remember { MutableInteractionSource() }
@@ -638,6 +662,7 @@ private fun SmallPaneButton(icon: ImageVector, label: String, active: Boolean, w
         Modifier
             .size(56.dp)
             .clip(RoundedCornerShape(50))
+            .glass(RoundedCornerShape(50))
             .pressScale(press)
             .background(if (active) white.copy(alpha = 0.18f) else Color.Transparent)
             .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
@@ -647,7 +672,6 @@ private fun SmallPaneButton(icon: ImageVector, label: String, active: Boolean, w
     }
 }
 
-/** Volume slider bound to STREAM_MUSIC, following hardware key changes via BroadcastReceiver. */
 @Composable
 private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
     val context = LocalContext.current
@@ -655,9 +679,6 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
     val max = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     var fraction by remember { mutableStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()) }
 
-    // A hardware volume key presses the STREAM_MUSIC stream and broadcasts it.
-    // VOLUME_CHANGED_ACTION and the EXTRA_* keys were removed from the SDK in API 37,
-    // so we use the string values directly; the system still sends this broadcast.
     DisposableEffect(Unit) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -673,8 +694,6 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         onDispose { context.unregisterReceiver(receiver) }
     }
 
-    // setStreamVolume is binder IPC: flush the local fraction once, off the main thread.
-    // Taps apply at once; drags debounce (~120 ms) and apply again when the finger lifts.
     var flushJob by remember { mutableStateOf<Job?>(null) }
     fun flushVolume() {
         flushJob?.cancel()
@@ -709,13 +728,8 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         Canvas(
             Modifier
                 .weight(1f)
-                // The Canvas itself is 48 dp tall; the 6 dp track is centred inside it. Before,
-                // `.height(6.dp).padding(vertical = 21.dp)` left the drawing area at zero and the
-                // slider vanished like a magician's assistant — the trick, not the reveal.
                 .height(48.dp)
                 .semantics {
-                    // TalkBack reads the range and current value, and adjusts via the setProgress
-                    // action (this Compose version exposes no Role.Slider).
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         (fraction * max).coerceIn(0f, max.toFloat()),
                         0f..max.toFloat(),
@@ -754,22 +768,17 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
     }
 }
 
-/** The active output device: icon + name; tap opens the system output switcher. */
 @Composable
 private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // getDevices() is binder IPC — run the lookup off the main thread and post the result back;
-    // the callbacks below refresh the same way on audio routing changes.
     var deviceInfo by remember { mutableStateOf<AudioDeviceInfo?>(null) }
 
     fun refreshDevice() = scope.launch {
         deviceInfo = withContext(Dispatchers.Default) { activeOutputDevice(audioManager) }
     }
 
-    // Initial lookup once the button enters composition (getDevices() is binder IPC, so it runs
-    // off the main thread via refreshDevice — running it synchronously here would block composition).
-    androidx.compose.runtime.LaunchedEffect(Unit) { refreshDevice() }
+    LaunchedEffect(Unit) { refreshDevice() }
 
     DisposableEffect(Unit) {
         val callback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -797,11 +806,8 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
         }
     }
 
-    // Before the first lookup lands, assume the phone itself; it is right almost every time.
     val builtin = deviceInfo == null || deviceInfo?.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
     val icon = if (builtin) PlayerIcons.VolumeUp else PlayerIcons.Headphones
-    // productName on the built-in speaker is the device model ("sdk_gphone64_x86_64" on an
-    // emulator), which means nothing to a listener. Bluetooth and wired devices keep their names.
     val label = when {
         builtin -> "This phone"
         else -> deviceInfo?.productName?.toString()?.takeIf { it.isNotBlank() } ?: "This phone"
@@ -820,11 +826,8 @@ private fun OutputDeviceButton(audioManager: AudioManager, color: Color) {
     }
 }
 
-/** The currently active output device: a connected headset/bluetooth, or the built-in speaker. */
 private fun activeOutputDevice(audioManager: AudioManager): AudioDeviceInfo? {
     val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-    // Only outputs a listener plugs in or pairs count as "not this phone": the emulator (and some
-    // phones) also list bus, telephony and remote-submix outputs named after the device model.
     return devices.firstOrNull { it.type in LISTENER_OUTPUTS }
         ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
 }
@@ -833,27 +836,31 @@ private val LISTENER_OUTPUTS = setOf(
     AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_LINE_ANALOG,
     AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLUETOOTH_SCO, AudioDeviceInfo.TYPE_USB_HEADSET,
     AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_HDMI, AudioDeviceInfo.TYPE_HEARING_AID,
-    26 /* TYPE_BLE_HEADSET, API 31 */, 27 /* TYPE_BLE_SPEAKER, API 31 */,
+    26, 27,
 )
 
-/** Open the system output switcher. The MEDIA_OUTPUT panel is missing on some builds
- *  (MagicOS) and gone entirely on API 35+, so fall back to sound settings — and never crash. */
 private fun openOutputSettings(context: Context) {
     val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         Intent("android.settings.panel.action.MEDIA_OUTPUT")
     } else {
         Intent(Settings.ACTION_SOUND_SETTINGS)
     }
-    // The output panel is missing on MagicOS and gone on API 35+ — this
-    // phone loves taking things away. Try both intents, then fess up.
     if (context.startActivitySilently(intent)) return
     if (context.startActivitySilently(Intent(Settings.ACTION_SOUND_SETTINGS))) return
     Toast.makeText(context, "Can't open output settings on this phone", Toast.LENGTH_SHORT).show()
 }
 
-/** Start `intent` as a new task unless nothing on the phone can handle it. */
 private fun Context.startActivitySilently(intent: Intent): Boolean =
     try {
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
-    } catch (e: RuntimeException) { false }
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: Exception) {
+        false
+    }
+
+private fun topBandScrimAlpha(artworkLuminance: Float): Float {
+    val luminance = artworkLuminance.coerceIn(0f, 1f)
+    return 0.16f + (0.65f - 0.16f) * luminance
+}
