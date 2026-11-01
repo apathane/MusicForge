@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import dev.musicforge.ui.designsystem.ForgeSheet
 import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import androidx.compose.ui.Modifier
@@ -63,7 +62,6 @@ import dev.musicforge.data.db.SongStats
 import dev.musicforge.graph
 import dev.musicforge.ui.CollectionKind
 import dev.musicforge.ui.LocalNavController
-import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.Routes
 import dev.musicforge.ui.player.clock
 import dev.musicforge.ui.player.codecPill
@@ -123,8 +121,8 @@ fun TrackActionsSheet(
         SongInfoDialog(item, onDismiss = { showingInfo.value = false })
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
+    ForgeSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(bottom = 12.dp)) {
             Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(meta.artworkUri?.toString(), 52.dp, corner = 8.dp)
                 Spacer(Modifier.width(14.dp))
@@ -162,7 +160,7 @@ fun TrackActionsSheet(
                             initialScale = 0.9f,
                         )) togetherWith fadeOut(tween(Motion.Instant))
                     } else {
-                        fadeIn(tween(140)) togetherWith fadeOut(tween(120))
+                        fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant))
                     }
                 },
                 label = "like",
@@ -174,7 +172,7 @@ fun TrackActionsSheet(
                 }
             }
             Action(ForgeIcons.PlaylistAdd, "Add to playlist") { pickedPlaylist.value = true }
-            extra.forEach { (label, run) -> Action(ForgeIcons.More, label) { run(); onDismiss() } }
+            extra.forEach { (label, run) -> Action(extraIcon(label), label) { run(); onDismiss() } }
             when (download?.state) {
                 Download.STATE_COMPLETED -> {
                     Action(ForgeIcons.Download, "Remove download") { graph.downloads.remove(item.mediaId); onDismiss() }
@@ -317,7 +315,7 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .animateItem(tween(220))
+                    .animateItem(placementSpec = tween(Motion.Fade))
                     .clickable { graph.library.addToPlaylist(item, p.playlist.id); onDone() }
                     .padding(horizontal = 24.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -331,16 +329,6 @@ private fun PlaylistPicker(item: MediaItem, onDone: () -> Unit) {
             }
         }
     }
-}
-
-@Composable
-private fun PillButton(text: String, onClick: () -> Unit) {
-    val press = remember { MutableInteractionSource() }
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier.pressScale(press),
-        interactionSource = press,
-    ) { Text(text) }
 }
 
 @Composable
@@ -378,4 +366,16 @@ fun askToRunInBackground(context: Context) {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
+}
+
+/**
+ * Icons for rows callers add to the sheet. Shortcut: matched on the label, which all callers write
+ * as literals; upgrade to an icon in the pair if a caller ever builds labels dynamically.
+ */
+private fun extraIcon(label: String) = when {
+    label == "Sleep timer" -> ForgeIcons.Sleep
+    label.startsWith("Remove") -> ForgeIcons.Delete
+    label == "Not for me" -> ForgeIcons.Delete
+    label.startsWith("Less of") -> ForgeIcons.Person
+    else -> ForgeIcons.More
 }

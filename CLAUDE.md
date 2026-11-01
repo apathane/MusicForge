@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-MusicForge is a YouTube Music player for Android (Kotlin, Jetpack Compose, Media3, Room). It was built from scratch on ideas from Metrolist (download engine), ConvX (screens, features, backup format) and BitChord (bounded-range transfers, monochrome style). GPL-3.0. The target device is an Honor X7b (Snapdragon 680, Adreno 610, Android 14, MagicOS, locale `en-ZA`).
+MusicForge is a YouTube Music player for Android (Kotlin, Jetpack Compose, Media3, Room). It was built from scratch on ideas from Metrolist (download engine), ConvX (screens, features, backup format) and BitChord (bounded-range transfers, monochrome style). AGPL-3.0 (from 0.15 P5; earlier releases GPL-3.0). Third-party code keeps its own licence (NOTICE). The target device is an Honor X7b (Snapdragon 680, Adreno 610, Android 14, MagicOS, locale `en-ZA`).
 
 ## Shared vault
 
@@ -70,7 +70,7 @@ JDK 21 and the Android SDK (compileSdk 37, minSdk 26, targetSdk 36).
 
 - Each development phase gets its own codename, set as `val codename` in `app/build.gradle.kts` (it becomes the launcher label and versionName suffix) until the app has a real name. Phases are tagged `phase-N-<codename>`.
 - Every APK handed over is also published as a GitHub release (`gh release create`), named `MusicForge-<version>.apk`.
-- Commit messages explain why and carry measurements when the change is about performance. Commits are authored `apathane <316078151+apathane@users.noreply.github.com>` (set in this repo's git config) with a `Co-Authored-By: Claude …` trailer. The remote is the private repo `apathane/MusicForge`.
+- Commit messages explain why and carry measurements when the change is about performance. Commits are authored `apathane <316078151+apathane@users.noreply.github.com>` (set in this repo's git config) with a `Co-Authored-By: Claude …` trailer. The remote is the public repo `apathane/MusicForge`.
 - Comments say why, at the density of the surrounding code; many record a measured fact or a device quirk. Keep that.
 - **Personality.** It is mandatory to include a joke or more in the code, hidden somewhere or not, hell a whole file that is dedicated to ass jokes (jokes that are ass, not jokes about ass....unless thats your thing, i aint judging) .
 - **Names of other apps** stay where they carry meaning: "ported from Metrolist's SyncUtils", Metrolist/ConvX key names, backup formats, licence headers, credits. Drop them where they are only "like X does".

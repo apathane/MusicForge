@@ -1,13 +1,16 @@
 package dev.musicforge.ui
 
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import dev.musicforge.ui.designsystem.Motion
+import dev.musicforge.ui.designsystem.GhostTransition
+import dev.musicforge.ui.designsystem.GhostTransition.recordTaps
+import dev.musicforge.ui.designsystem.GhostTransition.tilt
+import dev.musicforge.ui.designsystem.Physics
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -126,6 +129,10 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     val prefs by context.graph.settings.data.collectAsStateWithLifecycle(initialValue = null)
     val hapticsOn by androidx.compose.runtime.rememberUpdatedState(prefs?.get(Keys.HapticsEnabled) ?: true)
     val haptics = remember(context) { ForgeHaptics(context) { hapticsOn } }
+    // A failed YouTube write gets one toast and the local change stays (see LibraryActions). Yes, it's a toast, not a snackbar: the root has no host yet.
+    LaunchedEffect(context) {
+        context.graph.library.syncFailures.collect { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
+    }
     val keepScreenOn = prefs?.get(Keys.KeepScreenOn) == true
     // The start tab is applied once, by navigating like a tab tap: changing NavHost's
     // startDestination after the first frame would rebuild the graph and drop the back stack.
@@ -158,30 +165,30 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
     }
     CompositionLocalProvider(LocalGlassStyle provides glass, LocalNavController provides nav, LocalBottomInset provides inset, LocalHideTopBar provides hideTopBar, LocalHapticFeedback provides haptics) {
         // Under a fully open player the screen behind is never seen: don't paint it at all.
-        Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background))) {
+        Box(Modifier.fillMaxSize().then(if (covered) Modifier else Modifier.background(MaterialTheme.colorScheme.background)).recordTaps()) {
             // Under a fully open player nothing here is visible; an alpha-0 layer is skipped by the renderer.
             NavHost(
                 nav,
                 startDestination = Tab.Home.route,
-                // Tabs aren't a hierarchy, so they switch with a quick fade-through; a forward push is
-                // an arrival (rise + fade on EaseOutQuint). Back pops the same way but on the drawer
-                // curve (EaseDrawer) — the surface must never vanish on back, so pop exit always
-                // animates. Predictive back is left to Navigation; these only name the easing.
+                // Tabs aren't a hierarchy, so they switch with a quick fade-through. A pushed page grows
+                // out of the tapped spot with a slight tilt, and back is the exact reverse into the
+                // same spot (GhostTransition; the owner's motion rules in docs/motion). The page below
+                // steps back rather than vanishing, so back never reveals an empty frame.
                 enterTransition = {
                     if (targetState.destination.route in tabRoutes) fadeIn(tween(Motion.Fade))
-                    else fadeIn(tween(Motion.Arrive, easing = Motion.EaseOutQuint)) + slideInVertically(tween(Motion.Arrive, easing = Motion.EaseOutQuint)) { it / 8 }
+                    else GhostTransition.push(GhostTransition.originOf(targetState.id))
                 },
                 exitTransition = {
                     if (targetState.destination.route in tabRoutes) fadeOut(tween(Motion.Fade))
-                    else fadeOut(tween(Motion.Fade, easing = Motion.EaseInQuart)) + slideOutVertically(tween(Motion.Fade, easing = Motion.EaseInQuart)) { it / 8 }
+                    else GhostTransition.cover()
                 },
                 popEnterTransition = {
                     if (initialState.destination.route in tabRoutes) fadeIn(tween(Motion.Fade))
-                    else fadeIn(tween(Motion.Panel, easing = Motion.EaseDrawer)) + slideInVertically(tween(Motion.Panel, easing = Motion.EaseDrawer)) { -it / 8 }
+                    else GhostTransition.uncover()
                 },
                 popExitTransition = {
                     if (initialState.destination.route in tabRoutes) fadeOut(tween(Motion.Fade))
-                    else fadeOut(tween(Motion.Fade, easing = Motion.EaseInQuart)) + slideOutVertically(tween(Motion.Fade, easing = Motion.EaseInQuart)) { -it / 8 }
+                    else GhostTransition.pop(GhostTransition.originOf(initialState.id))
                 },
                 modifier = Modifier.graphicsLayer { alpha = if (covered) 0f else 1f }
                     .then(if (live != null) Modifier.layerBackdrop(live) else Modifier),
@@ -201,7 +208,12 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
                 page(Routes.CUSTOMISE_HOME) { CustomiseHomeScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.LOGIN) { LoginScreen(onDone = { nav.popBackStack() }) }
                 page(Routes.EQUALIZER) { dev.musicforge.ui.screens.EqualizerScreen(onBack = { nav.popBackStack() }) }
-                page(Routes.TASTE) { dev.musicforge.ui.screens.TasteScreen(onBack = { nav.popBackStack() }) }
+                page(Routes.TASTE) {
+                    dev.musicforge.ui.screens.TasteScreen(
+                        onBack = { nav.popBackStack() },
+                        onArtist = { nav.navigate(Routes.artist(it)) },
+                    )
+                }
                 page(Routes.STATS) { dev.musicforge.ui.screens.StatsScreen(onBack = { nav.popBackStack() }) }
                 page(Routes.ABOUT) { dev.musicforge.ui.screens.AboutScreen(onBack = { nav.popBackStack() }) }
                 page(
@@ -290,29 +302,42 @@ fun ScrollToTopOnReselect(list: androidx.compose.foundation.lazy.LazyListState) 
 
 @Composable
 private fun NavPill(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
+    // One lens slides between tabs instead of each tab fading its own chip: OpenGhost's dock lens,
+    // gliding on [260, 28] and stretching along its speed. Position is in tabs, read while drawing.
+    val lens = remember { androidx.compose.animation.core.Animatable(current.ordinal.toFloat()) }
+    LaunchedEffect(current) { lens.animateTo(current.ordinal.toFloat(), Physics.lensGlide()) }
+    val lensColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f)
     Row(
         modifier = modifier
             .glass(RoundedCornerShape(percent = 50))
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp)
+            .drawBehind {
+                val pitch = (72.dp + 2.dp).toPx()
+                val w = 72.dp.toPx()
+                val h = size.height
+                // Speed in px/s, the unit dock.js tuned its 0.03 against.
+                val (sx, sy) = Physics.stretchScale(Physics.stretchFor(lens.velocity * pitch))
+                val cx = lens.value * pitch + w / 2
+                drawRoundRect(
+                    lensColor,
+                    topLeft = androidx.compose.ui.geometry.Offset(cx - w * sx / 2, h / 2 - h * sy / 2),
+                    size = androidx.compose.ui.geometry.Size(w * sx, h * sy),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * sy / 2),
+                )
+            },
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Tab.entries.forEach { tab ->
             val selected = tab == current
             val tint by animateColorAsState(
                 if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-                tween(160),
+                tween(Motion.Fade),
                 label = "tabTint",
-            )
-            val chip by animateColorAsState(
-                if (selected) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.10f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0f),
-                tween(160),
-                label = "tabChip",
             )
             Column(
                 modifier = Modifier
                     .width(72.dp)
                     .height(52.dp)
-                    .background(chip, RoundedCornerShape(percent = 50))
                     .selectable(
                         selected = selected,
                         role = Role.Tab,
@@ -341,5 +366,10 @@ private fun androidx.navigation.NavGraphBuilder.page(
     arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
     content: @Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
 ) = composable(route, arguments = arguments) { entry ->
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { content(entry) }
+    // Tab roots switch 100 times a day: they fade, they don't lean.
+    val tilts = route !in tabRoutes && !dev.musicforge.ui.designsystem.reducedMotion()
+    Box(
+        Modifier.fillMaxSize().tilt(this, GhostTransition.originOf(entry.id), tilts)
+            .background(MaterialTheme.colorScheme.background),
+    ) { content(entry) }
 }

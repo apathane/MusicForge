@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,6 +39,8 @@ import dev.musicforge.ui.components.EmptyState
 import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.ScreenHeader
 import dev.musicforge.ui.components.SongRow
+import dev.musicforge.ui.designsystem.AnchoredMenu
+import dev.musicforge.ui.designsystem.AnchoredMenuItem
 import dev.musicforge.ui.designsystem.pressScale
 
 @Composable
@@ -77,10 +77,10 @@ fun LocalMusicScreen(sort: LocalSort, onBack: () -> Unit) {
                     Spacer(Modifier.width(2.dp))
                     Icon(ForgeIcons.More, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(16.dp))
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+                AnchoredMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     LocalSort.entries.forEach { s ->
-                        DropdownMenuItem(
-                            text = { Text(sortLabel(s)) },
+                        AnchoredMenuItem(
+                            text = sortLabel(s),
                             onClick = { vm.onSortChanged(s); expanded = false },
                         )
                     }

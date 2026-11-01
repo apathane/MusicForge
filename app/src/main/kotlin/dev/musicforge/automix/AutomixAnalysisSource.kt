@@ -1,0 +1,37 @@
+/*
+ * Ported from BitChord (https://github.com/kushagrasinghx/BitChord),
+ * Copyright (C) 2026 Kushagra Singh, licensed GPL-3.0.
+ * Copyright (C) 2026 apathane (MusicForge adaptation).
+ * Distributed in MusicForge under the AGPL-3.0 (GPLv3/AGPLv3 section 13). See NOTICE.
+ */
+package dev.musicforge.automix
+
+/**
+ * Keeps Automix analysis on the canonical YouTube Opus rendition.
+ *
+ * Playback may deliberately use a source substitute (including JioSaavn), but
+ * its cache entry is not interchangeable with the YouTube recording that the
+ * analysis fetcher owns. The plain video id is the cache key pinned to that
+ * YouTube copy; suffixed keys (`#alt`, `#hifi`, ...) belong to substitutes or
+ * upgrades.
+ */
+ object AutomixAnalysisSource {
+    const val OPUS_QUERY_PARAMETER = "automix_opus"
+
+    // MusicForge: a shared download files its bytes under the owner song's plain id, which is
+    // the same YouTube audio, so only BitChord's suffixed substitute keys are turned away.
+    fun isCanonicalYouTubeRendition(videoId: String?, cacheKey: String): Boolean =
+        videoId == null || cacheKey == videoId || '#' !in cacheKey
+
+    /**
+     * A private playback URI for analysis-only reads.
+     *
+     * A normal `watch?v=` URI is allowed to reuse the source race already
+     * pinned for audible playback. That is exactly the wrong thing for
+     * Automix: its independently cached copy must always be YouTube Opus,
+     * even while playback is JioSaavn or a lossless upgrade.
+     */
+    fun opusUri(videoId: String): String = "bitchord://watch?v=$videoId&$OPUS_QUERY_PARAMETER=1"
+
+    fun requestsYouTubeOpus(marker: String?): Boolean = marker == "1"
+}

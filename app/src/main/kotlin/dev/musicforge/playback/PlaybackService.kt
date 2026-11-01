@@ -3,6 +3,7 @@ package dev.musicforge.playback
 import coil3.request.allowHardware
 import android.app.PendingIntent
 import android.content.Intent
+import android.media.audiofx.AudioEffect
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -11,9 +12,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.session.MediaSession
-import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.LibraryResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.SettableFuture
 import com.google.common.util.concurrent.Futures
@@ -23,11 +23,18 @@ import com.metrolist.innertube.models.WatchEndpoint
 import dev.musicforge.MainActivity
 import dev.musicforge.data.prefs.Keys
 import dev.musicforge.graph
+import dev.musicforge.automix.AudioCache
+import dev.musicforge.automix.AutomixState
+import dev.musicforge.automix.CrossfadeController
+import dev.musicforge.automix.TrackAnalyzer
+import dev.musicforge.automix.TransitionFilterProcessor
+import dev.musicforge.automix.TransitionFilters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -46,7 +53,13 @@ class PlaybackService : MediaLibraryService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var player: ExoPlayer
+    private lateinit var spare: ExoPlayer
     private val equalizer = EqualizerProcessor()
+    private val equalizerB = EqualizerProcessor()
+    private var activeFilter = TransitionFilterProcessor()
+    private var spareFilter = TransitionFilterProcessor()
+    private var activeLoud = LoudnessProcessor()
+    private var spareLoud = LoudnessProcessor()
     private lateinit var session: MediaLibrarySession
     private val tree by lazy { BrowseTree(graph.database.dao()) }
     private val recorder get() = graph.recorder
@@ -78,38 +91,62 @@ class PlaybackService : MediaLibraryService() {
     private var radioContinuation: String? = null
     private var radioSeed: String? = null
 
-    override fun onCreate() {
-        super.onCreate()
+    private lateinit var trackAnalyzer: TrackAnalyzer
+    private lateinit var crossfade: CrossfadeController
+    private var trackLoudnessGain = mutableMapOf<String, Float>()
+
+    private fun buildPlayer(eq: EqualizerProcessor, filter: TransitionFilterProcessor, loudness: LoudnessProcessor, ownsFocus: Boolean): ExoPlayer {
         val engine = graph.mediaEngine
-        // The equaliser runs inside our audio pipeline, so it works on every phone.
         val renderers = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: android.content.Context,
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean,
-            ): androidx.media3.exoplayer.audio.AudioSink =
-                androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
-                    .setAudioProcessors(arrayOf(equalizer))
+            ): androidx.media3.exoplayer.audio.AudioSink {
+                // EQ and loudness stay Media3 processors on 16-bit PCM; Automix's transition filter
+                // runs in BitChord's Float32 path around them, which is what lets the loop mix
+                // splice its decks in and keep playing after the song stops feeding it.
+                val delegate = androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setAudioProcessors(arrayOf(eq, loudness))
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                     .build()
+                return dev.musicforge.automix.PrecisionAudioSink(
+                    delegate = delegate,
+                    dspChain = dev.musicforge.automix.DspChain(filter),
+                    // 16-bit out: MusicForge's EqualizerProcessor only takes PCM16.
+                    enableFloatOutput = false,
+                    isAudible = { filter === activeFilter },
+                )
+            }
         }
-        player = ExoPlayer.Builder(this, renderers)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(engine.playbackSource()))
+        val mediaSourceFactory = DefaultMediaSourceFactory(engine.playbackSource())
+        return ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
-                /* handleAudioFocus = */ true,
+                ownsFocus,
             )
-            .setHandleAudioBecomingNoisy(true)
+            .setHandleAudioBecomingNoisy(ownsFocus)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        val engine = graph.mediaEngine
+
+        player = buildPlayer(equalizer, activeFilter, activeLoud, ownsFocus = true)
+        spare = buildPlayer(equalizerB, spareFilter, spareLoud, ownsFocus = false)
+        spare.audioSessionId = player.audioSessionId
+
         player.addListener(listener)
         // Let system and third-party equalisers attach to our audio.
         graph.audioSessionId = player.audioSessionId
         sendBroadcast(
-            android.content.Intent(android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
-                .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
-                .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName)
-                .putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC),
+            Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
+                .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
+                .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+                .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC),
         )
 
         session = MediaLibrarySession.Builder(this, player, callback)
@@ -122,6 +159,74 @@ class PlaybackService : MediaLibraryService() {
             )
             .setMediaButtonPreferences(listOf(likeButton(false)))
             .build()
+
+        trackAnalyzer = TrackAnalyzer(this, AudioCache(engine.downloadCache, engine.playerCache, engine::storageKey, engine.playbackSource()))
+        crossfade = CrossfadeController(
+            scope = scope,
+            active = { player },
+            standby = { spare },
+            onHandoff = ::adoptPlayer,
+            analysisFor = { item -> trackAnalyzer.analysisFor(item.mediaId) },
+            requestAnalysis = { item, ms ->
+                item.localConfiguration?.uri?.let { uri ->
+                    trackAnalyzer.request(item.mediaId, uri, ms / 1000.0)
+                }
+            },
+            filters = object : TransitionFilters {
+                override fun incoming(lowPassHz: Float, highPassHz: Float) = activeFilter.setCutoffs(lowPassHz, highPassHz)
+                override fun outgoing(lowPassHz: Float, highPassHz: Float) = spareFilter.setCutoffs(lowPassHz, highPassHz)
+                override fun incomingLeadMs(): Long = activeFilter.leadUs / 1000
+                override fun outgoingLeadMs(): Long = spareFilter.leadUs / 1000
+                override fun incomingEcho(delaySeconds: Float, send: Float, dry: Float) = activeFilter.setEcho(delaySeconds, send, dry)
+                override fun outgoingEcho(delaySeconds: Float, send: Float, dry: Float) = spareFilter.setEcho(delaySeconds, send, dry)
+                override fun parkEchoes() {
+                    activeFilter.setEcho(0f, 0f, 1f)
+                    spareFilter.setEcho(0f, 0f, 1f)
+                }
+            },
+            analysisRunningFor = { item -> trackAnalyzer.isAnalysing(item.mediaId) },
+            onArmIncoming = { item, _ -> spareLoud.trackGain = trackLoudnessGain[item.mediaId] ?: 1f },
+            onBlendHeadroom = { trim ->
+                activeLoud.blendTrim = trim
+                spareLoud.blendTrim = trim
+            },
+            mixWaveform = { item, durationMs, from, to, bins ->
+                item.localConfiguration?.uri?.let { uri ->
+                    trackAnalyzer.mixWaveform(item.mediaId, uri, durationMs / 1000.0, from, to, bins)
+                }
+            },
+            loopRegion = { item, durationMs, from, to, rate ->
+                item.localConfiguration?.uri?.let { uri ->
+                    trackAnalyzer.loopRegion(item.mediaId, uri, durationMs / 1000.0, from, to, rate)
+                }
+            },
+            loopPortOf = { target ->
+                when {
+                    target === player -> activeFilter.loop
+                    target === spare -> spareFilter.loop
+                    else -> null
+                }
+            },
+            loudnessGain = { id -> trackLoudnessGain[id] ?: 1f },
+            // The loop mix keeps its loops out of sung bars: synced lyrics say where the singing is,
+            // on top of the vocal model. Plain or missing lyrics leave it to the model alone.
+            syncedLines = { item, durationMs ->
+                val meta = item.mediaMetadata
+                val lyrics = runCatching {
+                    withContext(Dispatchers.IO) { graph.lyrics.lyrics(
+                        videoId = item.mediaId,
+                        title = meta.title?.toString().orEmpty(),
+                        artist = meta.artist?.toString().orEmpty(),
+                        album = meta.albumTitle?.toString(),
+                        durationSec = (durationMs / 1000).toInt().takeIf { it > 0 },
+                    ) }
+                }.getOrNull()
+                (lyrics as? dev.musicforge.data.lyrics.Lyrics.Synced)?.lines?.map {
+                    dev.musicforge.automix.LyricLine(timeMs = it.timeMs, text = it.text, isGap = it.text.isBlank())
+                }
+            },
+        )
+        crossfade.start()
 
         // Pick up where you left off, paused: nothing is fetched until you press play.
         scope.launch {
@@ -140,20 +245,35 @@ class PlaybackService : MediaLibraryService() {
         }
         scope.launch {
             graph.settings.data.map { it[Keys.SkipSilence] ?: false }.distinctUntilChanged()
-                .collect { player.skipSilenceEnabled = it }
+                .collect { skip ->
+                    player.skipSilenceEnabled = skip
+                    spare.skipSilenceEnabled = skip
+                }
         }
         scope.launch {
             graph.settings.data.map { it[Keys.AudioNormalization] ?: true }.distinctUntilChanged()
                 .collect { normalize = it; applyLoudness() }
         }
         scope.launch {
+            graph.settings.data
+                .map { Triple(it[Keys.CrossfadeEnabled] ?: false, it[Keys.AutomixEnabled] ?: false, it[Keys.CrossfadeSeconds] ?: 6f) }
+                .distinctUntilChanged()
+                .collect { (crossfadeOn, automixOn, seconds) ->
+                    AutomixState.smartFadeEnabled.value = crossfadeOn && automixOn
+                    AutomixState.crossfadeSeconds.value = if (crossfadeOn) Math.round(seconds) else 0
+                }
+        }
+        scope.launch {
             graph.settings.data.map { (it[Keys.EqEnabled] ?: false) to EqSettings.parse(it[Keys.EqLevels]) }
                 .distinctUntilChanged()
-                .collect { (on, levels) -> equalizer.set(on, levels.map { it / 100f }) }
+                .collect { (on, levels) ->
+                    equalizer.set(on, levels.map { it / 100f })
+                    equalizerB.set(on, levels.map { it / 100f })
+                }
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = session
+    override fun onGetSession(controllerInfo: androidx.media3.session.MediaSession.ControllerInfo): MediaLibrarySession = session
 
     private val likeCommand = androidx.media3.session.SessionCommand(ACTION_LIKE, android.os.Bundle.EMPTY)
 
@@ -190,13 +310,13 @@ class PlaybackService : MediaLibraryService() {
     private val callback = object : MediaLibrarySession.Callback {
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
+            browser: androidx.media3.session.MediaSession.ControllerInfo,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
 
         override fun onGetChildren(
             session: MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
+            browser: androidx.media3.session.MediaSession.ControllerInfo,
             parentId: String,
             page: Int,
             pageSize: Int,
@@ -209,7 +329,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun onGetItem(
             session: MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
+            browser: androidx.media3.session.MediaSession.ControllerInfo,
             mediaId: String,
         ): ListenableFuture<LibraryResult<MediaItem>> = future {
             withContext(Dispatchers.IO) { tree.song(mediaId) }?.let { LibraryResult.ofItem(it, null) }
@@ -218,7 +338,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun onSearch(
             session: MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
+            browser: androidx.media3.session.MediaSession.ControllerInfo,
             query: String,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<Void>> = future {
@@ -229,7 +349,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun onGetSearchResult(
             session: MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
+            browser: androidx.media3.session.MediaSession.ControllerInfo,
             query: String,
             page: Int,
             pageSize: Int,
@@ -238,16 +358,16 @@ class PlaybackService : MediaLibraryService() {
             LibraryResult.ofItemList(withContext(Dispatchers.IO) { tree.search(query) }, params)
         }
 
-        override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult =
-            MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+        override fun onConnect(session: androidx.media3.session.MediaSession, controller: androidx.media3.session.MediaSession.ControllerInfo): androidx.media3.session.MediaSession.ConnectionResult =
+            androidx.media3.session.MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(
-                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(likeCommand).build(),
+                    androidx.media3.session.MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(likeCommand).build(),
                 )
                 .build()
 
         override fun onCustomCommand(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
+            session: androidx.media3.session.MediaSession,
+            controller: androidx.media3.session.MediaSession.ControllerInfo,
             customCommand: androidx.media3.session.SessionCommand,
             args: android.os.Bundle,
         ): ListenableFuture<androidx.media3.session.SessionResult> {
@@ -264,18 +384,18 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onPlaybackResumption(
-            mediaSession: MediaSession,
-            controller: MediaSession.ControllerInfo,
+            mediaSession: androidx.media3.session.MediaSession,
+            controller: androidx.media3.session.MediaSession.ControllerInfo,
             isForPlayback: Boolean,
-        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = future {
+        ): ListenableFuture<androidx.media3.session.MediaSession.MediaItemsWithStartPosition> = future {
             // Headset play button, widget or the system's resume card with nothing loaded.
             val saved = queueStore.load() ?: throw UnsupportedOperationException("no saved queue")
-            MediaSession.MediaItemsWithStartPosition(saved.items, saved.index, saved.positionMs)
+            androidx.media3.session.MediaSession.MediaItemsWithStartPosition(saved.items, saved.index, saved.positionMs)
         }
 
         override fun onAddMediaItems(
-            mediaSession: MediaSession,
-            controller: MediaSession.ControllerInfo,
+            mediaSession: androidx.media3.session.MediaSession,
+            controller: androidx.media3.session.MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> = future {
             // Voice search from a car ("play Portishead"): resolve the query into songs.
@@ -350,25 +470,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            flushPlay()
-            // Seamless auto-advance never stops playing; measure only user-driven starts.
-            transitionAt = if (player.isPlaying) 0 else android.os.SystemClock.elapsedRealtime()
-            // The UI replaced the queue: radio should follow the new music, not the old seed.
-            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) resetRadio()
-            currentItem = mediaItem
-            watchLiked(mediaItem?.mediaId)
-            mediaItem?.let { graph.scope.launch { runCatching { graph.listenBrainz.playingNow(it) } } }
-            // Capture a fresh nonce and the cookie for YouTube Music history push; registerPlayback
-            // is called later from checkpoint() once the play has counted.
-            playStartNonce = com.metrolist.innertubex.extraction.generateClientPlaybackNonce()
-            playStartCookie = YouTube.cookie
-            mediaItem?.let { readAhead.cancel(it.mediaId) }
-            updateReadAhead()
-            if (mediaItem != null) {
-                scope.launch(Dispatchers.IO) { runCatching { recorder.ensureSong(mediaItem) } }
-            }
-            maybeExtendRadio()
-            updateWidget()
+            trackBecameCurrent(mediaItem, reason)
         }
 
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -393,14 +495,12 @@ class PlaybackService : MediaLibraryService() {
 
     private var normalize = true
 
-    /**
-     * Brings loud masters down to YouTube's -14 LUFS reference using the loudness YouTube
-     * reports for each track. Attenuation only, so nothing can clip and no extra DSP runs.
-     */
+    /** Loudness attenuation for the current track; stored per media id for crossfade. */
     private fun applyLoudness() {
         val id = player.currentMediaItem?.mediaId ?: return
         if (!normalize) {
-            player.volume = 1f
+            trackLoudnessGain[id] = 1f
+            activeLoud.trackGain = 1f
             return
         }
         scope.launch {
@@ -408,9 +508,57 @@ class PlaybackService : MediaLibraryService() {
             if (player.currentMediaItem?.mediaId != id) return@launch
             val measuredLufs = format?.perceptualLoudnessDb ?: format?.loudnessDb?.let { it + TARGET_LUFS }
             val gainDb = measuredLufs?.let { (TARGET_LUFS - it).coerceIn(-15.0, 0.0) } ?: 0.0
-            player.volume = Math.pow(10.0, gainDb / 20.0).toFloat()
-            Timber.d("loudness %s: measured %.1f LUFS -> gain %.1f dB (volume %.2f)", id, measuredLufs ?: Double.NaN, gainDb, player.volume)
+            val gain = Math.pow(10.0, gainDb / 20.0).toFloat()
+            trackLoudnessGain[id] = gain
+            activeLoud.trackGain = gain
+            Timber.d("loudness %s: measured %.1f LUFS -> gain %.1f dB", id, measuredLufs ?: Double.NaN, gainDb)
         }
+    }
+
+    private fun adoptPlayer(outgoing: ExoPlayer, incoming: ExoPlayer) {
+        outgoing.removeListener(listener)
+        // Hand audio focus and becoming-noisy from outgoing to incoming.
+        val attrs = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
+        outgoing.setAudioAttributes(attrs, false)
+        incoming.setAudioAttributes(attrs, true)
+        outgoing.setHandleAudioBecomingNoisy(false)
+        incoming.setHandleAudioBecomingNoisy(true)
+
+        player = incoming
+        spare = outgoing
+        // Swap filter and loudness roles.
+        val tmpFilter = activeFilter
+        activeFilter = spareFilter
+        spareFilter = tmpFilter
+        val tmpLoud = activeLoud
+        activeLoud = spareLoud
+        spareLoud = tmpLoud
+
+        incoming.addListener(listener)
+        session.player = incoming
+        trackBecameCurrent(incoming.currentMediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+    }
+
+    private fun trackBecameCurrent(mediaItem: MediaItem?, reason: Int) {
+        flushPlay()
+        // Seamless auto-advance never stops playing; measure only user-driven starts.
+        transitionAt = if (player.isPlaying) 0 else android.os.SystemClock.elapsedRealtime()
+        // The UI replaced the queue: radio should follow the new music, not the old seed.
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) resetRadio()
+        currentItem = mediaItem
+        watchLiked(mediaItem?.mediaId)
+        mediaItem?.let { graph.scope.launch { runCatching { graph.listenBrainz.playingNow(it) } } }
+        // Capture a fresh nonce and the cookie for YouTube Music history push; registerPlayback
+        // is called later from checkpoint() once the play has counted.
+        playStartNonce = com.metrolist.innertubex.extraction.generateClientPlaybackNonce()
+        playStartCookie = YouTube.cookie
+        mediaItem?.let { readAhead.cancel(it.mediaId) }
+        updateReadAhead()
+        if (mediaItem != null) {
+            scope.launch(Dispatchers.IO) { runCatching { recorder.ensureSong(mediaItem) } }
+        }
+        maybeExtendRadio()
+        updateWidget()
     }
 
     private fun updateReadAhead() {
@@ -514,7 +662,7 @@ class PlaybackService : MediaLibraryService() {
             }
             val result = withContext(Dispatchers.IO) { YouTube.next(endpoint, radioContinuation) }.getOrNull() ?: return@launch
             radioContinuation = result.continuation
-            val queued = (0 until player.mediaItemCount).mapTo(HashSet()) { player.getMediaItemAt(it).mediaId }
+            val queued = (0 until player.mediaItemCount).mapTo(java.util.HashSet()) { player.getMediaItemAt(it).mediaId }
             val fresh = result.items.filterFresh(queued) { it.id }.map { it.toMediaItem().markedFromRadio() }
             if (fresh.isNotEmpty() && allowed()) player.addMediaItems(fresh)
         }
@@ -562,9 +710,9 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onDestroy() {
         sendBroadcast(
-            android.content.Intent(android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION)
-                .putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
-                .putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName),
+            Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION)
+                .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
+                .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName),
         )
         checkpointJob?.cancel()
         widgetJob?.cancel()
@@ -580,8 +728,11 @@ class PlaybackService : MediaLibraryService() {
         readAhead.release()
         player.removeListener(listener)
         flushPlay()
+        crossfade.release()
+        trackAnalyzer.release()
         session.release()
         player.release()
+        spare.release()
         scope.cancel()
         super.onDestroy()
     }

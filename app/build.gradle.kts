@@ -12,14 +12,26 @@ plugins {
 // then 0.14.1 (1419). Keep preview numbers from 1 through 8.
 val phase = 15
 val patch = 0
-val preview = 3
+val preview = 8
 val codename = "Toccata"
 
 android {
     namespace = "dev.musicforge"
     compileSdk = 37
+    // Automix's native analyzer and loop-mix renderer (app/src/main/cpp, native/). Pinned so CI
+    // and this machine build the same .so files.
+    ndkVersion = "28.2.13676358"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "4.1.2"
+        }
+    }
 
     defaultConfig {
+        // arm64 for phones (the X7b), x86_64 for the emulator. ONNX Runtime ships .so files for
+        // every ABI; without this filter it would add ~4 copies to the APK.
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         applicationId = "dev.musicforge.app"
         minSdk = 26
         targetSdk = 36
@@ -124,6 +136,9 @@ dependencies {
     implementation(libs.palette)
     implementation(libs.reorderable)
     implementation(libs.timber)
+    // Automix's beat (Beat This!) and vocal (Open-Unmix) models. The full android artifact, as
+    // BitChord uses: onnxruntime-mobile only loads .ort files, and the models ship as .onnx.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.28.0")
     coreLibraryDesugaring(libs.desugaring)
 
     testImplementation(libs.junit)
@@ -132,6 +147,8 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.room.testing)
+    // Plain JVM tests get android.jar stubs for org.json, which throw. The real one is test-only.
+    testImplementation("org.json:json:20240303")
 }
 
 // Robolectric's native SQLite needs these on JDK 17+.

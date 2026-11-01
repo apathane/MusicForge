@@ -76,4 +76,4 @@ Any coding agent (Claude Code, OpenCode, Kilo, Codex, Freebuff) starts at [AGENT
 
 ---
 
-*MusicForge is GPL-3.0. See [LICENSE](LICENSE).*
+*MusicForge is AGPL-3.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).*

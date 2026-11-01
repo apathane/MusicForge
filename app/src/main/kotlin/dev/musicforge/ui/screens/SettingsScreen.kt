@@ -32,6 +32,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import dev.musicforge.ui.designsystem.PhysicsSlider
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -243,6 +246,10 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun checkForUpdates() = viewModelScope.launch { graph.updater.checkNow() }
 
     fun installUpdate(release: ReleaseInfo) = viewModelScope.launch { graph.updater.install(release) }
+
+    fun skipUpdate(release: ReleaseInfo) = graph.updater.skip(release)
+
+    fun unskipUpdate() = graph.updater.unskip()
 }
 
 @Composable
@@ -391,6 +398,24 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             ToggleRow("Double-tap cover to seek", prefs?.get(Keys.DoubleTapSeek) ?: true, subtitle = "Rewind or skip 10 seconds") { vm.set(Keys.DoubleTapSeek, it) }
             ToggleRow("Swipe mini player to skip", prefs?.get(Keys.SwipeMiniToSkip) ?: true) { vm.set(Keys.SwipeMiniToSkip, it) }
             ActionRow("Equalizer", "Bands and presets, on any phone", onEqualizer)
+            ToggleRow("Crossfade", prefs?.get(Keys.CrossfadeEnabled) ?: false, subtitle = "Blend one song into the next") { vm.set(Keys.CrossfadeEnabled, it) }
+            if (prefs?.get(Keys.CrossfadeEnabled) == true) {
+                // Whole seconds only: "6 s", not "6.0 s".
+                val seconds = (prefs?.get(Keys.CrossfadeSeconds) ?: 6f).coerceIn(1f, 12f)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    Text("Crossfade length", style = MaterialTheme.typography.titleSmall)
+                    PhysicsSlider(
+                        value = seconds.toInt() - 1, // steps 0..11 are 1..12 s
+                        max = 11,
+                        onValueChange = { vm.set(Keys.CrossfadeSeconds, (it + 1).toFloat()) },
+                        contentDescription = "Crossfade length",
+                        stateDescription = "${seconds.toInt()} seconds",
+                    )
+                    Text("${seconds.toInt()} s", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                ToggleRow("Automix", prefs?.get(Keys.AutomixEnabled) ?: false, subtitle = "Beat-matched blends between songs, from BitChord's automix") { vm.set(Keys.AutomixEnabled, it) }
+                ToggleRow("Keep albums gapless", prefs?.get(Keys.CrossfadeGapless) ?: false, subtitle = "No blend between tracks of the same album") { vm.set(Keys.CrossfadeGapless, it) }
+            }
         }
 
         SectionTitle("Lyrics")
@@ -525,6 +550,8 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
                 state = updateState,
                 onCheck = { vm.checkForUpdates() },
                 onInstall = { release -> vm.installUpdate(release) },
+                onSkip = { release -> vm.skipUpdate(release) },
+                onUnskip = { vm.unskipUpdate() },
             )
             ToggleRow(
                 "Include previews",
@@ -535,7 +562,7 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · GPL-3.0\nOpen source; credits are under About.",
+            "${BuildConfig.CODENAME} ${BuildConfig.VERSION_NAME} · AGPL-3.0\nOpen source; credits are under About.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -646,6 +673,8 @@ private fun UpdateCheckRow(
     state: UpdateState,
     onCheck: () -> Unit,
     onInstall: (ReleaseInfo) -> Unit,
+    onSkip: (ReleaseInfo) -> Unit,
+    onUnskip: () -> Unit,
 ) {
     val subtitle = when (state) {
         is UpdateState.Idle -> "Version ${BuildConfig.VERSION_NAME} · tap to check"
@@ -655,6 +684,7 @@ private fun UpdateCheckRow(
         is UpdateState.Downloading -> "Downloading… ${(state.progress * 100).roundToInt()}%"
         is UpdateState.Installing -> "Opening installer…"
         is UpdateState.Failed -> state.message
+        is UpdateState.Skipped -> "${state.release.versionName} skipped · tap to bring it back"
     }
     val press = remember { MutableInteractionSource() }
     Column(
@@ -664,6 +694,7 @@ private fun UpdateCheckRow(
             .clickable(interactionSource = press, indication = null, role = androidx.compose.ui.semantics.Role.Button) {
                 when (state) {
                     is UpdateState.Available -> onInstall(state.release)
+                    is UpdateState.Skipped -> onUnskip()
                     is UpdateState.Idle, is UpdateState.UpToDate, is UpdateState.Failed -> onCheck()
                     else -> Unit
                 }
@@ -677,6 +708,10 @@ private fun UpdateCheckRow(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 progress = state.progress.coerceIn(0f, 1f),
             )
+        }
+        if (state is UpdateState.Available) {
+            // Skipping is a choice, not a delete: the row says so and offers the way back.
+            TextButton(onClick = { onSkip(state.release) }) { Text("Skip this version") }
         }
     }
 }

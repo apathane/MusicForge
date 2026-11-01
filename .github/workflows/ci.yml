@@ -64,9 +64,12 @@ jobs:
         run: |
           set -euo pipefail
 
+          # ndk and cmake: Automix's native analyzer and loop-mix renderer (pinned in app/build.gradle.kts).
           sdkmanager --install --channel=3 \
             "platforms;android-37.0" \
-            "build-tools;36.0.0"
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;4.1.2"
 
       - name: Verify Android SDK
         shell: bash
@@ -103,9 +106,11 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      # The permanent release key (repository secrets). Absent on forks' PRs: the release APK
-      # is then debug-signed, which is fine for a check but never for publishing.
+      # The permanent release key (repository secrets). Only on main: agent/** branches and PRs
+      # run workflow code that anyone who can push can edit, so they never see the keystore.
+      # Their release APK is debug-signed, which is fine for a check but never for publishing.
       - name: Restore release signing key
+        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           KEYSTORE_B64: ${{ secrets.MUSICFORGE_KEYSTORE_B64 }}
         shell: bash
@@ -118,8 +123,9 @@ jobs:
       - name: Build, test and lint
         shell: bash
         env:
-          MUSICFORGE_KEYSTORE_PASSWORD: ${{ secrets.MUSICFORGE_KEYSTORE_PASSWORD }}
-          MUSICFORGE_KEY_ALIAS: ${{ secrets.MUSICFORGE_KEY_ALIAS }}
+          # Empty off main, so the build falls back to the debug key there (see the restore step).
+          MUSICFORGE_KEYSTORE_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.MUSICFORGE_KEYSTORE_PASSWORD || '' }}
+          MUSICFORGE_KEY_ALIAS: ${{ github.ref == 'refs/heads/main' && secrets.MUSICFORGE_KEY_ALIAS || '' }}
         run: |
           set -euo pipefail
 
@@ -143,14 +149,27 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Debug-signed off main, so uploading it there would hand out a build that looks like a release.
+      # (The debug key is the least secret key in the repo: every laptop with Android Studio has a copy.)
       - name: Upload release APK
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v7
         with:
           name: MusicForge-release-apk-${{ github.run_number }}
           path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release/*.apk
           if-no-files-found: ignore
           retention-days: 7
+
+      # The same minified build off main, named so nobody mistakes it for a release: R8-only crashes
+      # (P5/P6 shipped one in ONNX Runtime's JNI) never show up in the unminified debug APK.
+      - name: Upload R8 check APK (debug-signed, not a release)
+        if: ${{ !cancelled() && github.ref != 'refs/heads/main' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: MusicForge-r8-check-debug-signed-${{ github.run_number }}
+          path: /dev/shm/musicforge-build-MusicForge/app/outputs/apk/release/*.apk
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Upload test and lint reports
         if: ${{ !cancelled() }}

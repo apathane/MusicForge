@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -117,6 +118,9 @@ import dev.musicforge.ui.components.ForgeIcons
 import dev.musicforge.ui.components.TrackActionsSheet
 import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.designsystem.BufferingIndicator
+import dev.musicforge.ui.designsystem.GhostTransition
+import dev.musicforge.ui.designsystem.Mirror
+import dev.musicforge.ui.designsystem.Motion
 import dev.musicforge.ui.designsystem.pressScale
 import dev.musicforge.ui.theme.Ambience
 import dev.musicforge.ui.theme.LocalArtworkColors
@@ -144,8 +148,10 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
         val scope = rememberCoroutineScope()
 
         // Open/close follows `open`; drags move the same Animatable so they can interrupt it.
+        // Opening and closing are one curve played both ways (Mirror.Panel), so the sheet sinks back
+        // into the mini player exactly the way it rose out of it; a drag hands over mid-flight.
         androidx.compose.runtime.LaunchedEffect(open) {
-            offset.animateTo(if (open) 0f else heightPx, spring(dampingRatio = 0.86f, stiffness = 420f))
+            offset.animateTo(if (open) 0f else heightPx, if (open) Mirror.Panel.enter() else Mirror.Panel.exit())
         }
         BackHandler(enabled = open) { onClose() }
         // Tell the host when the sheet fully covers the screen, so it can stop drawing what's behind.
@@ -176,6 +182,16 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
                 .fillMaxSize()
                 .graphicsLayer {
                     translationY = offset.value
+                    // Rises out of the mini player: narrower and leaning back low down, full size and
+                    // flat at the top. Read off the same offset as the slide, so closing (or a drag)
+                    // is the exact reverse of opening.
+                    val travel = (offset.value / heightPx).coerceIn(0f, 1f)
+                    val grow = 1f - 0.08f * travel
+                    scaleX = grow
+                    scaleY = grow
+                    rotationX = GhostTransition.TILT_DEG * travel
+                    transformOrigin = TransformOrigin(0.5f, 1f)
+                    cameraDistance = 12f * density
                     // Moving and clipping happen on one layer: the sheet's content is recorded once and
                     // the slide is pure compositing, and the rounded clip is a hardware outline clip.
                     shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
@@ -340,7 +356,7 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
             // The middle pane changes; lyrics and queue. Artwork pane has nothing here —
             // the cover is full-bleed at the top.
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AnimatedContent(pane, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) }, label = "pane") { p ->
+                AnimatedContent(pane, transitionSpec = { fadeIn(tween(Motion.Fade)) togetherWith fadeOut(tween(Motion.Fade)) }, label = "pane") { p ->
                     when (p) {
                         PlayerPane.ARTWORK -> Unit
                         PlayerPane.LYRICS -> LyricsPane(now, position, accent, onSeek = { connection.seekTo(it) }) { menu = true }
@@ -378,18 +394,8 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
     if (menu) {
         graph.player.queue.value.getOrNull(graph.player.currentIndex.value)?.let { item ->
-            val extras = mutableListOf<Pair<String, () -> Unit>>()
-            extras += "Sleep timer" to { sleepMenu = true; menu = false }
-            val done = download?.state == Download.STATE_COMPLETED
-            if (done) {
-                extras += "Remove download" to { graph.downloads.remove(item.mediaId); menu = false }
-            } else {
-                extras += "Download" to {
-                    askToRunInBackground(context)
-                    graph.downloads.download(listOf(item))
-                    menu = false
-                }
-            }
+            // Download/remove/cancel come from the sheet itself; adding them here showed "Download" twice.
+            val extras = listOf<Pair<String, () -> Unit>>("Sleep timer" to { sleepMenu = true; menu = false })
             TrackActionsSheet(item, extra = extras) { menu = false }
         } ?: run { menu = false }
     }
@@ -555,7 +561,7 @@ private fun TitleRow(now: NowPlaying, liked: Boolean, accent: Color, white: Colo
         }
         AnimatedContent(
             targetState = liked to accent,
-            transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+            transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) },
             label = "like",
         ) { (l, a) ->
             DiscButton(if (l) ForgeIcons.Heart else ForgeIcons.HeartOutline, if (l) "Unlike" else "Like", if (l) a else white) { onLike() }
@@ -598,7 +604,7 @@ private fun TransportRow(now: NowPlaying, connection: PlayerConnection, white: C
         Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
             AnimatedContent(
                 targetState = now.isPlaying to now.isBuffering,
-                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(120)) },
+                transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) },
                 label = "playPause",
             ) { (playing, buffering) ->
                 if (buffering && !playing) {
@@ -702,7 +708,7 @@ private fun VolumeControlRow(audioManager: AudioManager, color: Color) {
         Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AnimatedContent(iconState, transitionSpec = { fadeIn(tween(120)) togetherWith fadeOut(tween(100)) }, label = "volume") {
+        AnimatedContent(iconState, transitionSpec = { fadeIn(tween(Motion.Instant)) togetherWith fadeOut(tween(Motion.Instant)) }, label = "volume") {
             Icon(it, iconLabel, tint = color, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(10.dp))
