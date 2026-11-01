@@ -203,6 +203,8 @@ fun PlayerSheet(now: NowPlaying, ambience: Ambience, open: Boolean, onClose: () 
             // The pane decides whether the backdrop fades in under the cover, so the canvas is
             // drawn inside PlayerContent where the pane is known.
             PlayerContent(now, onClose, dismissDrag, ambience)
+            // Last, so the Automix mix view draws over the player rather than under it.
+            MixViewOverlay()
         }
     }
 }
