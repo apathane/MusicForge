@@ -521,6 +521,9 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
 
         SectionTitle("Appearance")
         Group {
+            // Classic stays the default: nobody wakes up to a different app.
+            val experience = prefs?.get(Keys.UiExperience) ?: dev.musicforge.ui.Experience.CLASSIC.name
+            ChoiceRow("Interface", dev.musicforge.ui.Experience.entries.map { it.name to it.label }, experience) { vm.set(Keys.UiExperience, it) }
             val dark = prefs?.get(Keys.DarkMode) ?: DarkMode.AUTO.name
             ChoiceRow("Theme", listOf("AUTO" to "Auto", "ON" to "Dark", "OFF" to "Light"), dark) { vm.set(Keys.DarkMode, it) }
             ToggleRow("Pure black", prefs?.get(Keys.PureBlack) ?: false, subtitle = "Dark theme on true black, surfaces included") { vm.set(Keys.PureBlack, it) }

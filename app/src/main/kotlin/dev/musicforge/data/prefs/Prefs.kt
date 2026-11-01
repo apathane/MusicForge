@@ -54,6 +54,7 @@ object Keys {
     val DarkMode = str("darkMode") // ON / OFF / AUTO / TIME
     val PureBlack = bool("pureBlack")
     val GlassTier = str("forge.glassTier") // SOLID / ARTWORK / LIVE
+    val UiExperience = str("forge.experience") // CLASSIC / FORGE (dev.musicforge.ui.Experience)
     val ExportToMusic = bool("forge.exportToMusic")
     /** Home shows only what you did, not what it guesses from it. */
     val SuggestionsPaused = bool("forge.suggestionsPaused")
