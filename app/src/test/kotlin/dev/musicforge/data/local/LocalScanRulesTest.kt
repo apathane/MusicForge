@@ -16,7 +16,7 @@ class LocalScanRulesTest {
 
     @Test
     fun incompleteListingRemovesNothing() {
-        val removed = LocalAudioScanner.idsToRemove(
+        val removed = idsToRemove(
             existing = setOf(id(primary, 1), id(primary, 2)),
             present = setOf(id(primary, 1)),
             queriedCollections = listOf(primary),
@@ -27,7 +27,7 @@ class LocalScanRulesTest {
 
     @Test
     fun emptyListingWithExistingRowsRemovesNothing() {
-        val removed = LocalAudioScanner.idsToRemove(
+        val removed = idsToRemove(
             existing = setOf(id(primary, 1)),
             present = emptySet(),
             queriedCollections = listOf(primary),
@@ -38,7 +38,7 @@ class LocalScanRulesTest {
 
     @Test
     fun deletedFileInAQueriedVolumeIsRemoved() {
-        val removed = LocalAudioScanner.idsToRemove(
+        val removed = idsToRemove(
             existing = setOf(id(primary, 1), id(primary, 2)),
             present = setOf(id(primary, 1)),
             queriedCollections = listOf(primary),
@@ -49,7 +49,7 @@ class LocalScanRulesTest {
 
     @Test
     fun songOnAnUnqueriedVolumeIsKept() {
-        val removed = LocalAudioScanner.idsToRemove(
+        val removed = idsToRemove(
             existing = setOf(id(primary, 1), id(sdCard, 1)),
             present = setOf(id(primary, 1)),
             queriedCollections = listOf(primary),
@@ -61,7 +61,7 @@ class LocalScanRulesTest {
     @Test
     fun presentButUnchangedSongIsKept() {
         // The old incremental scan only saw changed rows here and deleted the rest.
-        val removed = LocalAudioScanner.idsToRemove(
+        val removed = idsToRemove(
             existing = setOf(id(primary, 1), id(primary, 2)),
             present = setOf(id(primary, 1), id(primary, 2)),
             queriedCollections = listOf(primary),

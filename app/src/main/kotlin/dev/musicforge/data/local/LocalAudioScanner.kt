@@ -290,25 +290,6 @@ object LocalAudioScanner {
         }
     }
 
-    /**
-     * Which indexed local songs to delete after a scan. Deletion is destructive and the input can
-     * lie (unmounted card, revoked permission), so only ids that a completed listing of their own
-     * volume failed to find are removed. Songs on a volume we never queried stay put.
-     */
-    internal fun idsToRemove(
-        existing: Set<String>,
-        present: Set<String>,
-        queriedCollections: List<String>,
-        listingComplete: Boolean,
-    ): Set<String> {
-        if (!listingComplete) return emptySet()
-        // An empty listing for a library that had songs is a missing card, not a tidy-up.
-        if (present.isEmpty() && existing.isNotEmpty()) return emptySet()
-        val prefixes = queriedCollections.map { "$it/" }
-        return existing.filterTo(HashSet()) { id ->
-            prefixes.any { id.startsWith(it) } && id !in present
-        }
-    }
 
     /**
      * Resolve a document-tree Uri to a path relative to the external root (e.g. "Music/MyFolder").
@@ -323,5 +304,26 @@ object LocalAudioScanner {
     } catch (e: Exception) {
         Timber.tag("LocalAudioScanner").w(e, "Could not resolve tree path for $treeUri")
         null
+    }
+}
+
+/**
+ * Which indexed local songs to delete after a scan. Deletion is destructive and the input can
+ * lie (unmounted card, revoked permission), so only ids that a completed listing of their own
+ * volume failed to find are removed. Songs on a volume we never queried stay put.
+ */
+// Top level, not in the object: the object's Uri constant can't load on a plain JVM test.
+internal fun idsToRemove(
+    existing: Set<String>,
+    present: Set<String>,
+    queriedCollections: List<String>,
+    listingComplete: Boolean,
+): Set<String> {
+    if (!listingComplete) return emptySet()
+    // An empty listing for a library that had songs is a missing card, not a tidy-up.
+    if (present.isEmpty() && existing.isNotEmpty()) return emptySet()
+    val prefixes = queriedCollections.map { "$it/" }
+    return existing.filterTo(HashSet()) { id ->
+        prefixes.any { id.startsWith(it) } && id !in present
     }
 }
