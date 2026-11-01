@@ -402,18 +402,21 @@ fun SettingsScreen(onBack: () -> Unit, onSignIn: () -> Unit, onAbout: () -> Unit
             if (prefs?.get(Keys.CrossfadeEnabled) == true) {
                 // Whole seconds only: "6 s", not "6.0 s".
                 val seconds = (prefs?.get(Keys.CrossfadeSeconds) ?: 6f).coerceIn(1f, 12f)
-                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    Text("Crossfade length", style = MaterialTheme.typography.titleSmall)
-                    PhysicsSlider(
-                        value = seconds.toInt() - 1, // steps 0..11 are 1..12 s
-                        max = 11,
-                        onValueChange = { vm.set(Keys.CrossfadeSeconds, (it + 1).toFloat()) },
-                        contentDescription = "Crossfade length",
-                        stateDescription = "${seconds.toInt()} seconds",
-                    )
-                    Text("${seconds.toInt()} s", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Automix decides the blend length, so the slider steps aside while Automix is on.
+                if (prefs?.get(Keys.AutomixEnabled) != true) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        Text("Crossfade length", style = MaterialTheme.typography.titleSmall)
+                        PhysicsSlider(
+                            value = seconds.toInt() - 1, // steps 0..11 are 1..12 s
+                            max = 11,
+                            onValueChange = { vm.set(Keys.CrossfadeSeconds, (it + 1).toFloat()) },
+                            contentDescription = "Crossfade length",
+                            stateDescription = "${seconds.toInt()} seconds",
+                        )
+                        Text("${seconds.toInt()} s", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                ToggleRow("Automix", prefs?.get(Keys.AutomixEnabled) ?: false, subtitle = "Beat-matched blends between songs, from BitChord's automix") { vm.set(Keys.AutomixEnabled, it) }
+                ToggleRow("Automix", prefs?.get(Keys.AutomixEnabled) ?: false, subtitle = "Times and blends every transition from the tracks themselves. Turn it off if the phone gets hot or playback stutters.") { vm.set(Keys.AutomixEnabled, it) }
                 ToggleRow("Keep albums gapless", prefs?.get(Keys.CrossfadeGapless) ?: false, subtitle = "No blend between tracks of the same album") { vm.set(Keys.CrossfadeGapless, it) }
             }
         }
