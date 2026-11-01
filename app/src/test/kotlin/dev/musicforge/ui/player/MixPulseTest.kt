@@ -24,7 +24,7 @@ class MixPulseTest {
         // beatShape is a raised cosine squared, so it can't escape 0..1 even
         // if floating-point drift ever pushed a phase just past 1f.
         for (i in 0..100) {
-            assertThat(beatShape(i / 100f)).isIn(0f..1f)
+            val v = beatShape(i / 100f); assertThat(v).isAtLeast(0f); assertThat(v).isAtMost(1f)
         }
     }
 
