@@ -432,3 +432,41 @@ em { color: var(--muted); font-style: normal; font-weight: 500; }
   .screenshot-frame { height: 365px; }
   .footer-links { gap: 12px; }
 }
+
+/* Rebuild notice: one quiet band, not a modal. It says what changed and what still works. */
+.rebuild-notice { border-bottom: 1px solid var(--line); background: var(--bg-raised); }
+.rebuild-inner { max-width: 1440px; margin-inline: auto; padding: 16px var(--gutter); display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.rebuild-label { font-family: "DM Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .07em; color: var(--accent); border: 1px solid var(--line-strong); border-radius: 5px; padding: 3px 7px; }
+.rebuild-inner p { flex: 1 1 420px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.rebuild-inner strong { color: var(--ink); font-weight: 800; }
+
+/* Buffer, the waiting game. */
+.waiting { border-top: 1px solid var(--line); }
+.waiting-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(32px, 6vw, 88px); align-items: start; }
+.waiting-copy h2 { margin-top: 22px; }
+.waiting-copy p { margin-top: 26px; max-width: 440px; color: var(--muted); line-height: 1.8; }
+.waiting-keys { margin: 30px 0 0; display: grid; gap: 10px; }
+.waiting-keys div { display: flex; gap: 16px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; }
+.waiting-keys dt { width: 64px; font-family: "DM Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .07em; color: var(--soft); padding-top: 3px; }
+.waiting-keys dd { margin: 0; }
+.buffer-game { position: relative; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--panel); overflow: hidden; touch-action: none; user-select: none; }
+.buffer-hud { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px 10px; font-family: "DM Mono", ui-monospace, monospace; font-size: 10px; letter-spacing: .07em; color: var(--soft); }
+.buffer-hud b { color: var(--ink); font-weight: 500; margin-left: 6px; }
+.buffer-bar { height: 3px; margin-inline: 18px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.buffer-bar span { display: block; height: 100%; width: 0; background: var(--accent); transform-origin: left; transition: width 160ms var(--ease); }
+#buffer-canvas { display: block; width: 100%; aspect-ratio: 16 / 11; }
+.buffer-overlay { position: absolute; inset: 52px 0 0; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 24px; text-align: center; background: color-mix(in srgb, var(--panel) 82%, transparent); transition: opacity 200ms ease; }
+.buffer-overlay[hidden] { display: grid; opacity: 0; pointer-events: none; }
+.buffer-overlay p { max-width: 300px; font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+
+@media (max-width: 900px) {
+  .waiting-grid { grid-template-columns: 1fr; }
+  #buffer-canvas { aspect-ratio: 4 / 5; }
+}
+@media (max-width: 520px) {
+  .buffer-hud { font-size: 9px; padding-inline: 14px; }
+  .buffer-bar { margin-inline: 14px; }
+}
+/* Keyboard focus shows on the frame; the canvas's own outline would cut across the bar. */
+#buffer-canvas:focus-visible { outline: none; }
+.buffer-game:has(#buffer-canvas:focus-visible) { border-color: var(--accent); }

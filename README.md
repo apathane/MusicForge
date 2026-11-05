@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/apathane/MusicForge/releases"><img src="https://img.shields.io/github/v/release/apathane/MusicForge?include_prereleases&label=Latest%20Preview&color=000000&labelColor=222222&style=flat-square" alt="Latest Preview"></a>
-  <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License: GPL-3.0">
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0">
   <img src="https://img.shields.io/badge/Android-8.0%2B%20%7C%20minSdk%2026-green?style=flat-square" alt="Android 8.0+ | minSdk 26">
   <img src="https://img.shields.io/badge/Kotlin-2.4-purple?style=flat-square" alt="Kotlin">
   <img src="https://img.shields.io/badge/Compose-1.12-brightgreen?style=flat-square" alt="Jetpack Compose">
@@ -23,9 +23,14 @@
   </a>
 </p>
 
+> [!NOTE]
+> **MusicForge is being rebuilt from the ground up.** New base, new download engine, new look. That takes a while, so there won't be new releases until it's done, and I'm not going to guess when that is. The last builds still work and stay downloadable. Issues are still read; fixes for the current build are unlikely.
+>
+> If you need something to do in the meantime, [the site has a game](https://apathane.github.io/MusicForge/#waiting).
+
 MusicForge is an open-source Android music player built around a fairly simple idea: **your music app should still be useful when the internet isn't.** It brings YouTube Music discovery and playback together with persistent downloads, a library that stays yours, and an interface that tries to feel considered rather than crowded.
 
-It's still a work in progress. The current development phase is **Toccata** (phase 15), with its first preview **P1 · 0.15.0** ([release](../../releases/tag/p1-0.15.0)); the latest regular release is **0.14.0 · S0nata**. The app has an in-app updater that checks GitHub Releases and verifies each APK's SHA-256 before handing it to Android's installer. From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
+It was a work in progress before the rebuild too. The last development phase was **Toccata** (phase 15), with its first preview **P1 · 0.15.0** ([release](../../releases/tag/p1-0.15.0)); the latest regular release is **0.14.0 · S0nata**. The app has an in-app updater that checks GitHub Releases and verifies each APK's SHA-256 before handing it to Android's installer. From 0.14 preview 1, every release is signed with one permanent key (a one-time reinstall is required when upgrading from older builds). The app's real name is still waiting for its dramatic reveal. For now, the codenames are part of the fun.
 
 ## A quick look
 
