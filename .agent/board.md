@@ -25,6 +25,7 @@ P1 · 0.15.0 published (prerelease, code 1501) with all nine packages. Left for 
 - [ ] Real-device pass: transitions, insets on gesture vs 3-button nav, Hide top bar, awareness line
 - [x] P2 · 0.15.0: emulator pixel pass (player, library, home, search, restore) + review fixes
 - [ ] P3: motion language (M1), song menu (B1), collection menus (B2), local music (B3), filters + lyrics sources (B4) — see docs/AUDIT-0.15.md
+- [x] **W8 local music: permission & scan states on LocalMusicScreen** — no-permission / empty / list states, header Scan action, scanning bar + result line, resume re-check, `LocalMusicViewModel.scan()`, manifest permissions · `agent/p15-local-ux` · claimed: kilo · committed 71e112f, CI pending
 - Skipped for now (owner, 2026-10-29): Last.fm scrobbling, Google Cast
 
 Wave 1
