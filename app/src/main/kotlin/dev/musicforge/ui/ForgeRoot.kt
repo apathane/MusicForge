@@ -227,7 +227,9 @@ fun ForgeRoot(glassTier: GlassTier, hideTopBar: Boolean = false, ambience: Ambie
             val route = entry?.destination?.route
             // On a page below a tab (album, artist...), keep that tab lit.
             var lastTab by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(Tab.Home) }
-            androidx.compose.runtime.LaunchedEffect(route) { Tab.entries.firstOrNull { it.route == route }?.let { lastTab = it } }
+            androidx.compose.runtime.LaunchedEffect(route) {
+                Tab.entries.firstOrNull { it.route == route }?.let { lastTab = it }
+            }
             if (route != SETTINGS_ROUTE && route != Routes.LOGIN && route != Routes.ABOUT && route != Routes.EQUALIZER) {
                 Column(
                     Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (covered) 0f else 1f }

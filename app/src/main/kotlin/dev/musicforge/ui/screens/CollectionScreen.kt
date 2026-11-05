@@ -4,14 +4,10 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -31,11 +28,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import sh.calvin.reorderable.ReorderableItem
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +43,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
-import androidx.media3.common.util.UnstableApi
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import dev.musicforge.AppGraph
@@ -62,12 +58,18 @@ import dev.musicforge.ui.components.IconAction
 import dev.musicforge.ui.components.SongRow
 import dev.musicforge.ui.components.askToRunInBackground
 import dev.musicforge.ui.designsystem.LoadingBar
+import dev.musicforge.ui.designsystem.Motion
+import dev.musicforge.ui.designsystem.Signal
 import dev.musicforge.ui.designsystem.pressScale
+import dev.musicforge.ui.theme.AccentRed
+import dev.musicforge.ui.theme.ForgeTheme
+import dev.musicforge.ui.theme.LocalArtworkColors
+import dev.musicforge.ui.theme.LocalHeroPalette
+import dev.musicforge.ui.theme.ArtworkColors
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -78,13 +80,11 @@ data class Track(val item: MediaItem, val subtitle: String)
 data class CollectionUi(
     val title: String,
     val subtitle: String,
-    /** One cover, or up to four for a mosaic. */
     val artwork: List<String>,
     val tracks: List<Track>,
     val loading: Boolean = false,
     val error: String? = null,
     val hasMore: Boolean = false,
-    /** Local playlists: how it's used (plays, when, whose, what plays offline). */
     val insight: String? = null,
 )
 
@@ -135,10 +135,9 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
                     .joinToString(" · "),
                 artwork = listOf(page.album.thumbnail),
                 tracks = page.songs.map { it.track() },
-                loading = false,  // BUGFIX: was never cleared on success, so the spinner + SkeletonRows stuck around after content appeared.
+                loading = false,
             )
         }.onFailure { e ->
-            // Offline: show what we know locally about this album.
             val songs = dao.albumSongsLocal(id).first()
             val entity = dao.albumEntity(id)
             _ui.value = CollectionUi(
@@ -168,7 +167,6 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
     }
 
     private var paging = false
-
     fun loadMore() {
         val token = continuation ?: return
         if (paging) return
@@ -187,9 +185,7 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
     }
 
     private fun SongItem.track() = Track(toMediaItem(), artists.joinToString { it.name })
-
     private fun count(n: Int) = if (n == 1) "1 song" else "$n songs"
-
     private fun duration(totalSec: Int): String {
         if (totalSec <= 0) return ""
         val h = totalSec / 3600
@@ -198,7 +194,7 @@ class CollectionViewModel(private val graph: AppGraph, private val kind: Collect
     }
 }
 
-@OptIn(UnstableApi::class)
+@OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -206,7 +202,6 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
     val vm = viewModel(key = "${kind.name}:$id") { CollectionViewModel(graph, kind, id) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val list = rememberLazyListState()
-    // Local playlists reorder by drag: a stable-keyed mirror, saved once when the drag ends.
     val rows = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateListOf<Pair<Long, Track>>() }
     var keySeq by androidx.compose.runtime.remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     var dragFrom by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(-1) }
@@ -244,53 +239,50 @@ fun CollectionScreen(kind: CollectionKind, id: String, onBack: () -> Unit) {
     val nearEnd by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 >= list.layoutInfo.totalItemsCount - 8 } }
     LaunchedEffect(nearEnd, ui.hasMore) { if (nearEnd && ui.hasMore) vm.loadMore() }
 
-    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
-        item {
-            // The back row stays with "Hide top bar" on: it's navigation, not chrome.
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = 4.dp, end = 4.dp, top = 4.dp),
-            ) {
-                IconAction(ForgeIcons.Back, "Back", onBack)
+    // Forced dark: collection screens re-theme from artwork (Convx forced-dark pattern).
+    ForgeTheme(pureBlack = true) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = LocalBottomInset.current) {
+            item {
+                BackRow(ForgeIcons.Back, "Back", onBack)
                 Spacer(Modifier.weight(1f))
-                if (kind == CollectionKind.LOCAL_PLAYLIST) IconAction(ForgeIcons.More, "Playlist options") { editing = true }
+                if (kind == CollectionKind.LOCAL_PLAYLIST) {
+                    MoreButton("Playlist options") { editing = true }
+                }
             }
-        }
-        item { Header(ui, onPlay = { shuffle -> play(graph, ui, shuffle) }, onDownloadAll = {
-            askToRunInBackground(context)
-            graph.downloads.download(ui.tracks.map { it.item })
-        }) }
-        when {
-            ui.loading -> item {
-                LoadingBar(visible = true)
-                dev.musicforge.ui.components.SkeletonRows()
+            item { CollectionHeader(ui, onPlay = { shuffle -> play(graph, ui, shuffle) }, onDownloadAll = {
+                askToRunInBackground(context)
+                graph.downloads.download(ui.tracks.map { it.item })
+            }) }
+            when {
+                ui.loading -> item {
+                    LoadingBar(visible = true)
+                    dev.musicforge.ui.components.SkeletonRows()
+                }
+                ui.error != null -> item { EmptyState("Couldn't load", ui.error!!) }
+                ui.tracks.isEmpty() -> item {
+                    val (title, body) = collectionEmptyCopy(kind)
+                    EmptyState(title, body)
+                }
             }
-            ui.error != null -> item { EmptyState("Couldn't load", ui.error!!) }
-            ui.tracks.isEmpty() -> item {
-                val (title, body) = collectionEmptyCopy(kind)
-                EmptyState(title, body)
+            if (kind == CollectionKind.LOCAL_PLAYLIST && ui.tracks.isNotEmpty()) {
+                reorderableTracks(rows, reorder, onPlay = { i -> graph.player.play(rows.map { it.second.item }, i) }) { track ->
+                    graph.library.removeFromPlaylist(id, track.item.mediaId)
+                }
+                return@LazyColumn
             }
-        }
-        if (kind == CollectionKind.LOCAL_PLAYLIST && ui.tracks.isNotEmpty()) {
-            reorderableTracks(rows, reorder, onPlay = { i -> graph.player.play(rows.map { it.second.item }, i) }) { track ->
-                graph.library.removeFromPlaylist(id, track.item.mediaId)
+            itemsIndexed(ui.tracks, key = { i, t -> "$i:${t.item.mediaId}" }) { index, track ->
+                SongRow(
+                    track.item,
+                    track.subtitle,
+                    number = if (kind == CollectionKind.ALBUM) index + 1 else null,
+                    extraActions = if (kind == CollectionKind.LOCAL_PLAYLIST) {
+                        listOf("Remove from this playlist" to { graph.library.removeFromPlaylist(id, track.item.mediaId) })
+                    } else {
+                        emptyList()
+                    },
+                    onPlay = { graph.player.play(ui.tracks.map { it.item }, index) },
+                )
             }
-            return@LazyColumn
-        }
-        itemsIndexed(ui.tracks, key = { i, t -> "$i:${t.item.mediaId}" }) { index, track ->
-            SongRow(
-                track.item,
-                track.subtitle,
-                number = if (kind == CollectionKind.ALBUM) index + 1 else null,
-                extraActions = if (kind == CollectionKind.LOCAL_PLAYLIST) {
-                    listOf("Remove from this playlist" to { graph.library.removeFromPlaylist(id, track.item.mediaId) })
-                } else {
-                    emptyList()
-                },
-                onPlay = { graph.player.play(ui.tracks.map { it.item }, index) },
-            )
         }
     }
 }
@@ -301,36 +293,77 @@ private fun play(graph: AppGraph, ui: CollectionUi, shuffle: Boolean) {
     graph.player.play(if (shuffle) items.shuffled() else items, 0)
 }
 
+/** Back row: glass, 48 dp targets, content descriptions. */
 @Composable
-private fun Header(ui: CollectionUi, onPlay: (shuffle: Boolean) -> Unit, onDownloadAll: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Cover(ui.artwork, 228.dp)
-        Spacer(Modifier.height(18.dp))
-        Text(ui.title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (ui.subtitle.isNotBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(ui.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        }
-        ui.insight?.let {
-            Spacer(Modifier.height(2.dp))
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        }
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            HeaderButton("Play", ForgeIcons.Play, primary = true) { onPlay(false) }
-            HeaderButton("Shuffle", ForgeIcons.Shuffle, primary = false) { onPlay(true) }
-            IconAction(ForgeIcons.Download, "Download all", onDownloadAll)
-        }
-        Spacer(Modifier.height(10.dp))
+private fun BackRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = 4.dp, end = 4.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(icon, label, onClick)
+        Spacer(Modifier.weight(1f))
     }
 }
 
-/** One cover, or a 2×2 mosaic of the first four covers for playlists without their own. */
+/** Icon-only button: 48 dp, content description, press feedback. */
 @Composable
-fun Cover(urls: List<String>, size: Dp) {
-    val shape = RoundedCornerShape(14.dp)
+private fun IconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    val press = remember { MutableInteractionSource() }
+    Box(
+        Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(percent = 50))
+            .pressScale(press)
+            .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(24.dp))
+    }
+}
+
+/** More options button: 48 dp. */
+@Composable
+private fun MoreButton(label: String, onClick: () -> Unit) {
+    IconButton(ForgeIcons.More, label, onClick)
+}
+
+/** Header: artwork hero, forced dark, artwork-derived tint, pill buttons. */
+@Composable
+private fun CollectionHeader(ui: CollectionUi, onPlay: (shuffle: Boolean) -> Unit, onDownloadAll: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CollectionCover(ui.artwork, 240.dp)
+        Spacer(Modifier.height(16.dp))
+        Text(ui.title, style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (ui.subtitle.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(ui.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
+        ui.insight?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            CollectionPill("Play", ForgeIcons.Play, primary = true) { onPlay(false) }
+            CollectionPill("Shuffle", ForgeIcons.Shuffle, primary = false) { onPlay(true) }
+            IconButton(ForgeIcons.Download, "Download all", onDownloadAll)
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+/** One cover or a 2×2 mosaic: continuous corners, artwork-driven. */
+@Composable
+fun CollectionCover(urls: List<String>, size: Dp) {
+    val shape = RoundedCornerShape(Signal.radiusCardLarge)
     if (urls.size < 4) {
-        Artwork(urls.firstOrNull(), size, corner = 14.dp)
+        Artwork(urls.firstOrNull(), size, corner = Signal.radiusCardLarge)
         return
     }
     Column(Modifier.size(size).clip(shape)) {
@@ -342,30 +375,33 @@ fun Cover(urls: List<String>, size: Dp) {
     }
 }
 
+/** Pill button: accent colour primary, 48 dp min height, content description. */
 @Composable
-private fun HeaderButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, primary: Boolean, onClick: () -> Unit) {
-    val bg = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
-    val fg = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground
+private fun CollectionPill(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, primary: Boolean, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val bg = if (primary) AccentRed else scheme.surfaceContainerHigh
+    val fg = if (primary) Color.White else scheme.onBackground
     val press = remember { MutableInteractionSource() }
     Row(
         Modifier
             .clip(RoundedCornerShape(percent = 50))
             .pressScale(press)
             .background(bg)
-            .clickable(interactionSource = press, indication = null, onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = 11.dp),
+            .clickable(interactionSource = press, indication = null, onClickLabel = label, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 22.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(icon, null, tint = fg, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = label, tint = fg, modifier = Modifier.size(20.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = fg)
     }
 }
 
 @Composable
 private fun PlaylistEditDialog(name: String, onRename: (String) -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
-    var text by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(name) }
-    var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var text by remember { mutableStateOf(name) }
+    var confirmDelete by remember { mutableStateOf(false) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (confirmDelete) "Delete \"$name\"?" else "Playlist") },
@@ -393,22 +429,7 @@ private fun PlaylistEditDialog(name: String, onRename: (String) -> Unit, onDelet
     )
 }
 
-/** Back row + header come before the tracks in the list. */
 private const val HEADER_ITEMS = 2
-
-/**
- * Empty copy per collection. "Songs you add will show up here" on the downloads page sent people
- * looking for an add button that has never existed; each kind now says what actually fills it.
- */
-internal fun collectionEmptyCopy(kind: CollectionKind): Pair<String, String> = when (kind) {
-    CollectionKind.LIKED -> "No liked songs yet" to "Tap the heart on a song and it waits here."
-    CollectionKind.SONGS -> "No songs yet" to "Songs you play, save or restore show up here."
-    CollectionKind.DOWNLOADED -> "Nothing downloaded yet" to "Download songs to play them offline."
-    CollectionKind.HISTORY -> "Nothing played yet" to "Play something and it shows up here."
-    CollectionKind.LOCAL_PLAYLIST -> "Nothing here yet" to "Add songs from any song's menu."
-    CollectionKind.ALBUM -> "No songs here" to "This album has no tracks we can play."
-    CollectionKind.REMOTE_PLAYLIST -> "Nothing here yet" to "This playlist has no songs we can play."
-}
 
 private fun androidx.compose.foundation.lazy.LazyListScope.reorderableTracks(
     rows: List<Pair<Long, Track>>,
@@ -418,13 +439,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.reorderableTracks(
 ) {
     itemsIndexed(rows, key = { _, r -> r.first }) { i, (key, track) ->
         ReorderableItem(reorder, key = key) { dragging ->
-            Box(Modifier.background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent)) {
+            Box(Modifier.background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent)) {
                 SongRow(
                     track.item,
                     track.subtitle,
                     extraActions = listOf("Remove from this playlist" to { onRemove(track) }),
                     dragHandle = {
-                        Box(Modifier.size(40.dp).draggableHandle(), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(48.dp).draggableHandle(), contentAlignment = Alignment.Center) {
                             Text("≡", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
@@ -435,22 +456,27 @@ private fun androidx.compose.foundation.lazy.LazyListScope.reorderableTracks(
     }
 }
 
-/**
- * "Played 34 times · last 3 days ago · mostly Portishead · 12 downloaded": how a playlist is
- * actually used. Parts with nothing to say are left out; null when none has.
- */
+internal fun collectionEmptyCopy(kind: CollectionKind): Pair<String, String> = when (kind) {
+    CollectionKind.LIKED -> "No liked songs yet" to "Tap the heart on a song and it waits here."
+    CollectionKind.SONGS -> "No songs yet" to "Songs you play, save or restore show up here."
+    CollectionKind.DOWNLOADED -> "Nothing downloaded yet" to "Download songs to play them offline."
+    CollectionKind.HISTORY -> "Nothing played yet" to "Play something and it shows up here."
+    CollectionKind.LOCAL_PLAYLIST -> "Nothing here yet" to "Add songs from any song's menu."
+    CollectionKind.ALBUM -> "No songs here" to "This album has no tracks we can play."
+    CollectionKind.REMOTE_PLAYLIST -> "Nothing here yet" to "This playlist has no songs we can play."
+}
+
 internal fun playlistInsight(songs: List<Song>, plays: dev.musicforge.data.db.PlaylistPlays, now: Long): String? {
     val parts = buildList {
         if (plays.plays > 0) add(if (plays.plays == 1) "Played once" else "Played ${plays.plays} times")
         plays.lastPlayed?.let { add("last " + ago(now - it)) }
-        // "Mostly" only when one artist really is most of it.
         songs.groupingBy { it.artists.firstOrNull()?.name }.eachCount()
             .filterKeys { it != null }.maxByOrNull { it.value }
             ?.takeIf { songs.size >= 4 && it.value * 3 >= songs.size }
             ?.let { add("mostly ${it.key}") }
         songs.count { it.song.isDownloaded }.takeIf { it > 0 }?.let { add(if (it == songs.size) "all downloaded" else "$it downloaded") }
     }
-    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")?.replaceFirstChar { it.uppercase() }
+    return parts.takeIf { it.isNotEmpty }?.joinToString(" · ")?.replaceFirstChar { it.uppercase() }
 }
 
 private fun ago(ms: Long): String {

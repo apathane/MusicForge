@@ -417,19 +417,12 @@ private fun PlayerContent(now: NowPlaying, onClose: () -> Unit, dismissDrag: Mod
 
 @Composable
 private fun CanvasMotionArt(color: Color, reduced: Boolean, modifier: Modifier) {
+    // Static subtle gradient — no infinite animation, no per-frame recomposition.
+    // Ambient motion is dropped entirely on this device class (Adreno 610, 90 Hz).
     if (reduced) return
-    // Single subtle circle, slow drift — one layer, one draw per frame, no infinite recomposition.
-    val transition = rememberInfiniteTransition(label = "canvasMotion")
-    val phase by transition.animateFloat(
-        0f, 1f,
-        infiniteRepeatable(tween(Motion.Ambient, easing = LinearEasing), RepeatMode.Restart),
-        label = "phase",
-    )
-    Canvas(modifier.graphicsLayer { alpha = 0.06f }) {
-        val r = size.minDimension * 0.3f
-        val x = phase * size.width
-        val y = size.height * 0.4f
-        drawCircle(color, radius = r, center = Offset(x, y))
+    Canvas(modifier.graphicsLayer { alpha = 0.04f }) {
+        val r = size.minDimension * 0.4f
+        drawCircle(color, radius = r, center = Offset(size.width * 0.3f, size.height * 0.4f))
     }
 }
 
